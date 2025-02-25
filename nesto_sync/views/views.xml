@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Vista de formulario heredada -->
+        <record id="view_partner_form_inherited" model="ir.ui.view">
+            <field name="name">res.partner.form.inherited</field>
+            <field name="model">res.partner</field>
+            <field name="inherit_id" ref="base.view_partner_form"/>
+            <field name="arch" type="xml">
+                <notebook position="inside">
+                    <page string="Nesto">
+                        <group>
+                            <field name="cliente_externo"/>
+                            <field name="contacto_externo"/>
+                            <field name="persona_contacto_externa"/>
+                        </group>
+                    </page>
+                </notebook>
+            </field>
+        </record>
+
+        <!-- Vista de búsqueda heredada -->
+        <record id="view_res_partner_filter_inherited" model="ir.ui.view">
+            <field name="name">res.partner.select.inherited</field>
+            <field name="model">res.partner</field>
+            <field name="inherit_id" ref="base.view_res_partner_filter"/>
+            <field name="arch" type="xml">
+                <xpath expr="//search" position="inside">
+                    <field name="cliente_externo"/>
+                    <field name="contacto_externo"/>
+                    <field name="persona_contacto_externa"/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

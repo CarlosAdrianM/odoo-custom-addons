@@ -1,0 +1,46 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Ejecutar tests en Odoo 16",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "/opt/odoo16/odoo-bin",
+            "python": "/opt/odoo16/odoo-venv/bin/python3",
+            "console": "integratedTerminal",
+            "args": [
+                "-c", "/opt/odoo16/odoo.conf",
+                "-d", "odoo16",
+                "--test-enable",
+                "--stop-after-init",
+                "--log-level=info",
+                "--test-tags=nesto_sync"
+            ],
+            "envFile": "${workspaceFolder}/.env",
+            "env": {
+                "PYTHONPATH": "/opt/odoo16:/opt/odoo16/custom_addons",
+                "VIRTUAL_ENV": "/opt/odoo16/odoo-venv",
+                "PATH": "/opt/odoo16/odoo-venv/bin:${env:PATH}"
+            }
+        },
+        {
+            "name": "Ejecutar Odoo en modo servidor (para depurar controladores)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "/opt/odoo16/odoo-bin",
+            "python": "/opt/odoo16/odoo-venv/bin/python3",
+            "console": "integratedTerminal",
+            "args": [
+                "-c", "/opt/odoo16/odoo.conf",
+                "-d", "odoo16",
+                "--log-level=debug"
+            ],
+            "envFile": "${workspaceFolder}/.env",
+            "env": {
+                "PYTHONPATH": "/opt/odoo16:/opt/odoo16/custom_addons",
+                "VIRTUAL_ENV": "/opt/odoo16/odoo-venv",
+                "PATH": "/opt/odoo16/odoo-venv/bin:${env:PATH}"
+            }
+        }
+    ]
+}
