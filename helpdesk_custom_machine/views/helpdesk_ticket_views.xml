@@ -4,11 +4,32 @@
         <field name="model">helpdesk.ticket</field>
         <field name="inherit_id" ref="helpdesk_mgmt.ticket_view_form"/>
         <field name="arch" type="xml">
-            <!-- Añadir los campos machine_id y serial_number en la vista del ticket -->
-	<xpath expr="//field[@name='team_id']" position="after">
-	    <field name="machine_id" string="Machine"/>
-	    <field name="serial_number" string="Serial Number" readonly="1"/>
-	</xpath>
+            <xpath expr="//field[@name='team_id']" position="after">
+                <field name="machine_id" string="Machine"/>
+                <field name="serial_number" string="Serial Number" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="helpdesk_ticket_view_search_inherit" model="ir.ui.view">
+        <field name="name">helpdesk.ticket.search.inherit</field>
+        <field name="model">helpdesk.ticket</field>
+        <field name="inherit_id" ref="helpdesk_mgmt.helpdesk_ticket_view_search"/>
+        <field name="arch" type="xml">
+            <field name="name" position="after">
+                <field name="serial_number" string="Serial Number" filter_domain="[('serial_number', 'ilike', self)]"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_helpdesk_ticket_kanban_inherit" model="ir.ui.view">
+        <field name="name">helpdesk.ticket.kanban.inherit</field>
+        <field name="model">helpdesk.ticket</field>
+        <field name="inherit_id" ref="helpdesk_mgmt.view_helpdesk_ticket_kanban"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="serial_number" string="Serial Number" filter_domain="[('serial_number', 'ilike', self)]"/>
+            </xpath>
         </field>
     </record>
 </odoo>
