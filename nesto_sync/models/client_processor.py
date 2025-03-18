@@ -29,6 +29,8 @@ class ClientProcessor:
         poblacion = message.get('Poblacion')
         provincia = message.get('Provincia')
         comentarios = message.get('Comentarios')
+        active = message.get('Estado', 0) >= 0
+
 
         # Procesar números de teléfono
         mobile, phone, extra_phones = PhoneProcessor.process_phone_numbers(telefono)
@@ -64,7 +66,8 @@ class ClientProcessor:
             'country_id': spain_id,
             'state_id': state_id,
             'is_company': cliente_principal,
-            'type': 'invoice' if cliente_principal else 'delivery'
+            'type': 'invoice' if cliente_principal else 'delivery',
+            'active': active
         }
 
         # Si el cliente no es principal, buscar el parent

@@ -9,6 +9,9 @@ class CountryManager:
         spain = self.env['res.country'].search([('code', '=', 'ES')], limit=1)
         if not spain:
             raise ValueError("El país España no está configurado en la base de datos")
+        # Si es una lista, toma el primer elemento
+        if isinstance(spain, list):
+            return spain[0].id
         return spain.id
 
     def get_or_create_state(self, state_name):

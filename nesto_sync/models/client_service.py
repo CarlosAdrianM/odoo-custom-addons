@@ -78,18 +78,21 @@ class ClientService:
             parent_partner = self.env['res.partner'].sudo().search([
                 ('cliente_externo', '=', values.get('cliente_externo')),
                 ('contacto_externo', '=', values.get('contacto_externo')),
-                ('persona_contacto_externa', '=', None)
+                ('persona_contacto_externa', '=', None),
+                '|', ('active', '=', True), ('active', '=', False)
             ], limit=1)
         else:
             parent_partner = self.env['res.partner'].sudo().search([
                 ('cliente_externo', '=', values.get('cliente_externo')),
-                ('parent_id', '=', False)
+                ('parent_id', '=', False),
+                '|', ('active', '=', True), ('active', '=', False)
             ], limit=1)
 
         partner = self.env['res.partner'].sudo().search([
             ('cliente_externo', '=', values.get('cliente_externo')),
             ('contacto_externo', '=', values.get('contacto_externo')),
-            ('persona_contacto_externa', '=', values.get('persona_contacto_externa'))
+            ('persona_contacto_externa', '=', values.get('persona_contacto_externa')),
+            '|', ('active', '=', True), ('active', '=', False)
         ], limit=1)
 
         if parent_partner and partner.id != parent_partner.id:

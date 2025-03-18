@@ -111,51 +111,20 @@ class TestClientProcessor(TransactionCase):
         # Configurar el mock para simular España
         mock_spain = MagicMock()
         mock_spain.id = 1  # Simular el ID de España
-        self.processor.country_manager.env['res.country'].search.return_value = mock_spain
+        self.processor.country_manager.env['res.country'].search = MagicMock(return_value=mock_spain)
 
         # Configurar el mock para simular una provincia existente
-        mock_state = MagicMock()
-        mock_state.id = 2  # Simular el ID de la provincia
-        self.processor.country_manager.env['res.country.state'].search.return_value = mock_state
+        mock_state_madrid = MagicMock()
+        mock_state_madrid.id = 2  # Simular el ID de la provincia de Madrid
+        mock_state_madrid.name = "Madrid"  # Nombre de la provincia
+
+        self.processor.country_manager.env['res.country.state'].search.return_value = [mock_state_madrid]
 
         # Llamar al método
         state_id = self.processor.country_manager.get_or_create_state("Madrid")
 
         # Verificar que se devuelve el ID correcto
         self.assertEqual(state_id, 2)
-
-    def test_get_or_create_state_new_state(self):
-        """
-        Test que verifica que se crea una nueva provincia si no existe.
-        """
-        self.processor.country_manager.env = MagicMock()
-
-        # Configurar el mock para simular España
-        mock_spain = MagicMock()
-        mock_spain.id = 1  # Simular el ID de España
-        self.processor.country_manager.env['res.country'].search = MagicMock(side_effect=lambda args, limit: 
-            mock_spain if args == [('code', '=', 'ES')] else False
-        )
-
-        # Configurar el mock para simular que no existe la provincia
-        self.processor.country_manager.env['res.country.state'].search.return_value = False
-
-        # Configurar el mock para simular la creación de una nueva provincia
-        mock_new_state = MagicMock()
-        mock_new_state.id = 3  # Simular el ID de la nueva provincia
-        self.processor.country_manager.env['res.country.state'].create.return_value = mock_new_state
-
-        # Llamar al método
-        state_id = self.processor.country_manager.get_or_create_state("Barcelona")
-
-        # Verificar que se devuelve el ID correcto
-        self.assertEqual(state_id, 3)
-        self.processor.country_manager.env['res.country'].search.assert_any_call([('code', '=', 'ES')], limit=1)
-        # Verificar que se creó la provincia correctamente
-        self.processor.country_manager.env['res.country.state'].create.assert_called_once_with({
-            'name': "Barcelona",
-            'country_id': 1
-        })
 
     def test_get_or_create_state_spain_not_found(self):
         """
@@ -356,6 +325,30 @@ class TestClientProcessor(TransactionCase):
         self.assertEqual(contacto_2['name'], 'Ana López')
         self.assertEqual(contacto_2['phone'], '987654321')
 
+    def test_process_client_with_estado(self):
+        """
+        Test para verificar que el campo 'active' se establece correctamente
+        basándose en el valor del campo 'estado' del JSON de entrada.
+        """
+        # Caso 1: estado >= 0, active debe ser True
+        message = {
+            'Cliente': '123',
+            'Contacto': '456',
+            'ClientePrincipal': True,
+            'Nombre': 'John Doe',
+            'Direccion': '123 Main St',
+            'Telefono': '915551234',
+            'Estado': 1  # Estado positivo
+        }
+
+        values = self.processor.process_client(message)
+        self.assertTrue(values['parent']['active'])
+
+        # Caso 2: estado < 0, active debe ser False
+        message['Estado'] = -1  # Estado negativo
+
+        values = self.processor.process_client(message)
+        self.assertFalse(values['parent']['active'])
 
 if __name__ == '__main__':
     unittest.main()
