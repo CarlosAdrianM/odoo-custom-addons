@@ -7,6 +7,7 @@
             <xpath expr="//field[@name='team_id']" position="after">
                 <field name="machine_id" string="Machine"/>
                 <field name="serial_number" string="Serial Number" readonly="1"/>
+                <field name="purchase_date" string="Purchase Date" readonly="1"/>
             </xpath>
         </field>
     </record>
@@ -29,6 +30,7 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='name']" position="after">
                 <field name="serial_number" string="Serial Number" filter_domain="[('serial_number', 'ilike', self)]"/>
+                <field name="purchase_date" string="Purchase Date" filter_domain="[('purchase_date', '=', self)]"/>
             </xpath>
         </field>
     </record>

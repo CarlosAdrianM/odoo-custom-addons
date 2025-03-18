@@ -6,8 +6,8 @@ class HelpDeskMachine(models.Model):
 
     name = fields.Char(string="Name", required=True)
     serial_number = fields.Char(string="Serial Number", required=False)
-
     description = fields.Text(string="Description")
+    purchase_date = fields.Date(string="Purchase Date")
 
     def name_get(self):
         result = []

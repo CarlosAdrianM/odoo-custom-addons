@@ -6,6 +6,7 @@
             <tree>
                 <field name="name"/>
                 <field name="serial_number"/>
+                <field name="purchase_date"/>
             </tree>
         </field>
     </record>
@@ -19,6 +20,7 @@
                     <group>
                         <field name="name"/>
                         <field name="serial_number"/>
+                        <field name="purchase_date"/>
                     </group>
                 </sheet>
             </form>

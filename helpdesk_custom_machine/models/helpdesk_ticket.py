@@ -18,6 +18,13 @@ class HelpdeskTicket(models.Model):
         store=True,  
         index=True
     )
+    purchase_date = fields.Date(
+        related='machine_id.purchase_date',  # Campo relacionado
+        string='Purchase Date',              # Etiqueta del campo
+        readonly=True,                       # Solo lectura
+        store=True,
+        index=True
+    )
 
     def _modify_search_domain(self, domain):
         """
