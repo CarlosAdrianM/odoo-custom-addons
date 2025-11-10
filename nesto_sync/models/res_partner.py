@@ -2,7 +2,7 @@ from odoo import models, fields, api
 from odoo.exceptions import ValidationError
 
 class ResPartner(models.Model):
-    _inherit = 'res.partner'
+    _inherit = ['res.partner', 'bidirectional.sync.mixin']
 
     cliente_externo = fields.Char(string="Cliente Externo", index=True, search="_search_cliente_externo")
     contacto_externo = fields.Char(string="Contacto Externo", index=True)

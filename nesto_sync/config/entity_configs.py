@@ -155,6 +155,35 @@ ENTITY_CONFIGS = {
         'validators': [
             'validate_cliente_principal_exists',  # Valida que existe el cliente principal
         ],
+
+        # ==========================================
+        # SINCRONIZACIÓN BIDIRECCIONAL
+        # ==========================================
+
+        # Activar sincronización bidireccional (Odoo → Nesto)
+        'bidirectional': True,
+
+        # Topic de PubSub donde publicar
+        'pubsub_topic': 'sincronizacion-tablas',
+
+        # Tabla en Nesto
+        'nesto_table': 'Clientes',
+
+        # Mapeo inverso: Odoo → Nesto
+        # (se infiere automáticamente desde field_mappings si no se especifica)
+        # 'reverse_field_mappings': {
+        #     'name': {'nesto_field': 'Nombre'},
+        #     'street': {'nesto_field': 'Direccion'},
+        #     'vat': {'nesto_field': 'Nif'},
+        #     'zip': {'nesto_field': 'CodigoPostal'},
+        #     'city': {'nesto_field': 'Poblacion'},
+        #     'comment': {'nesto_field': 'Comentarios'},
+        #     'mobile': {'nesto_field': 'Telefono', 'reverse_transformer': 'join_phones'},
+        #     'phone': {'nesto_field': 'Telefono', 'reverse_transformer': 'join_phones'},
+        #     'state_id': {'nesto_field': 'Provincia', 'reverse_transformer': 'state_to_name'},
+        #     'active': {'nesto_field': 'Estado', 'reverse_transformer': 'active_to_estado'},
+        #     'is_company': {'nesto_field': 'ClientePrincipal'},
+        # },
     },
 
     # ==========================================
