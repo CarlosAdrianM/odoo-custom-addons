@@ -49,7 +49,7 @@ class BidirectionalSyncMixin(models.AbstractModel):
         if self._should_skip_sync():
             _logger.debug(
                 f"Saltando sincronización para {len(self)} registros "
-                f"(contexto skip_sync o from_nesto)"
+                f"(contexto skip_sync o modo instalación)"
             )
             return result
 
@@ -82,7 +82,7 @@ class BidirectionalSyncMixin(models.AbstractModel):
         if records._should_skip_sync():
             _logger.debug(
                 f"Saltando sincronización para {len(records)} nuevos registros "
-                f"(contexto skip_sync o from_nesto)"
+                f"(contexto skip_sync o modo instalación)"
             )
             return records
 
@@ -116,21 +116,19 @@ class BidirectionalSyncMixin(models.AbstractModel):
 
         Casos donde NO sincronizamos:
         1. Contexto explícito skip_sync=True
-        2. Cambio viene de Nesto (from_nesto=True)
-        3. Estamos en modo instalación/actualización del módulo
+        2. Estamos en modo instalación/actualización del módulo
+
+        NOTA: NO filtramos por origen (from_nesto, from_prestashop, etc.)
+        El anti-bucle se maneja mediante detección de cambios en GenericService
 
         Returns:
             bool: True si debemos saltar sincronización
         """
-        # 1. Skip explícito
+        # 1. Skip explícito (para importaciones masivas controladas)
         if self.env.context.get('skip_sync'):
             return True
 
-        # 2. Cambio viene de Nesto (evitar bucle)
-        if self.env.context.get('from_nesto'):
-            return True
-
-        # 3. Modo instalación/actualización
+        # 2. Modo instalación/actualización
         if self.env.context.get('install_mode') or self.env.context.get('module'):
             return True
 

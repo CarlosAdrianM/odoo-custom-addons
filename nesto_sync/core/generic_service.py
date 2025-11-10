@@ -264,8 +264,7 @@ class GenericEntityService:
             Response HTTP
         """
         try:
-            # Marcar que el cambio viene de Nesto para evitar bucle en sincronización bidireccional
-            record = self.model.sudo().with_context(from_nesto=True).create(values)
+            record = self.model.sudo().create(values)
 
             if record:
                 _logger.info(f"{self.config['odoo_model']} creado con ID: {record.id}")
@@ -311,8 +310,7 @@ class GenericEntityService:
             Response HTTP
         """
         try:
-            # Marcar que el cambio viene de Nesto para evitar bucle en sincronización bidireccional
-            record.sudo().with_context(from_nesto=True).write(values)
+            record.sudo().write(values)
             _logger.info(f"{self.config['odoo_model']} actualizado: ID {record.id}")
 
             if not self.test_mode:

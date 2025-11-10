@@ -12,3 +12,6 @@ from . import test_validators
 from . import test_post_processors
 from . import test_generic_service
 from . import test_integration_end_to_end
+
+# Tests sincronización bidireccional
+from . import test_bidirectional_sync
