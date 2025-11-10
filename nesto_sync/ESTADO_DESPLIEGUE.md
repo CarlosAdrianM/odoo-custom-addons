@@ -1,9 +1,9 @@
 # Estado del Despliegue - Nesto Sync
 
-**Fecha**: 2025-11-07 14:12 UTC
+**Última actualización**: 2025-11-10
 **Servidor**: Odoo18
 **Base de datos**: odoo16
-**Estado**: ✅ **DESPLEGADO EN PRODUCCIÓN**
+**Estado**: ✅ **DESPLEGADO EN PRODUCCIÓN + SINCRONIZACIÓN BIDIRECCIONAL LISTA**
 
 ## ✅ Despliegue Completado
 
@@ -112,14 +112,83 @@ Formato: Google PubSub (JSON base64)
 - Mismo formato de mensaje
 - Misma respuesta
 
-## 📝 Próximos Pasos
+## 🆕 Actualización 2025-11-10: Sincronización Bidireccional
 
-### 1. Validación (SIGUIENTE)
-- [ ] Enviar mensaje de prueba desde Nesto
-- [ ] Verificar creación de cliente en Odoo
-- [ ] Verificar PersonasContacto como children
-- [ ] Probar anti-bucle (mismo mensaje 2 veces)
-- [ ] Monitorizar logs durante 24h
+### Nuevos Commits Listos para Push
+
+```
+6720a7c: docs: Añadir guía de configuración segura de credenciales Google Cloud
+400c7bd: security: Reforzar .gitignore para prevenir commit de credenciales
+1692075: refactor: Eliminar flag from_nesto - anti-bucle basado solo en detección de cambios
+717a053: feat: Implementar sincronización bidireccional escalable (Odoo → Nesto)
+2ea371f: fix: Añadir country_id dinámico a parents y children usando CountryManager
+```
+
+### Funcionalidad Añadida
+
+#### 1. Sincronización Bidireccional (Odoo → Nesto)
+- ✅ **BidirectionalSyncMixin**: Intercepta write() y create() automáticamente
+- ✅ **OdooPublisher**: Publica cambios de Odoo a Google Pub/Sub
+- ✅ **PublisherFactory**: Abstracción para múltiples proveedores (Google, Azure, RabbitMQ)
+- ✅ **Configuración por entidad**: Activar con `bidirectional: True` en entity_configs.py
+- ✅ **Batch processing**: Procesa en bloques de 50 registros
+- ✅ **Contexto skip_sync**: Saltar sincronización en importaciones masivas
+
+#### 2. Anti-bucle Sin Flags de Origen
+- ✅ **Detección de cambios pura**: No usa from_nesto, from_prestashop, etc.
+- ✅ **Escalable**: Añadir Prestashop/otros sistemas sin modificar lógica
+- ✅ **GenericService detecta cambios**: Si mobile='666111111' y mensaje='666111111' → NO actualiza → NO publica
+- ✅ **Tests completos**: test_bidirectional_sync.py con escenarios de bucle completo
+
+#### 3. Seguridad de Credenciales
+- ✅ **.gitignore reforzado**: Bloquea *.json, *credentials*, secrets/, .env*
+- ✅ **Documentación**: CONFIGURACION_CREDENCIALES.md con guía paso a paso
+- ✅ **Variables de entorno**: Método recomendado via systemd
+- ✅ **System Parameters**: Método alternativo via Odoo UI
+
+### Próximos Pasos
+
+#### 1. Push a GitHub (LISTO PARA HACER)
+```bash
+cd /opt/odoo16/custom_addons/nesto_sync
+git push origin main
+```
+
+**4 commits pendientes de push**
+
+#### 2. Configurar Credenciales Google Cloud
+Seguir [CONFIGURACION_CREDENCIALES.md](CONFIGURACION_CREDENCIALES.md):
+1. Crear service account en Google Cloud Console
+2. Descargar JSON credentials
+3. Copiar a `/opt/odoo16/secrets/`
+4. Configurar variable de entorno en systemd
+5. Reiniciar Odoo
+
+#### 3. Actualizar Módulo en Producción
+```bash
+python3 odoo-bin -c /opt/odoo16/odoo.conf -d odoo16 -u nesto_sync --stop-after-init
+sudo systemctl restart odoo16
+```
+
+#### 4. Ejecutar Tests
+```bash
+python3 odoo-bin -c /opt/odoo16/odoo.conf -d odoo16 --test-enable --test-tags nesto_sync --stop-after-init
+```
+
+#### 5. Validación End-to-End
+- [ ] Cambiar mobile de cliente en Odoo UI
+- [ ] Verificar publicación a Pub/Sub (logs)
+- [ ] Verificar recepción en Nesto (cuando se implemente subscriber)
+- [ ] Verificar anti-bucle (Nesto no republica mensaje idéntico)
+
+## 📝 Próximos Pasos (Original)
+
+### 1. Validación Unidireccional (COMPLETADO)
+- [x] Enviar mensaje de prueba desde Nesto
+- [x] Verificar creación de cliente en Odoo
+- [x] Verificar PersonasContacto como children
+- [x] Probar anti-bucle (mismo mensaje 2 veces)
+- [x] Monitorizar logs durante 24h
 
 ### 2. Monitorización
 ```bash
