@@ -38,3 +38,10 @@ Thumbs.db
 *.backup
 *.bak
 *~
+
+# Credentials (NEVER commit!)
+*.json
+*credentials*
+secrets/
+.env
+.env.*
