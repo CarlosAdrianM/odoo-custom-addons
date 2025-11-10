@@ -64,9 +64,8 @@ ENTITY_CONFIGS = {
 
             # --- Campos fijos ---
             '_country': {
-                'type': 'fixed',
-                'odoo_field': 'country_id',
-                'value': 233  # ID de España (podría obtenerse dinámicamente)
+                'transformer': 'spain_country',
+                'odoo_fields': ['country_id']
             },
             # Note: es_ES language must be installed in Odoo for this to work
             # Commented out for compatibility with test environments
@@ -123,6 +122,10 @@ ENTITY_CONFIGS = {
                 'type': 'context',
                 'odoo_field': 'company_id',
                 'source': 'env.user.company_id.id'
+            },
+            '_country': {
+                'transformer': 'spain_country',
+                'odoo_fields': ['country_id']
             },
         },
 

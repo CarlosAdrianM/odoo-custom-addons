@@ -130,6 +130,29 @@ class ClientePrincipalTransformer:
         }
 
 
+@FieldTransformerRegistry.register('spain_country')
+class SpainCountryTransformer:
+    """Devuelve el ID de España usando CountryManager"""
+
+    def transform(self, value, context):
+        """
+        Obtiene el ID de España desde la BD
+
+        Args:
+            value: No se usa (puede ser None)
+            context: Dict con country_manager
+
+        Returns:
+            Dict con country_id de España
+        """
+        country_manager = context.get('country_manager')
+        if not country_manager:
+            raise ValueError("CountryManager no disponible en contexto")
+
+        spain_id = country_manager.get_spain_id()
+        return {'country_id': spain_id}
+
+
 @FieldTransformerRegistry.register('country_code')
 class CountryCodeTransformer:
     """Transforma código de país a country_id de Odoo"""
