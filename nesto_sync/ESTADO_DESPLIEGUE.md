@@ -1,11 +1,15 @@
 # Estado del Despliegue - Nesto Sync
 
 **Última actualización**: 2025-11-11
-**Servidor**: Odoo18 (desarrollo)
+**Servidor**: Odoo18 (DESARROLLO)
 **Base de datos**: odoo16
-**Estado**: ✅ **FIX DOUBLE SERIALIZATION COMPLETADO - LISTO PARA DESPLEGAR A PRODUCCIÓN**
+**Estado**: ✅ **FIX COMPLETADO EN DESARROLLO - ⚠️ PENDIENTE DESPLEGAR A PRODUCCIÓN (nuevavisionodoo)**
 
-## ✅ Despliegue Completado
+⚠️ **IMPORTANTE**: Ver [SERVIDORES.md](SERVIDORES.md) para información sobre:
+- **DESARROLLO**: Odoo18 - `/opt/odoo16/custom_addons/nesto_sync`
+- **PRODUCCIÓN**: nuevavisionodoo (217.61.212.170) - `/opt/odoo/custom_addons/nesto_sync`
+
+## ✅ Despliegue Completado en DESARROLLO (Odoo18)
 
 ### 1. Push a GitHub ✅
 ```
@@ -151,18 +155,24 @@ Ver detalles completos en [SESION_2025-11-11.md](SESION_2025-11-11.md)
 
 ### Estado Actual: DOS SERVIDORES
 
-**⚠️ IMPORTANTE**: Durante la sesión descubrimos que tenemos dos servidores:
+**⚠️ IMPORTANTE**: Ver [SERVIDORES.md](SERVIDORES.md) para documentación completa de servidores
 
-1. **Servidor Odoo18 (Desarrollo)**: `/opt/odoo16/custom_addons/nesto_sync`
+1. **Servidor Odoo18 (DESARROLLO)**: `/opt/odoo16/custom_addons/nesto_sync`
+   - Hostname: `Odoo18`
+   - Servicio: `odoo16.service`
    - ✅ Código bidireccional implementado y funcionando
    - ✅ Credenciales Google Cloud configuradas
    - ✅ Tests exitosos (🔔 emoji en logs)
-   - ✅ Commits locales listos
+   - ✅ Commits pusheados a GitHub
 
-2. **Servidor nuevavisionodoo (Producción)**: `/opt/odoo/custom_addons/nesto_sync`
-   - ❌ Código antiguo (sin sincronización bidireccional)
-   - ❌ No tiene credenciales Google Cloud
-   - ❌ Por eso no aparecían logs al probar desde UI
+2. **Servidor nuevavisionodoo (PRODUCCIÓN)**: `/opt/odoo/custom_addons/nesto_sync`
+   - Hostname: `nuevavisionodoo`
+   - URL: `sede.nuevavision.es`
+   - IP: `217.61.212.170`
+   - Usuario: `root`
+   - ❌ Código pendiente de actualizar (git pull)
+   - ❌ Librería `google-cloud-pubsub` NO instalada (causa Error 500)
+   - ❌ No tiene credenciales Google Cloud configuradas
 
 ### Commits en Odoo18 (Listos para Push)
 
@@ -374,7 +384,61 @@ INFO ... odoo.addons.nesto_sync.core.generic_service: res.partner actualizado: I
 
 ---
 
-**Despliegue completado**: 2025-11-07 14:12 UTC
+## 🆕 Actualización 2025-11-11 (Segunda Parte): Clarificación de Servidores
+
+### Problema Detectado
+
+Durante la sesión se confundieron los servidores:
+- **DESARROLLO** (Odoo18): Donde se hacen los cambios
+- **PRODUCCIÓN** (nuevavisionodoo): Donde se reportó el Error 500
+
+### Documentación Creada
+
+**Archivo nuevo**: [SERVIDORES.md](SERVIDORES.md)
+
+Contiene:
+- ✅ Descripción detallada de cada servidor
+- ✅ Hostnames, IPs y rutas correctas
+- ✅ Cómo identificar en qué servidor estás
+- ✅ Flujo de trabajo correcto (desarrollo → producción)
+- ✅ Errores comunes y cómo evitarlos
+- ✅ Checklist de verificación antes de trabajar
+
+### Estado Actual de Producción (nuevavisionodoo)
+
+**⚠️ PENDIENTE DE RESOLVER**:
+
+1. **Error 500 al acceder a Odoo**
+   - Causa: Falta librería `google-cloud-pubsub`
+   - Solución: Conectar a producción y ejecutar:
+     ```bash
+     ssh root@217.61.212.170
+     pip3 install --break-system-packages google-cloud-pubsub
+     sudo systemctl restart odoo  # o el nombre del servicio
+     ```
+
+2. **Código desactualizado**
+   - El código con el fix de serialización NO está en producción
+   - Solución: `git pull` desde `/opt/odoo/custom_addons/nesto_sync`
+
+3. **Credenciales no configuradas**
+   - Google Cloud credentials no están en producción
+   - Ver [PROXIMA_SESION.md](PROXIMA_SESION.md) para pasos completos
+
+### Próxima Sesión: Checklist de Producción
+
+Conectar a **PRODUCCIÓN** (nuevavisionodoo):
+```bash
+ssh root@217.61.212.170
+hostname  # Verificar que dice "nuevavisionodoo"
+```
+
+Luego seguir [PROXIMA_SESION.md](PROXIMA_SESION.md) sección "Pasos para Sincronizar a Producción"
+
+---
+
+**Última sesión**: 2025-11-11
 **Por**: Claude Code
-**Estado**: ✅ Producción activa
-**Siguiente paso**: Validación con mensajes reales
+**Estado DESARROLLO**: ✅ Código listo y funcionando
+**Estado PRODUCCIÓN**: ❌ Pendiente de despliegue
+**Siguiente paso**: Desplegar a producción (nuevavisionodoo)
