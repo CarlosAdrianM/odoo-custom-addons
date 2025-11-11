@@ -2,6 +2,7 @@ from odoo import http
 from odoo.http import request
 from werkzeug.wrappers import Response
 import logging
+import json
 
 from ..models.google_pubsub_message_adapter import GooglePubSubMessageAdapter
 from ..core.entity_registry import EntityRegistry
@@ -96,3 +97,49 @@ class NestoSyncController(http.Controller):
             "No se pudo determinar el tipo de entidad. "
             "El mensaje debe incluir 'entity_type' o campos identificables."
         )
+
+    @http.route('/nesto_sync/logs', auth='public', methods=['GET'], csrf=False)
+    def get_logs(self, limit=100, **kwargs):
+        """
+        Endpoint para obtener logs del módulo nesto_sync
+
+        Similar al endpoint de logs de NestoAPI
+
+        Args:
+            limit: Número máximo de logs a retornar (default: 100)
+
+        Returns:
+            JSON con los últimos logs
+        """
+        try:
+            from ..infrastructure.log_buffer import InMemoryLogHandler
+            from datetime import datetime
+
+            # Obtener handler singleton
+            handler = InMemoryLogHandler()
+
+            # Obtener logs
+            limit_int = int(limit) if limit else 100
+            logs = handler.get_logs(limit=limit_int)
+
+            # Formatear respuesta similar a Nesto
+            response_data = {
+                '$id': '1',
+                'totalLogs': len(logs),
+                'logs': [log['message'] for log in logs],
+                'timestamp': datetime.now().isoformat() + 'Z'
+            }
+
+            return Response(
+                response=json.dumps(response_data, ensure_ascii=False, indent=2),
+                status=200,
+                content_type='application/json'
+            )
+
+        except Exception as e:
+            _logger.error(f"Error obteniendo logs: {str(e)}", exc_info=True)
+            return Response(
+                response=json.dumps({'error': str(e)}),
+                status=500,
+                content_type='application/json'
+            )
