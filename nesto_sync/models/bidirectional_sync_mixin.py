@@ -35,6 +35,8 @@ class BidirectionalSyncMixin(models.AbstractModel):
 
         Procesa en bloques para no saturar si son muchos registros
         """
+        _logger.info(f"🔔 BidirectionalSyncMixin.write() llamado en {self._name} con vals: {vals}")
+
         # Ejecutar write original primero
         result = super(BidirectionalSyncMixin, self).write(vals)
 

@@ -48,12 +48,15 @@ class OdooPublisher:
         """
         try:
             # 1. Construir mensaje en formato Nesto
-            message = self._build_message_from_odoo(record)
+            data = self._build_message_from_odoo(record)
 
-            # 2. Obtener topic configurado
+            # 2. Envolver en estructura ExternalSyncMessageDTO
+            message = self._wrap_in_sync_message(data, record)
+
+            # 3. Obtener topic configurado
             topic = self.config.get('pubsub_topic', 'sincronizacion-tablas')
 
-            # 3. Publicar
+            # 4. Publicar
             _logger.info(
                 f"Publicando {self.entity_type} desde Odoo: "
                 f"{record._name} ID {record.id}"
@@ -100,6 +103,9 @@ class OdooPublisher:
             # Obtener valor del registro
             value = getattr(record, odoo_field, None)
 
+            # Serializar objetos Odoo (Many2one, Many2many, etc.)
+            value = self._serialize_odoo_value(value)
+
             # Aplicar transformer inverso si existe
             if 'reverse_transformer' in mapping:
                 transformer_name = mapping['reverse_transformer']
@@ -109,13 +115,60 @@ class OdooPublisher:
 
             message[nesto_field] = value
 
-        # Añadir campos de contexto
-        message['Tabla'] = self.config.get('nesto_table', 'Clientes')
-        message['Source'] = 'Odoo'
-
         # Procesar children si es jerárquico
         if self.config.get('hierarchy', {}).get('enabled'):
             self._add_children_to_message(record, message)
+
+        return message
+
+    def _wrap_in_sync_message(self, data, record):
+        """
+        Envuelve los datos en estructura ExternalSyncMessageDTO
+
+        Formato esperado por NestoAPI:
+        {
+            "Accion": "actualizar",
+            "Tabla": "Clientes",
+            "Datos": {
+                "Parent": {...},
+                "Children": [...]  # Si es jerárquico
+            }
+        }
+
+        Args:
+            data (dict): Datos del registro (puede incluir children como campo)
+            record: Registro de Odoo
+
+        Returns:
+            dict: Mensaje envuelto en formato ExternalSyncMessageDTO
+        """
+        # Separar Parent y Children si existen
+        hierarchy_config = self.config.get('hierarchy', {})
+        parent_data = {}
+        children_data = []
+
+        if hierarchy_config.get('enabled'):
+            child_types = hierarchy_config.get('child_types', ['PersonasContacto'])
+            child_field_name = child_types[0] if child_types else 'PersonasContacto'
+
+            # Extraer children del data
+            children_data = data.pop(child_field_name, [])
+            parent_data = data
+        else:
+            parent_data = data
+
+        # Construir estructura ExternalSyncMessageDTO
+        message = {
+            "Accion": "actualizar",
+            "Tabla": self.config.get('nesto_table', 'Clientes'),
+            "Datos": {
+                "Parent": parent_data
+            }
+        }
+
+        # Añadir Children solo si existen
+        if children_data:
+            message["Datos"]["Children"] = children_data
 
         return message
 
@@ -209,8 +262,49 @@ class OdooPublisher:
             for nesto_field, mapping in child_mappings.items():
                 if 'odoo_field' in mapping:
                     odoo_field = mapping['odoo_field']
-                    child_data[nesto_field] = getattr(child, odoo_field, None)
+                    value = getattr(child, odoo_field, None)
+                    child_data[nesto_field] = self._serialize_odoo_value(value)
 
             children_list.append(child_data)
 
         message[child_field_name] = children_list
+
+    def _serialize_odoo_value(self, value):
+        """
+        Serializa valores de Odoo para JSON
+
+        Convierte objetos Odoo (Many2one, Many2many, recordset) a valores serializables
+
+        Args:
+            value: Valor a serializar
+
+        Returns:
+            Valor serializable a JSON
+        """
+        # None, bool, int, float, str → ya son serializables
+        if value is None or isinstance(value, (bool, int, float, str)):
+            return value
+
+        # Many2one (ej: state_id, country_id) → devolver ID
+        if hasattr(value, '_name') and hasattr(value, 'id'):
+            # Es un recordset de Odoo
+            if len(value) == 1:
+                # Many2one: devolver solo el ID
+                return value.id
+            elif len(value) > 1:
+                # Many2many o One2many: devolver lista de IDs
+                return value.ids
+            else:
+                # Recordset vacío
+                return None
+
+        # Listas/tuplas → serializar cada elemento
+        if isinstance(value, (list, tuple)):
+            return [self._serialize_odoo_value(v) for v in value]
+
+        # Diccionarios → serializar cada valor
+        if isinstance(value, dict):
+            return {k: self._serialize_odoo_value(v) for k, v in value.items()}
+
+        # Si llegamos aquí, intentar convertir a string
+        return str(value)

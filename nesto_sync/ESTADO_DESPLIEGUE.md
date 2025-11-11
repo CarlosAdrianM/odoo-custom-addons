@@ -114,7 +114,22 @@ Formato: Google PubSub (JSON base64)
 
 ## 🆕 Actualización 2025-11-10: Sincronización Bidireccional
 
-### Nuevos Commits Listos para Push
+### Estado Actual: DOS SERVIDORES
+
+**⚠️ IMPORTANTE**: Durante la sesión descubrimos que tenemos dos servidores:
+
+1. **Servidor Odoo18 (Desarrollo)**: `/opt/odoo16/custom_addons/nesto_sync`
+   - ✅ Código bidireccional implementado y funcionando
+   - ✅ Credenciales Google Cloud configuradas
+   - ✅ Tests exitosos (🔔 emoji en logs)
+   - ✅ Commits locales listos
+
+2. **Servidor nuevavisionodoo (Producción)**: `/opt/odoo/custom_addons/nesto_sync`
+   - ❌ Código antiguo (sin sincronización bidireccional)
+   - ❌ No tiene credenciales Google Cloud
+   - ❌ Por eso no aparecían logs al probar desde UI
+
+### Commits en Odoo18 (Listos para Push)
 
 ```
 6720a7c: docs: Añadir guía de configuración segura de credenciales Google Cloud
@@ -146,40 +161,74 @@ Formato: Google PubSub (JSON base64)
 - ✅ **Variables de entorno**: Método recomendado via systemd
 - ✅ **System Parameters**: Método alternativo via Odoo UI
 
-### Próximos Pasos
+#### 4. Fix JSON Serialization
+- ✅ **Nuevo método**: `_serialize_odoo_value()` en odoo_publisher.py
+- ✅ **Convierte Many2one a IDs**: state_id, country_id, etc.
+- ✅ **Soporta Many2many**: Devuelve lista de IDs
+- ✅ **Recursivo**: Maneja listas y dicts anidados
 
-#### 1. Push a GitHub (LISTO PARA HACER)
+### Verificación en Odoo18 (EXITOSA)
+
 ```bash
+python3 test_bidirectional.py
+```
+
+**Logs obtenidos**:
+```
+16:06:22,738 INFO: 🔔 BidirectionalSyncMixin.write() llamado en res.partner con vals: {'mobile': '666642422'}
+16:06:22,782 INFO: Creando publisher para proveedor: google_pubsub
+16:06:22,783 INFO: Configurando Google Pub/Sub Publisher: project_id=nestomaps-1547636206945
+16:06:22,785 INFO: Publicando cliente desde Odoo: res.partner ID 5428
+```
+
+✅ **Confirmado**: Funciona perfectamente en Odoo18
+
+### Próximos Pasos (URGENTE)
+
+#### 1. Sincronizar Código a nuevavisionodoo
+
+Ver guía completa en [PROXIMA_SESION.md](PROXIMA_SESION.md)
+
+**Opción A: Git Push/Pull**
+```bash
+# En Odoo18
 cd /opt/odoo16/custom_addons/nesto_sync
 git push origin main
+
+# En nuevavisionodoo
+cd /opt/odoo/custom_addons/nesto_sync
+git pull origin main
 ```
 
-**4 commits pendientes de push**
+**Archivos clave modificados**:
+- `core/odoo_publisher.py` - Fix serialización JSON
+- `models/res_partner.py` - Debug logging temporal (⭐)
 
-#### 2. Configurar Credenciales Google Cloud
-Seguir [CONFIGURACION_CREDENCIALES.md](CONFIGURACION_CREDENCIALES.md):
-1. Crear service account en Google Cloud Console
-2. Descargar JSON credentials
-3. Copiar a `/opt/odoo16/secrets/`
-4. Configurar variable de entorno en systemd
-5. Reiniciar Odoo
+#### 2. Configurar Credenciales en nuevavisionodoo
 
-#### 3. Actualizar Módulo en Producción
+1. Copiar `/opt/odoo16/secrets/google-cloud-credentials.json` → `/opt/odoo/secrets/`
+2. Editar servicio systemd en nuevavisionodoo
+3. Añadir variable de entorno `GOOGLE_APPLICATION_CREDENTIALS`
+4. Configurar System Parameters (google_project_id, pubsub_topic)
+
+#### 3. Actualizar Módulo en nuevavisionodoo
 ```bash
-python3 odoo-bin -c /opt/odoo16/odoo.conf -d odoo16 -u nesto_sync --stop-after-init
-sudo systemctl restart odoo16
+# Limpiar cache
+find . -type f -name "*.pyc" -delete
+
+# Actualizar módulo
+python3 odoo-bin -c /opt/odoo/odoo.conf -d [nombre_bd] -u nesto_sync --stop-after-init
+
+# Reiniciar servicio
+sudo systemctl restart odoo
 ```
 
-#### 4. Ejecutar Tests
-```bash
-python3 odoo-bin -c /opt/odoo16/odoo.conf -d odoo16 --test-enable --test-tags nesto_sync --stop-after-init
-```
-
-#### 5. Validación End-to-End
+#### 4. Validación End-to-End en nuevavisionodoo
 - [ ] Cambiar mobile de cliente en Odoo UI
-- [ ] Verificar publicación a Pub/Sub (logs)
-- [ ] Verificar recepción en Nesto (cuando se implemente subscriber)
+- [ ] Verificar logs muestran 🔔 emoji
+- [ ] Verificar publicación a Pub/Sub
 - [ ] Verificar anti-bucle (Nesto no republica mensaje idéntico)
+- [ ] Eliminar código debug temporal (⭐)
 
 ## 📝 Próximos Pasos (Original)
 

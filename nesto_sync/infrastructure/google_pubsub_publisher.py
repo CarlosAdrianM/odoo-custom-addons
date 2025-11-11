@@ -53,7 +53,9 @@ class GooglePubSubPublisher(IEventPublisher):
 
         Args:
             topic (str): Nombre del topic (sin incluir project_id)
-            message (dict): Mensaje a publicar (será serializado a JSON)
+            message (dict or str): Mensaje a publicar
+                - Si es dict: será serializado a JSON
+                - Si es str: se asume que ya está en JSON
 
         Returns:
             bool: True si se publicó correctamente
@@ -63,14 +65,21 @@ class GooglePubSubPublisher(IEventPublisher):
             ValueError: Si el mensaje no es serializable
         """
         try:
-            # Serializar mensaje a JSON
-            message_json = json.dumps(message, ensure_ascii=False)
+            # Serializar mensaje a JSON si es necesario
+            if isinstance(message, dict):
+                message_json = json.dumps(message, ensure_ascii=False)
+            elif isinstance(message, str):
+                # Ya es string, asumir que es JSON válido
+                message_json = message
+            else:
+                raise ValueError(f"Mensaje debe ser dict o str, recibido: {type(message)}")
+
             message_bytes = message_json.encode('utf-8')
 
             # Construir topic path completo
             topic_path = self.publisher.topic_path(self.project_id, topic)
 
-            # Publicar mensaje
+            # Publicar mensaje (la librería NO serializa de nuevo, solo envía bytes)
             future = self.publisher.publish(topic_path, message_bytes)
 
             # Esperar confirmación (blocking)

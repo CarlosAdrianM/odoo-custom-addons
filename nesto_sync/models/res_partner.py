@@ -1,13 +1,21 @@
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
+import logging
+
+_logger = logging.getLogger(__name__)
 
 class ResPartner(models.Model):
     _name = 'res.partner'
-    _inherit = ['res.partner', 'bidirectional.sync.mixin']
+    _inherit = ['bidirectional.sync.mixin', 'res.partner']
 
     cliente_externo = fields.Char(string="Cliente Externo", index=True, search="_search_cliente_externo")
     contacto_externo = fields.Char(string="Contacto Externo", index=True)
     persona_contacto_externa = fields.Char(string="Persona de Contacto Externa", index=True)
+
+    def write(self, vals):
+        """Override para debug - verificar que se llama"""
+        _logger.info(f"⭐ ResPartner.write() llamado con vals: {vals}")
+        return super(ResPartner, self).write(vals)
 
     @api.constrains('cliente_externo', 'contacto_externo', 'persona_contacto_externa')
     def _check_unique_combinations(self):

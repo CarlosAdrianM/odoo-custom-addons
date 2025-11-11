@@ -1,221 +1,466 @@
-# Próxima Sesión - Nesto Sync
+# Próxima Sesión - Sincronización Bidireccional
 
-**Fecha sesión anterior**: 2025-11-07
-**Duración**: ~7 horas
-**Estado actual**: ✅ Código listo, pendiente despliegue
+**Fecha última sesión**: 2025-11-10
+**Estado actual**: ✅ Código funcional en desarrollo (Odoo18), pendiente de sincronizar a producción (nuevavisionodoo)
 
-## 📋 Resumen de Dónde Estamos
+## 🎯 Contexto Crítico: Dos Servidores
 
-### ✅ Completado en Sesión Anterior
+### IMPORTANTE: Estábamos trabajando en servidores diferentes
 
-1. **Arquitectura Extensible Implementada**
-   - Core genérico con Registry, Processor y Service
-   - Configuración declarativa (45 líneas vs 320)
-   - 8 transformers, 3 validators, 4 post-processors
+Durante la última sesión descubrimos que:
 
-2. **Sistema Anti-Bucle Infinito**
-   - Detección inteligente de cambios
-   - Soporte para HTML, many2one, float, boolean, etc.
-   - Respuesta "Sin cambios" cuando no hay actualizaciones
+- **Servidor de Desarrollo (Odoo18)**: `/opt/odoo16/custom_addons/nesto_sync`
+  - ✅ Aquí hice todos los cambios
+  - ✅ Sincronización bidireccional FUNCIONA
+  - ✅ Logs muestran 🔔 emoji y todo el flujo
+  - ✅ Tests de Python exitosos
 
-3. **Tests Completos**
-   - **105/105 tests pasando** (0 fallos, 0 errores)
-   - 79 unitarios + 6 integración + 20 legacy
+- **Servidor de Producción (nuevavisionodoo)**: `/opt/odoo/custom_addons/nesto_sync`
+  - ❌ Código antiguo (sin los cambios)
+  - ❌ No tiene las credenciales configuradas
+  - ❌ Por eso no aparecían logs al actualizar desde UI
 
-4. **Código Commiteado**
-   - Commit: `fd4f2a3`
-   - 30 archivos nuevos, 4 modificados
-   - **⚠️ PENDIENTE: Push a GitHub**
-
-### 📚 Documentación Creada
-
-| Archivo | Descripción |
-|---------|-------------|
-| [PRODUCCION_READY.md](PRODUCCION_READY.md) | Guía completa de despliegue y checklist |
-| [DESPLIEGUE.md](DESPLIEGUE.md) | Pasos detallados de despliegue en servidor |
-| [ARQUITECTURA_EXTENSIBLE.md](ARQUITECTURA_EXTENSIBLE.md) | Diseño de la arquitectura |
-| [IMPLEMENTACION_ARQUITECTURA.md](IMPLEMENTACION_ARQUITECTURA.md) | Detalles de implementación |
-| [TESTING.md](TESTING.md) | Tests ejecutados y correcciones |
-| [SESION_2025-11-07.md](SESION_2025-11-07.md) | Resumen completo de la sesión |
-| [ROADMAP.md](ROADMAP.md) | Hoja de ruta del proyecto |
-| [ESTADO_ACTUAL.md](ESTADO_ACTUAL.md) | Documentación del código legacy |
-
-## 🚨 TAREAS PENDIENTES CRÍTICAS
-
-### 1. Push a GitHub (URGENTE)
-
-**Comando**:
-```bash
-cd /opt/odoo16/custom_addons/nesto_sync
-git push origin main
-```
-
-**Verificar**:
-- Ir a GitHub → CarlosAdrianM/odoo-custom-addons
-- Buscar commit `fd4f2a3` en branch `main`
-- Título: "feat: Implementar arquitectura extensible con tests completos"
-
-### 2. Despliegue a Producción
-
-**Seguir pasos en**: [DESPLIEGUE.md](DESPLIEGUE.md)
-
-**Checklist rápido**:
-- [ ] Push a GitHub completado
-- [ ] Backup de BD realizado
-- [ ] `git pull` en servidor de producción
-- [ ] `-u nesto_sync` en Odoo
-- [ ] Verificar logs sin errores
-- [ ] Probar con mensaje real de Nesto
-- [ ] Verificar anti-bucle (segundo mensaje)
-
-### 3. Validación Post-Despliegue
-
-**Objetivos**:
-- [ ] Mensaje de Nesto procesado correctamente
-- [ ] Cliente creado en Odoo con todos los campos
-- [ ] PersonasContacto creadas como children
-- [ ] Anti-bucle funciona (mismo mensaje = "Sin cambios")
-- [ ] Logs muestran comportamiento esperado
-
-## 🎯 Objetivos Próxima Sesión
-
-### Prioridad 1: Validar Producción
-1. Completar push a GitHub
-2. Desplegar en servidor de producción
-3. Validar con mensajes reales de Nesto
-4. Monitorizar logs durante 24h
-5. Documentar cualquier issue encontrado
-
-### Prioridad 2: Bidireccional (Solo si P1 OK)
-Si todo funciona bien en producción, iniciar trabajo de sincronización bidireccional:
-1. Analizar qué cambios en Odoo deben sincronizar a Nesto
-2. Diseñar publisher a Google PubSub
-3. Coordinar formato de mensaje con NestoAPI
-4. Implementar triggers en Odoo (write, create)
-
-### Prioridad 3: Nuevas Entidades (Futuro)
-- Proveedores (res.partner con supplier=True)
-- Productos (product.template)
-- Pedidos (sale.order)
-
-## 📂 Estructura de Archivos
-
-```
-nesto_sync/
-├── config/
-│   ├── __init__.py
-│   └── entity_configs.py          ← Configuración de entidades
-├── core/
-│   ├── __init__.py
-│   ├── entity_registry.py         ← Registry central
-│   ├── generic_processor.py       ← Procesador genérico
-│   └── generic_service.py         ← Service con anti-bucle
-├── transformers/
-│   ├── __init__.py
-│   ├── field_transformers.py      ← 8 transformers
-│   ├── validators.py              ← 3 validators
-│   └── post_processors.py         ← 4 post-processors
-├── legacy/                        ← Código antiguo (referencia)
-│   ├── __init__.py
-│   ├── client_processor.py
-│   └── client_service.py
-├── tests/                         ← 105 tests (0 fallos)
-│   ├── test_transformers.py
-│   ├── test_validators.py
-│   ├── test_post_processors.py
-│   ├── test_generic_service.py
-│   └── test_integration_end_to_end.py
-├── controllers/
-│   └── controllers.py             ← Refactorizado con Registry
-├── models/
-│   └── ...                        ← Sin cambios
-└── *.md                           ← 8 archivos de documentación
-```
-
-## 🔧 Correcciones Clave Aplicadas
-
-### 1. Mapeo de IDs Externos
-**Archivo**: [core/generic_processor.py:187-212](core/generic_processor.py)
-```python
-# Children heredan cliente_externo y contacto_externo del parent
-# pero persona_contacto_externa viene del child_data['Id']
-```
-
-### 2. Detección HTML
-**Archivo**: [core/generic_service.py:235-246](core/generic_service.py)
-```python
-# Campos HTML: comparar sin tags
-current_text = re.sub(r'<[^>]+>', '', current).strip()
-new_text = re.sub(r'<[^>]+>', '', new).strip()
-```
-
-### 3. Respuesta "Sin Cambios"
-**Archivo**: [core/generic_service.py:33-84](core/generic_service.py)
-```python
-# Rastrear si parent o children tuvieron cambios
-message = 'Sincronización completada' if had_changes else 'Sin cambios'
-```
-
-## 💡 Comandos Útiles
-
-### Ejecutar Tests
-```bash
-source /opt/odoo16/odoo-venv/bin/activate
-cd /opt/odoo16
-python3 odoo-bin -c /opt/odoo16/odoo.conf -d odoo_test -u nesto_sync --test-enable --stop-after-init
-```
-
-### Monitorizar Logs
-```bash
-# Logs en tiempo real
-tail -f /var/log/odoo/odoo-server.log | grep nesto_sync
-
-# Mensajes procesados hoy
-grep "Procesando mensaje de tipo cliente" /var/log/odoo/odoo-server.log | grep "$(date +%Y-%m-%d)" | wc -l
-
-# Sin cambios (anti-bucle)
-grep "Sin cambios en res.partner" /var/log/odoo/odoo-server.log | grep "$(date +%Y-%m-%d)" | wc -l
-```
-
-### Verificar Estado Git
-```bash
-cd /opt/odoo16/custom_addons/nesto_sync
-git status
-git log -1 --oneline
-# Debe mostrar: fd4f2a3 feat: Implementar arquitectura extensible con tests completos
-```
-
-## 🚀 Listo para Desplegar
-
-El sistema está completamente listo para producción:
-- ✅ Código implementado y testado
-- ✅ 105 tests pasando
-- ✅ Documentación completa
-- ✅ Código commiteado localmente
-- ⏳ Pendiente: Push y despliegue
-
-**No se requieren cambios en NestoAPI** - Compatibilidad 100%.
-
-## 📞 Si Hay Problemas
-
-1. Revisar [DESPLIEGUE.md](DESPLIEGUE.md) sección "Troubleshooting"
-2. Consultar logs: `/var/log/odoo/odoo-server.log`
-3. Ejecutar tests: `--test-enable`
-4. Comparar con legacy: `/opt/odoo16/custom_addons/nesto_sync/legacy/`
-5. Consultar [TESTING.md](TESTING.md) para correcciones aplicadas
-
-## 📊 Estadísticas Sesión Anterior
-
-- **Tiempo**: ~7 horas
-- **Archivos nuevos**: 30
-- **Archivos modificados**: 4
-- **Líneas código**: ~3,200
-- **Líneas docs**: ~2,400
-- **Tests**: 105 (100% pasando)
-- **Commits**: 1 (fd4f2a3)
+**Conclusión**: Todo el trabajo está en Odoo18, hay que sincronizarlo a nuevavisionodoo.
 
 ---
 
-**Creado**: 2025-11-07
-**Próxima sesión**: Despliegue y validación en producción
-**Estado**: ✅ Listo para desplegar
+## 📋 Resumen de lo Completado en Odoo18
+
+### 1. Archivos Modificados
+
+#### `/opt/odoo16/custom_addons/nesto_sync/core/odoo_publisher.py`
+**Cambio**: Arreglado bug de serialización JSON
+
+**Líneas modificadas**:
+- Línea 103-104: Añadido llamada a `_serialize_odoo_value()`
+- Líneas 221-259: Nuevo método `_serialize_odoo_value()`
+
+**¿Por qué?**: Los objetos Many2one (como `state_id`, `country_id`) no son serializables a JSON directamente. Ahora se convierten a IDs antes de publicar.
+
+```python
+# Línea 103-104 (MODIFICADO)
+# Serializar objetos Odoo (Many2one, Many2many, etc.)
+value = self._serialize_odoo_value(value)
+
+# Líneas 221-259 (NUEVO MÉTODO)
+def _serialize_odoo_value(self, value):
+    """
+    Serializa valores de Odoo para JSON
+
+    Convierte objetos Odoo (Many2one, Many2many, recordset) a valores serializables
+    """
+    # None, bool, int, float, str → ya son serializables
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+
+    # Many2one (ej: state_id, country_id) → devolver ID
+    if hasattr(value, '_name') and hasattr(value, 'id'):
+        # Es un recordset de Odoo
+        if len(value) == 1:
+            # Many2one: devolver solo el ID
+            return value.id
+        elif len(value) > 1:
+            # Many2many o One2many: devolver lista de IDs
+            return value.ids
+        else:
+            # Recordset vacío
+            return None
+
+    # Listas/tuplas → serializar cada elemento
+    if isinstance(value, (list, tuple)):
+        return [self._serialize_odoo_value(v) for v in value]
+
+    # Diccionarios → serializar cada valor
+    if isinstance(value, dict):
+        return {k: self._serialize_odoo_value(v) for k, v in value.items()}
+
+    # Si llegamos aquí, intentar convertir a string
+    return str(value)
+```
+
+#### `/opt/odoo16/custom_addons/nesto_sync/models/res_partner.py`
+**Cambio**: Añadido logging temporal de debug
+
+**Líneas modificadas**:
+- Línea 3: `import logging`
+- Línea 5: `_logger = logging.getLogger(__name__)`
+- Líneas 15-18: Override temporal de `write()` con emoji ⭐
+
+```python
+def write(self, vals):
+    """Override para debug - verificar que se llama"""
+    _logger.info(f"⭐ ResPartner.write() llamado con vals: {vals}")
+    return super(ResPartner, self).write(vals)
+```
+
+**NOTA**: Este código es TEMPORAL. Una vez verificado que funciona en producción, hay que eliminarlo (el mixin ya tiene su propio logging con 🔔).
+
+#### `/opt/odoo16/secrets/google-cloud-credentials.json`
+**Cambio**: Creado archivo con credenciales
+
+**Contenido**: JSON con service account de Google Cloud
+- Project ID: `nestomaps-1547636206945`
+- Service Account: `nesto-130@nestomaps-1547636206945.iam.gserviceaccount.com`
+
+**Permisos**:
+```bash
+sudo mkdir -p /opt/odoo16/secrets
+sudo chmod 700 /opt/odoo16/secrets
+sudo chown odoo:odoo /opt/odoo16/secrets
+sudo chmod 600 /opt/odoo16/secrets/google-cloud-credentials.json
+```
+
+#### `/etc/systemd/system/odoo16.service`
+**Cambio**: Añadida variable de entorno
+
+```ini
+[Service]
+Environment="GOOGLE_APPLICATION_CREDENTIALS=/opt/odoo16/secrets/google-cloud-credentials.json"
+```
+
+**Aplicado con**:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart odoo16
+```
+
+#### System Parameters (Base de datos)
+Configurados con Python:
+```python
+env['ir.config_parameter'].sudo().set_param('nesto_sync.google_project_id', 'nestomaps-1547636206945')
+env['ir.config_parameter'].sudo().set_param('nesto_sync.pubsub_topic', 'sincronizacion-tablas')
+```
+
+### 2. Verificación Exitosa en Odoo18
+
+**Test ejecutado**:
+```python
+python3 test_bidirectional.py
+```
+
+**Resultado**:
+```
+✅ Cliente encontrado: 2012 SACH SERVICE, S.L. (ID=5428)
+Actualizando teléfono a: 666642422
+✅ Actualizado
+```
+
+**Logs obtenidos** (journalctl):
+```
+16:06:22,738 INFO: 🔔 BidirectionalSyncMixin.write() llamado en res.partner con vals: {'mobile': '666642422'}
+16:06:22,782 INFO: Creando publisher para proveedor: google_pubsub
+16:06:22,783 INFO: Configurando Google Pub/Sub Publisher: project_id=nestomaps-1547636206945
+16:06:22,785 INFO: Publicando cliente desde Odoo: res.partner ID 5428
+```
+
+✅ **Confirmado**: La sincronización bidireccional FUNCIONA en Odoo18
+
+---
+
+## 🚀 Pasos para Sincronizar a Producción (nuevavisionodoo)
+
+### Opción A: Git Pull (Recomendado)
+
+#### 1. Hacer commit y push desde Odoo18
+```bash
+# En Odoo18
+cd /opt/odoo16/custom_addons/nesto_sync
+
+# Verificar cambios
+git status
+
+# Añadir archivos modificados (NO las credenciales)
+git add core/odoo_publisher.py
+git add models/res_partner.py
+
+# Commit
+git commit -m "fix: Serialización JSON para Many2one en bidirectional sync"
+
+# Push
+git push origin main
+```
+
+#### 2. Pull en nuevavisionodoo
+```bash
+# En nuevavisionodoo
+cd /opt/odoo/custom_addons/nesto_sync
+
+# Pull de cambios
+git pull origin main
+
+# Verificar que los archivos se actualizaron
+git log --oneline -5
+```
+
+### Opción B: Copia Directa (Si no funciona git)
+
+```bash
+# Desde tu máquina local o desde Odoo18
+scp /opt/odoo16/custom_addons/nesto_sync/core/odoo_publisher.py usuario@nuevavisionodoo:/opt/odoo/custom_addons/nesto_sync/core/
+scp /opt/odoo16/custom_addons/nesto_sync/models/res_partner.py usuario@nuevavisionodoo:/opt/odoo/custom_addons/nesto_sync/models/
+```
+
+---
+
+## 🔑 Configurar Credenciales en nuevavisionodoo
+
+### 1. Crear directorio secrets
+```bash
+# En nuevavisionodoo
+sudo mkdir -p /opt/odoo/secrets
+sudo chmod 700 /opt/odoo/secrets
+sudo chown odoo:odoo /opt/odoo/secrets
+```
+
+### 2. Copiar archivo de credenciales
+```bash
+# Desde tu máquina local
+scp ~/Descargas/credentials_pubsub.json usuario@nuevavisionodoo:/tmp/
+
+# En nuevavisionodoo
+sudo mv /tmp/credentials_pubsub.json /opt/odoo/secrets/google-cloud-credentials.json
+sudo chmod 600 /opt/odoo/secrets/google-cloud-credentials.json
+sudo chown odoo:odoo /opt/odoo/secrets/google-cloud-credentials.json
+```
+
+### 3. Añadir variable de entorno a systemd
+
+**Editar servicio** (en nuevavisionodoo):
+```bash
+sudo systemctl edit --full odoo.service
+# o el nombre que tenga el servicio en producción
+```
+
+**Añadir en la sección `[Service]`**:
+```ini
+Environment="GOOGLE_APPLICATION_CREDENTIALS=/opt/odoo/secrets/google-cloud-credentials.json"
+```
+
+**Recargar y reiniciar**:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart odoo  # o el nombre del servicio
+```
+
+### 4. Configurar System Parameters
+
+**Opción 1: Via Python**
+```bash
+# En nuevavisionodoo
+python3 odoo-bin shell -c /opt/odoo/odoo.conf -d [nombre_base_datos]
+```
+
+```python
+env['ir.config_parameter'].sudo().set_param('nesto_sync.google_project_id', 'nestomaps-1547636206945')
+env['ir.config_parameter'].sudo().set_param('nesto_sync.pubsub_topic', 'sincronizacion-tablas')
+env.cr.commit()
+exit()
+```
+
+**Opción 2: Via UI de Odoo**
+1. Settings → Technical → System Parameters
+2. Crear parámetro `nesto_sync.google_project_id` = `nestomaps-1547636206945`
+3. Crear parámetro `nesto_sync.pubsub_topic` = `sincronizacion-tablas`
+
+---
+
+## 🔄 Actualizar Módulo en nuevavisionodoo
+
+### 1. Limpiar cache de Python
+```bash
+# En nuevavisionodoo
+cd /opt/odoo/custom_addons/nesto_sync
+find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+find . -type f -name "*.pyc" -delete
+```
+
+### 2. Actualizar módulo
+```bash
+# En nuevavisionodoo
+python3 odoo-bin -c /opt/odoo/odoo.conf -d [nombre_base_datos] -u nesto_sync --stop-after-init
+```
+
+### 3. Reiniciar servicio
+```bash
+sudo systemctl restart odoo  # o el nombre del servicio
+```
+
+---
+
+## ✅ Verificación en nuevavisionodoo
+
+### 1. Actualizar cliente desde UI
+
+1. Abrir Odoo en navegador
+2. Ir a Contactos
+3. Buscar un cliente que tenga `cliente_externo` y `contacto_externo`
+4. Cambiar el campo **Teléfono Móvil**
+5. Guardar
+
+### 2. Verificar logs
+
+**Comando**:
+```bash
+sudo journalctl -u odoo --since '1 minute ago' | grep -E '🔔|⭐|Publicando|BidirectionalSyncMixin'
+```
+
+**Logs esperados** (si funciona):
+```
+INFO: ⭐ ResPartner.write() llamado con vals: {'mobile': '666XXXXXX'}
+INFO: 🔔 BidirectionalSyncMixin.write() llamado en res.partner con vals: {'mobile': '666XXXXXX'}
+INFO: Creando publisher para proveedor: google_pubsub
+INFO: Configurando Google Pub/Sub Publisher: project_id=nestomaps-1547636206945
+INFO: Publicando cliente desde Odoo: res.partner ID XXXX
+```
+
+### 3. Si no aparece nada en logs
+
+**Verificar que el módulo se cargó**:
+```bash
+sudo journalctl -u odoo --since '5 minutes ago' | grep nesto_sync
+```
+
+**Debe aparecer**:
+```
+DEBUG: Loading module nesto_sync
+```
+
+**Verificar credenciales**:
+```bash
+sudo systemctl show odoo | grep GOOGLE_APPLICATION_CREDENTIALS
+```
+
+**Debe mostrar**:
+```
+Environment=GOOGLE_APPLICATION_CREDENTIALS=/opt/odoo/secrets/google-cloud-credentials.json
+```
+
+**Verificar archivo existe**:
+```bash
+sudo ls -la /opt/odoo/secrets/google-cloud-credentials.json
+```
+
+**Debe mostrar**:
+```
+-rw------- 1 odoo odoo 2329 [fecha] google-cloud-credentials.json
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### Error: "Object of type res.country.state is not JSON serializable"
+
+**Causa**: No se aplicó el fix de `odoo_publisher.py`
+
+**Solución**: Verificar que el método `_serialize_odoo_value()` está en línea 221 del archivo
+
+### Error: "DefaultCredentialsError: Your default credentials were not found"
+
+**Causa**: Variable de entorno no configurada o archivo no existe
+
+**Solución**:
+1. Verificar que el archivo existe: `sudo ls -la /opt/odoo/secrets/google-cloud-credentials.json`
+2. Verificar variable de entorno: `sudo systemctl show odoo | grep GOOGLE`
+3. Reiniciar servicio: `sudo systemctl restart odoo`
+
+### No aparecen logs pero el teléfono sí se actualiza
+
+**Causa**: El código antiguo está activo (sin el mixin)
+
+**Solución**:
+1. Verificar que el archivo `models/res_partner.py` tiene el logging con ⭐
+2. Limpiar cache: `find . -type f -name "*.pyc" -delete`
+3. Actualizar módulo: `-u nesto_sync --stop-after-init`
+4. Reiniciar servicio
+
+### Logs muestran "Sin cambios en res.partner, omitiendo actualización"
+
+**Causa**: El anti-bucle está funcionando (esto es CORRECTO)
+
+**Explicación**: Si intentas actualizar con el mismo valor, el sistema detecta que no hay cambios y no publica. Prueba con un valor diferente.
+
+---
+
+## 🧹 Limpieza Post-Verificación
+
+Una vez verificado que funciona en producción, **ELIMINAR** el código temporal de debug:
+
+### Archivo: `/opt/odoo/custom_addons/nesto_sync/models/res_partner.py`
+
+**ELIMINAR estas líneas**:
+```python
+import logging
+
+_logger = logging.getLogger(__name__)
+
+def write(self, vals):
+    """Override para debug - verificar que se llama"""
+    _logger.info(f"⭐ ResPartner.write() llamado con vals: {vals}")
+    return super(ResPartner, self).write(vals)
+```
+
+**¿Por qué?**: El `BidirectionalSyncMixin` ya tiene su propio logging con 🔔. El código con ⭐ era solo para debug.
+
+**Después de eliminar**:
+```bash
+python3 odoo-bin -c /opt/odoo/odoo.conf -d [nombre_base_datos] -u nesto_sync --stop-after-init
+sudo systemctl restart odoo
+```
+
+---
+
+## 📊 Estado Final Esperado
+
+Después de completar todos los pasos:
+
+### En nuevavisionodoo (Producción)
+- ✅ Código sincronizado desde Odoo18
+- ✅ Credenciales Google Cloud configuradas
+- ✅ System Parameters configurados
+- ✅ Módulo actualizado
+- ✅ Servicio reiniciado
+- ✅ Logs muestran sincronización bidireccional funcionando
+
+### Logs esperados al actualizar un cliente
+```
+🔔 BidirectionalSyncMixin.write() llamado en res.partner
+Publicando cliente desde Odoo: res.partner ID XXXX
+```
+
+### Anti-bucle funcionando
+Si Nesto envía un mensaje con los mismos valores que ya tiene Odoo:
+```
+Sin cambios en res.partner, omitiendo actualización
+```
+(NO se publica de vuelta → bucle evitado ✅)
+
+---
+
+## 📚 Documentación de Referencia
+
+- [CONFIGURACION_CREDENCIALES.md](CONFIGURACION_CREDENCIALES.md) - Guía detallada de credenciales
+- [ESTADO_DESPLIEGUE.md](ESTADO_DESPLIEGUE.md) - Estado actual del despliegue
+- [ARQUITECTURA_EXTENSIBLE.md](ARQUITECTURA_EXTENSIBLE.md) - Arquitectura del sistema
+- [test_bidirectional.py](test_bidirectional.py) - Script de prueba
+
+---
+
+## 🎯 Checklist de la Próxima Sesión
+
+- [ ] **Paso 1**: Sincronizar código a nuevavisionodoo (git pull o scp)
+- [ ] **Paso 2**: Copiar credenciales a `/opt/odoo/secrets/`
+- [ ] **Paso 3**: Configurar variable de entorno en systemd
+- [ ] **Paso 4**: Configurar System Parameters (google_project_id y pubsub_topic)
+- [ ] **Paso 5**: Actualizar módulo (`-u nesto_sync`)
+- [ ] **Paso 6**: Reiniciar servicio Odoo
+- [ ] **Paso 7**: Probar actualización desde UI
+- [ ] **Paso 8**: Verificar logs (debe aparecer 🔔 emoji)
+- [ ] **Paso 9**: Confirmar publicación a Pub/Sub
+- [ ] **Paso 10**: Eliminar código temporal de debug (⭐)
+
+---
+
+**Sesión anterior finalizada**: 2025-11-10
+**Próxima sesión**: Pendiente
+**Estado**: Listo para sincronizar a producción
