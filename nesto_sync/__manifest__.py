@@ -1,9 +1,15 @@
 {
     'name': 'Nesto Sync',
-    'version': '2.2.1',  # 2.2.1: Fix bucle infinito en comparación case-sensitive de nombres
+    'version': '2.2.2',  # 2.2.2: Fix búsqueda de registros con PersonaContacto en mensajes planos
     'summary': 'Sincronización bidireccional de tablas entre Nesto y Odoo via Google Pub/Sub',
     'description': '''
         Módulo de sincronización bidireccional entre Nesto y Odoo
+
+        Versión 2.2.2 (2025-11-11):
+        - Fix bucle infinito: mapear PersonaContacto desde mensajes planos
+        - Nesto envía mensajes con PersonaContacto en la raíz (no en array)
+        - Ahora se mapea correctamente a persona_contacto_externa
+        - Evita que se actualice el registro equivocado
 
         Versión 2.2.1 (2025-11-11):
         - Fix bucle infinito: comparación case-insensitive para campo 'name'

@@ -62,6 +62,13 @@ ENTITY_CONFIGS = {
                 'odoo_fields': ['is_company', 'type']
             },
 
+            # --- Campo PersonaContacto (cuando viene en la raíz del mensaje) ---
+            # Nesto envía mensajes planos donde PersonaContacto está directamente en la raíz
+            # Este campo determina junto con Cliente y Contacto el registro único
+            'PersonaContacto': {
+                'odoo_field': 'persona_contacto_externa'
+            },
+
             # --- Campos fijos ---
             '_country': {
                 'transformer': 'spain_country',
