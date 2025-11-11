@@ -1,9 +1,9 @@
 # Estado del Despliegue - Nesto Sync
 
-**Última actualización**: 2025-11-10
-**Servidor**: Odoo18
+**Última actualización**: 2025-11-11
+**Servidor**: Odoo18 (desarrollo)
 **Base de datos**: odoo16
-**Estado**: ✅ **DESPLEGADO EN PRODUCCIÓN + SINCRONIZACIÓN BIDIRECCIONAL LISTA**
+**Estado**: ✅ **FIX DOUBLE SERIALIZATION COMPLETADO - LISTO PARA DESPLEGAR A PRODUCCIÓN**
 
 ## ✅ Despliegue Completado
 
@@ -111,6 +111,41 @@ Formato: Google PubSub (JSON base64)
 - Mismo endpoint
 - Mismo formato de mensaje
 - Misma respuesta
+
+## 🆕 Actualización 2025-11-11: Fix Double Serialization
+
+### Problema Crítico Resuelto
+
+**Fecha**: 2025-11-11
+**Commit**: `74c4dfa - fix: Corregir doble serialización JSON y estructura de mensaje`
+
+Durante las pruebas de sincronización bidireccional en producción, se detectó que los mensajes de Odoo → NestoAPI llegaban con:
+
+1. **Doble serialización JSON**:
+   - Recibido: `"\"{\\u0022Nif\\u0022:\\u002253739877D\\u0022,...}\""`
+   - Esperado: `{"Nif":"53739877D",...}`
+
+2. **Estructura incorrecta**:
+   - Recibido: Mensaje plano con `{Nif, Cliente, Nombre, Tabla, Source}`
+   - Esperado: `{Accion, Tabla, Datos: {Parent, Children}}`
+
+### Solución Implementada
+
+**Archivos modificados**:
+- ✅ `core/odoo_publisher.py`: Añadido `_wrap_in_sync_message()` para envolver en ExternalSyncMessageDTO
+- ✅ `infrastructure/google_pubsub_publisher.py`: Mejorada documentación
+- ✅ `test_publisher_structure.py`: Test standalone que verifica formato correcto
+
+**Tests**: ✅ Todos pasan (test_publisher_structure.py)
+
+**Resultado**:
+- ✅ Una sola serialización JSON
+- ✅ Estructura correcta: `{Accion: "actualizar", Tabla: "Clientes", Datos: {Parent: {...}, Children: [...]}}`
+- ✅ Compatible con ExternalSyncMessageDTO de NestoAPI
+
+Ver detalles completos en [SESION_2025-11-11.md](SESION_2025-11-11.md)
+
+---
 
 ## 🆕 Actualización 2025-11-10: Sincronización Bidireccional
 
