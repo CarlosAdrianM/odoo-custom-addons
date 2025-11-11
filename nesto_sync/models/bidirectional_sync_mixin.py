@@ -191,9 +191,9 @@ class BidirectionalSyncMixin(models.AbstractModel):
         """
         Determina si un registro específico debe sincronizarse
 
-        Algunos filtros adicionales:
-        - No sincronizar partners que no sean clientes/proveedores
-        - No sincronizar registros inactivos (si la entidad lo requiere)
+        Verifica que:
+        1. El registro tenga los campos de identificación necesarios
+        2. Los valores que se están modificando realmente cambiaron en ESTE registro
 
         Args:
             record: Registro a evaluar
@@ -202,6 +202,52 @@ class BidirectionalSyncMixin(models.AbstractModel):
         Returns:
             bool: True si debe sincronizarse
         """
-        # Por ahora, sincronizar todos
-        # TODO: Añadir filtros específicos por entidad si es necesario
+        # 1. Verificar que tiene campos de identificación externos
+        # Para clientes: cliente_externo, contacto_externo (persona_contacto_externa opcional)
+        if hasattr(record, 'cliente_externo') and hasattr(record, 'contacto_externo'):
+            if not record.cliente_externo or not record.contacto_externo:
+                _logger.debug(
+                    f"Saltando registro ID {record.id}: sin identificadores externos "
+                    f"(cliente_externo={record.cliente_externo}, "
+                    f"contacto_externo={record.contacto_externo})"
+                )
+                return False
+
+        # 2. Verificar si los valores en vals REALMENTE cambiaron en este registro
+        # Esto evita publicar registros que están en el recordset pero no fueron modificados
+        if vals:
+            has_real_changes = False
+            for field, new_value in vals.items():
+                # Saltar campos de sistema
+                if field in ('write_date', 'write_uid', '__last_update'):
+                    continue
+
+                # Obtener valor actual del registro
+                if hasattr(record, field):
+                    old_value = getattr(record, field, None)
+
+                    # Serializar valores Many2one para comparación
+                    if hasattr(old_value, 'id'):
+                        old_value = old_value.id
+                    if hasattr(new_value, 'id'):
+                        new_value = new_value.id
+
+                    # Comparar
+                    if old_value != new_value:
+                        has_real_changes = True
+                        _logger.debug(
+                            f"Cambio detectado en registro ID {record.id}, "
+                            f"campo '{field}': {old_value} → {new_value}"
+                        )
+                        break
+
+            if not has_real_changes:
+                _logger.debug(
+                    f"Saltando registro ID {record.id}: sin cambios reales "
+                    f"(cliente_externo={getattr(record, 'cliente_externo', None)}, "
+                    f"contacto_externo={getattr(record, 'contacto_externo', None)}, "
+                    f"persona_contacto_externa={getattr(record, 'persona_contacto_externa', None)})"
+                )
+                return False
+
         return True
