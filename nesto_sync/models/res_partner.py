@@ -14,7 +14,13 @@ class ResPartner(models.Model):
 
     def write(self, vals):
         """Override para debug - verificar que se llama"""
-        _logger.info(f"⭐ ResPartner.write() llamado con vals: {vals}")
+        _logger.info(
+            f"⭐ ResPartner.write() llamado con vals: {vals}, "
+            f"IDs: {self.ids}, "
+            f"nombres: {[r.name for r in self]}, "
+            f"externos: {[(r.cliente_externo, r.contacto_externo, r.persona_contacto_externa) for r in self]}, "
+            f"contexto: {dict(self.env.context)}"
+        )
         return super(ResPartner, self).write(vals)
 
     @api.constrains('cliente_externo', 'contacto_externo', 'persona_contacto_externa')
