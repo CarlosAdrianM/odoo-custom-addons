@@ -1,9 +1,14 @@
 {
     'name': 'Nesto Sync',
-    'version': '2.2.0',  # 2.2.0: Logs detallados + endpoint /nesto_sync/logs + fix anti-bucle
+    'version': '2.2.1',  # 2.2.1: Fix bucle infinito en comparación case-sensitive de nombres
     'summary': 'Sincronización bidireccional de tablas entre Nesto y Odoo via Google Pub/Sub',
     'description': '''
         Módulo de sincronización bidireccional entre Nesto y Odoo
+
+        Versión 2.2.1 (2025-11-11):
+        - Fix bucle infinito: comparación case-insensitive para campo 'name'
+        - Nesto cambia internamente mayúsculas/minúsculas provocando bucles
+        - Ahora 'BEATRIZ' y 'beatriz' se consideran iguales
 
         Versión 2.2.0 (2025-11-11):
         - Endpoint /nesto_sync/logs para consultar logs en memoria

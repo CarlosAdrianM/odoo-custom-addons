@@ -230,6 +230,12 @@ class GenericEntityService:
             # Normalizar None y strings vacíos
             current = (current_value or '').strip()
             new = (new_value or '').strip()
+
+            # Para el campo 'name', comparar case-insensitive
+            # (Nesto a veces cambia mayúsculas/minúsculas internamente)
+            if field == 'name':
+                return current.upper() != new.upper()
+
             return current != new
 
         # Campos HTML
