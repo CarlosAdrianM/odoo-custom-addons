@@ -93,7 +93,7 @@ ENTITY_CONFIGS = {
             'CorreoElectronico': {
                 'odoo_field': 'email'
             },
-            'Telefono': {
+            'Telefonos': {
                 'transformer': 'phone',
                 'odoo_fields': ['mobile', 'phone']
             },
@@ -170,20 +170,24 @@ ENTITY_CONFIGS = {
         'nesto_table': 'Clientes',
 
         # Mapeo inverso: Odoo → Nesto
-        # (se infiere automáticamente desde field_mappings si no se especifica)
-        # 'reverse_field_mappings': {
-        #     'name': {'nesto_field': 'Nombre'},
-        #     'street': {'nesto_field': 'Direccion'},
-        #     'vat': {'nesto_field': 'Nif'},
-        #     'zip': {'nesto_field': 'CodigoPostal'},
-        #     'city': {'nesto_field': 'Poblacion'},
-        #     'comment': {'nesto_field': 'Comentarios'},
-        #     'mobile': {'nesto_field': 'Telefono', 'reverse_transformer': 'join_phones'},
-        #     'phone': {'nesto_field': 'Telefono', 'reverse_transformer': 'join_phones'},
-        #     'state_id': {'nesto_field': 'Provincia', 'reverse_transformer': 'state_to_name'},
-        #     'active': {'nesto_field': 'Estado', 'reverse_transformer': 'active_to_estado'},
-        #     'is_company': {'nesto_field': 'ClientePrincipal'},
-        # },
+        # IMPORTANTE: Los campos se mapean con nombres en ESPAÑOL (como en field_mappings)
+        # Solo especificamos los identificadores críticos aquí
+        # El resto se infieren automáticamente desde field_mappings
+        'reverse_field_mappings': {
+            # ⚠️ IDENTIFICADORES CRÍTICOS - DEBEN IR SIEMPRE
+            'cliente_externo': {'nesto_field': 'Cliente'},
+            'contacto_externo': {'nesto_field': 'Contacto'},
+            # Los demás campos (Nombre, Direccion, etc.) se infieren automáticamente
+            # y mantienen sus nombres en español
+        },
+
+        # Mapeo inverso para children (PersonasContacto)
+        'reverse_child_field_mappings': {
+            # ⚠️ IDENTIFICADOR CRÍTICO
+            'persona_contacto_externa': {'nesto_field': 'Id'},
+            # Los demás campos (Nombre, CorreoElectronico, etc.) se infieren automáticamente
+            # y mantienen sus nombres en español
+        },
     },
 
     # ==========================================

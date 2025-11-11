@@ -61,6 +61,7 @@ class OdooPublisher:
                 f"Publicando {self.entity_type} desde Odoo: "
                 f"{record._name} ID {record.id}"
             )
+            _logger.info(f"📨 Mensaje a publicar: {message}")
 
             self.publisher.publish_event(topic, message)
 
@@ -88,11 +89,13 @@ class OdooPublisher:
         message = {}
 
         # Mapeo de campos según reverse_field_mappings
-        reverse_mappings = self.config.get('reverse_field_mappings', {})
+        # SIEMPRE inferir desde field_mappings primero
+        reverse_mappings = self._infer_reverse_mappings()
 
-        if not reverse_mappings:
-            # Si no hay reverse_mappings, inferir desde field_mappings
-            reverse_mappings = self._infer_reverse_mappings()
+        # Sobrescribir con reverse_field_mappings explícitos (para identificadores)
+        explicit_mappings = self.config.get('reverse_field_mappings', {})
+        if explicit_mappings:
+            reverse_mappings.update(explicit_mappings)
 
         # Procesar cada campo de Odoo → Nesto
         for odoo_field, mapping in reverse_mappings.items():
@@ -113,6 +116,12 @@ class OdooPublisher:
                     transformer_name, value, record, mapping
                 )
 
+            # Solo añadir el campo si tiene valor real
+            # Omitir: None, False, 0, string vacío
+            # Excepto para campos que son genuinamente booleanos en Nesto
+            if value in (None, False, '', 0) and nesto_field not in ('ClientePrincipal',):
+                continue
+
             message[nesto_field] = value
 
         # Procesar children si es jerárquico
@@ -123,52 +132,35 @@ class OdooPublisher:
 
     def _wrap_in_sync_message(self, data, record):
         """
-        Envuelve los datos en estructura ExternalSyncMessageDTO
+        Envuelve los datos en el formato que espera el subscriber de Nesto
 
-        Formato esperado por NestoAPI:
+        Formato PLANO (sin Parent/Children):
         {
-            "Accion": "actualizar",
+            "Nif": "...",
+            "Cliente": "...",
+            "Contacto": "...",
+            "Nombre": "...",
+            "Direccion": "...",
+            "PersonasContacto": [...],  // ✅ Array de children directamente
             "Tabla": "Clientes",
-            "Datos": {
-                "Parent": {...},
-                "Children": [...]  # Si es jerárquico
-            }
+            "Source": "Odoo"
         }
 
         Args:
-            data (dict): Datos del registro (puede incluir children como campo)
+            data (dict): Datos del registro (ya incluye PersonasContacto si aplica)
             record: Registro de Odoo
 
         Returns:
-            dict: Mensaje envuelto en formato ExternalSyncMessageDTO
+            dict: Mensaje en formato plano compatible con subscriber
         """
-        # Separar Parent y Children si existen
-        hierarchy_config = self.config.get('hierarchy', {})
-        parent_data = {}
-        children_data = []
+        # El mensaje ya está construido correctamente por _build_message_from_odoo
+        # Solo necesitamos añadir metadatos Tabla y Source
 
-        if hierarchy_config.get('enabled'):
-            child_types = hierarchy_config.get('child_types', ['PersonasContacto'])
-            child_field_name = child_types[0] if child_types else 'PersonasContacto'
+        message = data.copy()
 
-            # Extraer children del data
-            children_data = data.pop(child_field_name, [])
-            parent_data = data
-        else:
-            parent_data = data
-
-        # Construir estructura ExternalSyncMessageDTO
-        message = {
-            "Accion": "actualizar",
-            "Tabla": self.config.get('nesto_table', 'Clientes'),
-            "Datos": {
-                "Parent": parent_data
-            }
-        }
-
-        # Añadir Children solo si existen
-        if children_data:
-            message["Datos"]["Children"] = children_data
+        # Añadir metadatos
+        message["Tabla"] = self.config.get('nesto_table', 'Clientes')
+        message["Source"] = "Odoo"
 
         return message
 
@@ -186,6 +178,47 @@ class OdooPublisher:
         field_mappings = self.config.get('field_mappings', {})
 
         for nesto_field, mapping in field_mappings.items():
+            # Saltar campos internos (que empiezan con _)
+            # Estos son solo para sincronización Nesto → Odoo
+            if nesto_field.startswith('_'):
+                continue
+
+            # Campos simples
+            if 'odoo_field' in mapping:
+                odoo_field = mapping['odoo_field']
+                reverse[odoo_field] = {
+                    'nesto_field': nesto_field
+                }
+
+            # Campos con transformer
+            elif 'odoo_fields' in mapping:
+                for odoo_field in mapping['odoo_fields']:
+                    if odoo_field not in reverse:
+                        reverse[odoo_field] = {
+                            'nesto_field': nesto_field,
+                            'reverse_transformer': mapping.get('transformer')
+                        }
+
+        return reverse
+
+    def _infer_reverse_child_mappings(self):
+        """
+        Infiere reverse_child_field_mappings desde child_field_mappings
+
+        Análogo a _infer_reverse_mappings pero para children
+
+        Returns:
+            dict: Reverse mappings inferidos para children
+        """
+        reverse = {}
+        child_field_mappings = self.config.get('child_field_mappings', {})
+
+        for nesto_field, mapping in child_field_mappings.items():
+            # Saltar campos internos (que empiezan con _)
+            # Estos son solo para sincronización Nesto → Odoo
+            if nesto_field.startswith('_'):
+                continue
+
             # Campos simples
             if 'odoo_field' in mapping:
                 odoo_field = mapping['odoo_field']
@@ -221,10 +254,66 @@ class OdooPublisher:
         Returns:
             Valor transformado
         """
-        # TODO: Implementar transformers inversos
-        # Por ahora, retornamos el valor sin transformar
-        _logger.debug(f"Reverse transformer '{transformer_name}' no implementado, usando valor directo")
-        return value
+        # Implementación de transformers inversos
+        if transformer_name == 'phone':
+            # Combinar mobile + phone en formato "mobile/phone"
+            # Si solo hay mobile, devolver solo mobile
+            mobile = getattr(record, 'mobile', None) or ''
+            phone = getattr(record, 'phone', None) or ''
+
+            if mobile and phone:
+                return f"{mobile}/{phone}"
+            elif mobile:
+                return mobile
+            elif phone:
+                return phone
+            else:
+                return None
+
+        elif transformer_name == 'country_state':
+            # Convertir state_id (Many2one) a nombre de provincia
+            state = getattr(record, 'state_id', None)
+            if state and hasattr(state, 'name'):
+                return state.name
+            return None
+
+        elif transformer_name == 'estado_to_active':
+            # Convertir active (bool) a Estado (int)
+            # active=True → Estado=9, active=False → Estado=-1
+            active = getattr(record, 'active', True)
+            return 9 if active else -1
+
+        elif transformer_name == 'cliente_principal':
+            # Convertir type a ClientePrincipal (bool)
+            # type='invoice' → ClientePrincipal=true
+            # type='delivery' → ClientePrincipal=false
+            record_type = getattr(record, 'type', 'delivery')
+            return record_type == 'invoice'
+
+        elif transformer_name == 'spain_country':
+            # No enviar country_id en mensajes salientes
+            # (es un campo fijo solo para entrada)
+            return None
+
+        elif transformer_name == 'cargos':
+            # Convertir function (string) a número de cargo
+            # Usar mapeo inverso de cargos_funciones
+            from ..models.cargos import cargos_funciones
+
+            # Crear diccionario inverso: string → código
+            funciones_cargos = {v: k for k, v in cargos_funciones.items()}
+
+            # Buscar el código correspondiente al string
+            if value and isinstance(value, str):
+                cargo_code = funciones_cargos.get(value)
+                return cargo_code if cargo_code else None
+
+            return None
+
+        else:
+            # Transformer no implementado
+            _logger.debug(f"Reverse transformer '{transformer_name}' no implementado, usando valor directo")
+            return value
 
     def _add_children_to_message(self, record, message):
         """
@@ -253,17 +342,43 @@ class OdooPublisher:
 
         # Construir lista de children
         children_list = []
-        child_mappings = self.config.get('child_field_mappings', {})
+
+        # Usar reverse_child_field_mappings para sincronización Odoo → Nesto
+        # SIEMPRE inferir desde child_field_mappings primero
+        reverse_child_mappings = self._infer_reverse_child_mappings()
+
+        # Sobrescribir con reverse_child_field_mappings explícitos (para identificadores)
+        explicit_child_mappings = self.config.get('reverse_child_field_mappings', {})
+        if explicit_child_mappings:
+            reverse_child_mappings.update(explicit_child_mappings)
 
         for child in children:
             child_data = {}
 
-            # Mapear campos del child
-            for nesto_field, mapping in child_mappings.items():
-                if 'odoo_field' in mapping:
-                    odoo_field = mapping['odoo_field']
-                    value = getattr(child, odoo_field, None)
-                    child_data[nesto_field] = self._serialize_odoo_value(value)
+            # Mapear campos del child usando reverse mappings
+            for odoo_field, mapping in reverse_child_mappings.items():
+                nesto_field = mapping.get('nesto_field')
+                if not nesto_field:
+                    continue
+
+                # Obtener valor del child
+                value = getattr(child, odoo_field, None)
+
+                # Serializar objetos Odoo
+                value = self._serialize_odoo_value(value)
+
+                # Aplicar transformer inverso si existe
+                if 'reverse_transformer' in mapping:
+                    transformer_name = mapping['reverse_transformer']
+                    value = self._apply_reverse_transformer(
+                        transformer_name, value, child, mapping
+                    )
+
+                # Solo añadir el campo si tiene valor real
+                if value in (None, False, '', 0):
+                    continue
+
+                child_data[nesto_field] = value
 
             children_list.append(child_data)
 
@@ -284,6 +399,11 @@ class OdooPublisher:
         # None, bool, int, float, str → ya son serializables
         if value is None or isinstance(value, (bool, int, float, str)):
             return value
+
+        # Markup de Odoo (HTML) → convertir a string
+        # Markup hereda de str pero puede causar problemas con JSON
+        if hasattr(value, '__html__'):
+            return str(value)
 
         # Many2one (ej: state_id, country_id) → devolver ID
         if hasattr(value, '_name') and hasattr(value, 'id'):
