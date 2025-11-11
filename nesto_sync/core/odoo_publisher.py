@@ -271,10 +271,10 @@ class OdooPublisher:
                 return None
 
         elif transformer_name == 'country_state':
-            # Convertir state_id (Many2one) a nombre de provincia
+            # Convertir state_id (Many2one) a nombre de provincia EN MAYÚSCULAS
             state = getattr(record, 'state_id', None)
             if state and hasattr(state, 'name'):
-                return state.name
+                return state.name.upper()
             return None
 
         elif transformer_name == 'estado_to_active':
