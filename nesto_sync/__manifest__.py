@@ -1,9 +1,15 @@
 {
     'name': 'Nesto Sync',
-    'version': '2.2.2',  # 2.2.2: Fix búsqueda de registros con PersonaContacto en mensajes planos
+    'version': '2.2.3',  # 2.2.3: Fix detección de cambios usando valores originales antes del write
     'summary': 'Sincronización bidireccional de tablas entre Nesto y Odoo via Google Pub/Sub',
     'description': '''
         Módulo de sincronización bidireccional entre Nesto y Odoo
+
+        Versión 2.2.3 (2025-11-11):
+        - Fix detección de cambios: guardar valores originales ANTES del write
+        - _should_sync_record comparaba valores ya actualizados (siempre iguales)
+        - Ahora guarda valores antes del write para comparación correcta
+        - Detecta correctamente cambios en Odoo → Nesto
 
         Versión 2.2.2 (2025-11-11):
         - Fix bucle infinito: mapear PersonaContacto desde mensajes planos

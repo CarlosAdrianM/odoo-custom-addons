@@ -40,7 +40,21 @@ class BidirectionalSyncMixin(models.AbstractModel):
             f"IDs: {self.ids}, contexto: {dict(self.env.context)}"
         )
 
-        # Ejecutar write original primero
+        # Guardar valores originales ANTES del write para detectar cambios
+        # Mapeamos {record.id: {field: old_value}}
+        original_values = {}
+        for record in self:
+            original_values[record.id] = {}
+            for field in vals.keys():
+                if field not in ('write_date', 'write_uid', '__last_update'):
+                    if hasattr(record, field):
+                        old_value = getattr(record, field, None)
+                        # Serializar Many2one
+                        if hasattr(old_value, 'id'):
+                            old_value = old_value.id
+                        original_values[record.id][field] = old_value
+
+        # Ejecutar write original
         result = super(BidirectionalSyncMixin, self).write(vals)
 
         # Obtener entity_type para este modelo
@@ -58,8 +72,8 @@ class BidirectionalSyncMixin(models.AbstractModel):
             )
             return result
 
-        # Sincronizar cambios
-        self._sync_to_nesto(entity_type, vals)
+        # Sincronizar cambios (pasando valores originales para comparación)
+        self._sync_to_nesto(entity_type, vals, original_values)
 
         return result
 
@@ -91,8 +105,8 @@ class BidirectionalSyncMixin(models.AbstractModel):
             )
             return records
 
-        # Sincronizar nuevos registros
-        records._sync_to_nesto(entity_type, vals_list[0] if len(vals_list) == 1 else {})
+        # Sincronizar nuevos registros (sin valores originales porque son nuevos)
+        records._sync_to_nesto(entity_type, vals_list[0] if len(vals_list) == 1 else {}, original_values={})
 
         return records
 
@@ -139,14 +153,17 @@ class BidirectionalSyncMixin(models.AbstractModel):
 
         return False
 
-    def _sync_to_nesto(self, entity_type, vals):
+    def _sync_to_nesto(self, entity_type, vals, original_values=None):
         """
         Sincroniza registros a Nesto en bloques
 
         Args:
             entity_type (str): Tipo de entidad ('cliente', 'producto', etc.)
             vals (dict): Valores que se están actualizando/creando
+            original_values (dict): Valores originales antes del write {record.id: {field: old_value}}
         """
+        if original_values is None:
+            original_values = {}
         try:
             # Obtener tamaño de bloque desde configuración
             batch_size = int(self.env['ir.config_parameter'].sudo().get_param(
@@ -176,7 +193,9 @@ class BidirectionalSyncMixin(models.AbstractModel):
                 for record in batch:
                     try:
                         # Solo sincronizar si es relevante
-                        if self._should_sync_record(record, vals):
+                        # Pasar valores originales para comparación correcta
+                        record_original_values = original_values.get(record.id, {})
+                        if self._should_sync_record(record, vals, record_original_values):
                             publisher.publish_record(record)
                     except Exception as e:
                         _logger.error(
@@ -190,7 +209,7 @@ class BidirectionalSyncMixin(models.AbstractModel):
                 exc_info=True
             )
 
-    def _should_sync_record(self, record, vals):
+    def _should_sync_record(self, record, vals, original_values=None):
         """
         Determina si un registro específico debe sincronizarse
 
@@ -201,10 +220,13 @@ class BidirectionalSyncMixin(models.AbstractModel):
         Args:
             record: Registro a evaluar
             vals (dict): Valores que se están modificando
+            original_values (dict): Valores originales {field: old_value}
 
         Returns:
             bool: True si debe sincronizarse
         """
+        if original_values is None:
+            original_values = {}
         # 1. Verificar que tiene campos de identificación externos
         # Para clientes: cliente_externo, contacto_externo (persona_contacto_externa opcional)
         if hasattr(record, 'cliente_externo') and hasattr(record, 'contacto_externo'):
@@ -225,24 +247,31 @@ class BidirectionalSyncMixin(models.AbstractModel):
                 if field in ('write_date', 'write_uid', '__last_update'):
                     continue
 
-                # Obtener valor actual del registro
-                if hasattr(record, field):
+                # Obtener valor ORIGINAL (antes del write)
+                # Si tenemos original_values, usarlo; sino obtener del registro actual
+                if field in original_values:
+                    old_value = original_values[field]
+                elif hasattr(record, field):
+                    # Fallback: obtener del registro (puede ya estar actualizado)
                     old_value = getattr(record, field, None)
-
                     # Serializar valores Many2one para comparación
                     if hasattr(old_value, 'id'):
                         old_value = old_value.id
-                    if hasattr(new_value, 'id'):
-                        new_value = new_value.id
+                else:
+                    old_value = None
 
-                    # Comparar
-                    if old_value != new_value:
-                        has_real_changes = True
-                        _logger.debug(
-                            f"Cambio detectado en registro ID {record.id}, "
-                            f"campo '{field}': {old_value} → {new_value}"
-                        )
-                        break
+                # Serializar new_value si es Many2one
+                if hasattr(new_value, 'id'):
+                    new_value = new_value.id
+
+                # Comparar
+                if old_value != new_value:
+                    has_real_changes = True
+                    _logger.debug(
+                        f"Cambio detectado en registro ID {record.id}, "
+                        f"campo '{field}': {old_value} → {new_value}"
+                    )
+                    break
 
             if not has_real_changes:
                 _logger.debug(
