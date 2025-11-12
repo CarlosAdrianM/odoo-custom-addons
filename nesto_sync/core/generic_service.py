@@ -294,7 +294,9 @@ class GenericEntityService:
             Response HTTP
         """
         try:
-            record = self.model.sudo().create(values)
+            # CRÍTICO: Añadir skip_sync=True para evitar bucle infinito
+            # Este create viene de Nesto, NO debe publicarse
+            record = self.model.sudo().with_context(skip_sync=True).create(values)
 
             if record:
                 _logger.info(f"{self.config['odoo_model']} creado con ID: {record.id}")
@@ -350,7 +352,9 @@ class GenericEntityService:
                 values = values.copy()  # No modificar el original
                 del values['parent_id']
 
-            record.sudo().write(values)
+            # CRÍTICO: Añadir skip_sync=True para evitar bucle infinito
+            # Este write viene de Nesto, NO debe volver a publicarse
+            record.sudo().with_context(skip_sync=True).write(values)
             _logger.info(f"{self.config['odoo_model']} actualizado: ID {record.id}")
 
             if not self.test_mode:
