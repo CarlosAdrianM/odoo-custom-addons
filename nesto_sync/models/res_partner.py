@@ -12,16 +12,7 @@ class ResPartner(models.Model):
     contacto_externo = fields.Char(string="Contacto Externo", index=True)
     persona_contacto_externa = fields.Char(string="Persona de Contacto Externa", index=True)
 
-    def write(self, vals):
-        """Override para debug - verificar que se llama"""
-        _logger.info(
-            f"⭐ ResPartner.write() llamado con vals: {vals}, "
-            f"IDs: {self.ids}, "
-            f"nombres: {[r.name for r in self]}, "
-            f"externos: {[(r.cliente_externo, r.contacto_externo, r.persona_contacto_externa) for r in self]}, "
-            f"contexto: {dict(self.env.context)}"
-        )
-        return super(ResPartner, self).write(vals)
+    # Logging delegado a BidirectionalSyncMixin - no duplicar aquí
 
     @api.constrains('cliente_externo', 'contacto_externo', 'persona_contacto_externa')
     def _check_unique_combinations(self):

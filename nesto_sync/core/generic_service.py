@@ -186,6 +186,38 @@ class GenericEntityService:
         _logger.debug(f"No hay cambios en {self.config['odoo_model']} (ID: {record.id})")
         return False
 
+    def _normalize_html(self, html_text):
+        """
+        Normaliza texto HTML para comparación
+
+        Elimina tags HTML, normaliza espacios y ordena líneas para evitar
+        falsos positivos por reordenamiento de contenido.
+
+        Args:
+            html_text: Texto con posible HTML
+
+        Returns:
+            str: Texto normalizado sin HTML
+        """
+        if not html_text:
+            return ''
+
+        import re
+
+        # Convertir a string si es necesario
+        text = str(html_text).strip()
+
+        # Eliminar tags HTML
+        text = re.sub(r'<[^>]+>', '', text)
+
+        # Normalizar espacios y saltos de línea
+        lines = [line.strip() for line in text.split('\n') if line.strip()]
+
+        # Ordenar líneas para evitar detectar cambios por reordenamiento
+        lines.sort()
+
+        return '\n'.join(lines)
+
     def _values_are_different(self, field, current_value, new_value, record):
         """
         Compara dos valores considerando el tipo de campo
@@ -238,18 +270,10 @@ class GenericEntityService:
 
             return current != new
 
-        # Campos HTML
-        if field_type == 'html':
-            # Para HTML, comparar el contenido sin tags
-            import re
-            current = (current_value or '').strip()
-            new = (new_value or '').strip()
-
-            # Eliminar tags HTML para comparar contenido
-            current_text = re.sub(r'<[^>]+>', '', current).strip()
-            new_text = re.sub(r'<[^>]+>', '', new).strip()
-
-            return current_text != new_text
+        # Campos HTML o 'comment' (que puede tener HTML de Odoo vs texto plano de Nesto)
+        if field_type == 'html' or field == 'comment':
+            # Normalizar HTML para comparación
+            return self._normalize_html(current_value) != self._normalize_html(new_value)
 
         # Campos de fecha/datetime
         if field_type in ('date', 'datetime'):
@@ -316,6 +340,16 @@ class GenericEntityService:
             Response HTTP
         """
         try:
+            # Protección contra jerarquías recursivas
+            # Si el parent_id es el mismo que el ID del registro, eliminarlo
+            if 'parent_id' in values and values['parent_id'] == record.id:
+                _logger.warning(
+                    f"Eliminando parent_id recursivo: registro {record.id} "
+                    f"intentaba asignarse a sí mismo como parent"
+                )
+                values = values.copy()  # No modificar el original
+                del values['parent_id']
+
             record.sudo().write(values)
             _logger.info(f"{self.config['odoo_model']} actualizado: ID {record.id}")
 

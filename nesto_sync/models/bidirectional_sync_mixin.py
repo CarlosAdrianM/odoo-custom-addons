@@ -35,9 +35,14 @@ class BidirectionalSyncMixin(models.AbstractModel):
 
         Procesa en bloques para no saturar si son muchos registros
         """
-        _logger.info(
-            f"🔔 BidirectionalSyncMixin.write() llamado en {self._name} con vals: {vals}, "
-            f"IDs: {self.ids}, contexto: {dict(self.env.context)}"
+        # Filtrar recordsets vacíos
+        if not self.ids:
+            _logger.debug(f"Saltando write() con recordset vacío en {self._name}")
+            return super(BidirectionalSyncMixin, self).write(vals)
+
+        _logger.debug(
+            f"BidirectionalSyncMixin.write() llamado en {self._name} con vals: {vals}, "
+            f"IDs: {self.ids}"
         )
 
         # Guardar valores originales ANTES del write para detectar cambios

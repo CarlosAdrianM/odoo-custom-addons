@@ -57,11 +57,16 @@ class OdooPublisher:
             topic = self.config.get('pubsub_topic', 'sincronizacion-tablas')
 
             # 4. Publicar
+            # Obtener identificadores para mejor logging
+            cliente = getattr(record, 'cliente_externo', None)
+            contacto = getattr(record, 'contacto_externo', None)
+            persona = getattr(record, 'persona_contacto_externa', None)
+
             _logger.info(
-                f"Publicando {self.entity_type} desde Odoo: "
-                f"{record._name} ID {record.id}"
+                f"📨 Publicando {self.entity_type} desde Odoo: "
+                f"{record._name} ID {record.id} "
+                f"(Cliente={cliente}, Contacto={contacto}, PersonaContacto={persona})"
             )
-            _logger.info(f"📨 Mensaje a publicar: {message}")
 
             self.publisher.publish_event(topic, message)
 
