@@ -79,12 +79,30 @@ class NestoSyncController(http.Controller):
         Raises:
             ValueError: Si no se puede determinar el tipo
         """
-        # Opción 1: Campo explícito en el mensaje
+        # Opción 1: Campo explícito "Tabla" (más confiable)
+        # Este campo lo añade Nesto y también _wrap_in_sync_message()
+        if 'Tabla' in message:
+            tabla = message['Tabla']
+            # Mapear nombre de tabla a entity_type
+            tabla_to_entity = {
+                'Clientes': 'cliente',
+                'Proveedores': 'proveedor',
+                'Productos': 'producto',
+            }
+            if tabla in tabla_to_entity:
+                return tabla_to_entity[tabla]
+            else:
+                raise ValueError(
+                    f"Tabla '{tabla}' no está configurada. "
+                    f"Tablas disponibles: {list(tabla_to_entity.keys())}"
+                )
+
+        # Opción 2: Campo entity_type explícito
         if 'entity_type' in message:
             return message['entity_type']
 
-        # Opción 2: Detectar por campos presentes
-        # (útil para mantener compatibilidad con mensajes existentes)
+        # Opción 3 (fallback): Detectar por campos presentes
+        # NOTA: Este método es menos confiable si el mensaje contiene múltiples entidades
         if 'Cliente' in message:
             return 'cliente'
         elif 'Proveedor' in message:
@@ -95,7 +113,7 @@ class NestoSyncController(http.Controller):
         # Si no se pudo detectar, error
         raise ValueError(
             "No se pudo determinar el tipo de entidad. "
-            "El mensaje debe incluir 'entity_type' o campos identificables."
+            "El mensaje debe incluir 'Tabla', 'entity_type' o campos identificables."
         )
 
     @http.route('/nesto_sync/logs', auth='public', methods=['GET'], csrf=False)

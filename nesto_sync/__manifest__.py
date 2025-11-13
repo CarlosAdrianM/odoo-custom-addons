@@ -1,9 +1,14 @@
 {
     'name': 'Nesto Sync',
-    'version': '2.3.2',  # 2.3.2: Refactor anti-bucle genérico usando entity_configs
+    'version': '2.3.3',  # 2.3.3: CRÍTICO - Fix detección de entidad por campo Tabla
     'summary': 'Sincronización bidireccional de tablas entre Nesto y Odoo via Google Pub/Sub',
     'description': '''
         Módulo de sincronización bidireccional entre Nesto y Odoo
+
+        Versión 2.3.3 (2025-11-13):
+        - CRÍTICO: Fix detección de entity_type - ahora usa campo "Tabla" como fuente de verdad
+        - Antes detectaba por presencia de campos (Cliente, Producto) causando errores
+        - Mapeo: Clientes→cliente, Productos→producto, Proveedores→proveedor
 
         Versión 2.3.2 (2025-11-13):
         - Refactor: _should_sync_record() usa id_fields de entity_configs

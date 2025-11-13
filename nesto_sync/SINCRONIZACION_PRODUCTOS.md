@@ -100,6 +100,16 @@ Los siguientes campos están documentados pero NO implementados en esta fase:
   - Creación de registro en `product.supplierinfo`
   - Mapeo de precios de compra
 
+### Imagen del Producto
+- **Campo Nesto**: `UrlFoto`
+- **Campo Odoo**: `image_1920` (imagen principal en base64)
+- **Requiere**:
+  - Transformer `url_to_image` para descargar imagen desde URL
+  - Conversión a base64
+  - Manejo de errores (timeout, 404, etc.)
+  - Caché opcional para evitar descargas repetidas
+- **Ejemplo URL**: `https://www.productosdeesteticaypeluqueriaprofesional.com/1279-home_default/rollo-papel-camilla.jpg`
+
 ## Flujo de Sincronización
 
 ### Nesto → Odoo
@@ -184,6 +194,13 @@ Se eligió `product.template` porque:
    - Crear `transformers/proveedor.py`
    - Buscar/crear proveedor en `res.partner`
    - Gestionar `product.supplierinfo`
+
+4. **Implementar descarga de imágenes**
+   - Crear transformer `url_to_image`
+   - Descargar imagen desde `UrlFoto`
+   - Convertir a base64 y asignar a `image_1920`
+   - Manejo robusto de errores (timeout, 404, formato inválido)
+   - Considerar caché para evitar descargas repetidas del mismo producto
 
 ### Fase 3: Testing
 
