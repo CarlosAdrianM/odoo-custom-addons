@@ -1,9 +1,15 @@
 {
     'name': 'Nesto Sync',
-    'version': '2.3.3',  # 2.3.3: CRÍTICO - Fix detección de entidad por campo Tabla
+    'version': '2.3.4',  # 2.3.4: CRÍTICO - Manejar estructuras con/sin wrapper
     'summary': 'Sincronización bidireccional de tablas entre Nesto y Odoo via Google Pub/Sub',
     'description': '''
         Módulo de sincronización bidireccional entre Nesto y Odoo
+
+        Versión 2.3.4 (2025-11-13):
+        - CRÍTICO: Añadido _extract_entity_data() para manejar diferentes estructuras
+        - Clientes: {"Cliente": {...}, "Origen": "...", "Usuario": "..."} (con wrapper)
+        - Productos: {"Producto": "123", "Nombre": "...", ...} (plano)
+        - Detecta automáticamente si hay wrapper y extrae datos correctamente
 
         Versión 2.3.3 (2025-11-13):
         - CRÍTICO: Fix detección de entity_type - ahora usa campo "Tabla" como fuente de verdad

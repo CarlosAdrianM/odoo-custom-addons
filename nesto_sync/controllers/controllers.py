@@ -39,12 +39,16 @@ class NestoSyncController(http.Controller):
             entity_type = self._detect_entity_type(message)
             _logger.info(f"Sincronizando entidad de tipo: {entity_type}")
 
+            # Extraer datos anidados si existen (ej: {"Cliente": {...}, "Origen": "..."})
+            # Nesto envía clientes con wrapper, pero productos planos
+            message_data = self._extract_entity_data(message, entity_type)
+
             # Obtener processor y service configurados para esta entidad
             processor = self.entity_registry.get_processor(entity_type, request.env)
             service = self.entity_registry.get_service(entity_type, request.env)
 
             # Procesar mensaje (transformar a formato Odoo)
-            processed_data = processor.process(message)
+            processed_data = processor.process(message_data)
 
             # Crear o actualizar en Odoo
             response = service.create_or_update_contact(processed_data)
@@ -115,6 +119,52 @@ class NestoSyncController(http.Controller):
             "No se pudo determinar el tipo de entidad. "
             "El mensaje debe incluir 'Tabla', 'entity_type' o campos identificables."
         )
+
+    def _extract_entity_data(self, message, entity_type):
+        """
+        Extrae los datos de la entidad del mensaje
+
+        Nesto envía mensajes con diferentes estructuras:
+        - Clientes: {"Cliente": {...datos...}, "Origen": "...", "Usuario": "..."}
+        - Productos: {"Producto": "123", "Nombre": "...", ...} (plano)
+
+        Args:
+            message: Mensaje decodificado
+            entity_type: Tipo de entidad detectado
+
+        Returns:
+            dict: Datos de la entidad (extraídos o el mensaje completo si es plano)
+        """
+        # Mapeo de entity_type a clave de wrapper
+        wrapper_keys = {
+            'cliente': 'Cliente',
+            'proveedor': 'Proveedor',
+            'producto': 'Producto',
+        }
+
+        wrapper_key = wrapper_keys.get(entity_type)
+
+        # Si existe la clave como objeto anidado, extraer
+        if wrapper_key and wrapper_key in message:
+            nested_data = message.get(wrapper_key)
+
+            # Verificar si es un objeto (dict) o un valor simple
+            if isinstance(nested_data, dict):
+                _logger.debug(
+                    f"Extrayendo datos anidados de clave '{wrapper_key}' "
+                    f"(estructura con wrapper)"
+                )
+                return nested_data
+            else:
+                # Es un valor simple (ej: "Producto": "123"), mensaje plano
+                _logger.debug(
+                    f"Mensaje plano detectado - '{wrapper_key}' contiene valor simple"
+                )
+                return message
+        else:
+            # No hay wrapper, mensaje plano
+            _logger.debug("Mensaje plano detectado - sin wrapper")
+            return message
 
     @http.route('/nesto_sync/logs', auth='public', methods=['GET'], csrf=False)
     def get_logs(self, limit=100, **kwargs):
