@@ -219,7 +219,7 @@ class BidirectionalSyncMixin(models.AbstractModel):
         Determina si un registro específico debe sincronizarse
 
         Verifica que:
-        1. El registro tenga los campos de identificación necesarios
+        1. El registro tenga los campos de identificación necesarios (usando entity_configs)
         2. Los valores que se están modificando realmente cambiaron en ESTE registro
 
         Args:
@@ -232,14 +232,35 @@ class BidirectionalSyncMixin(models.AbstractModel):
         """
         if original_values is None:
             original_values = {}
-        # 1. Verificar que tiene campos de identificación externos
-        # Para clientes: cliente_externo, contacto_externo (persona_contacto_externa opcional)
-        if hasattr(record, 'cliente_externo') and hasattr(record, 'contacto_externo'):
-            if not record.cliente_externo or not record.contacto_externo:
+
+        # 1. Verificar identificadores externos usando configuración de la entidad
+        entity_type = self._get_entity_type_for_sync()
+        if entity_type:
+            config = ENTITY_CONFIGS.get(entity_type, {})
+            id_fields = config.get('id_fields', [])
+
+            # Verificar que TODOS los id_fields requeridos tengan valor
+            missing_fields = []
+            id_values = {}
+            for id_field in id_fields:
+                if hasattr(record, id_field):
+                    field_value = getattr(record, id_field, None)
+                    id_values[id_field] = field_value
+                    if not field_value:
+                        missing_fields.append(id_field)
+                else:
+                    # El campo no existe en el modelo (configuración incorrecta)
+                    _logger.warning(
+                        f"Campo '{id_field}' definido en id_fields de '{entity_type}' "
+                        f"pero no existe en modelo {record._name}"
+                    )
+                    missing_fields.append(id_field)
+
+            if missing_fields:
+                id_debug = ', '.join([f"{k}={v}" for k, v in id_values.items()])
                 _logger.debug(
-                    f"Saltando registro ID {record.id}: sin identificadores externos "
-                    f"(cliente_externo={record.cliente_externo}, "
-                    f"contacto_externo={record.contacto_externo})"
+                    f"Saltando {entity_type} ID {record.id}: "
+                    f"campos requeridos sin valor: {missing_fields} ({id_debug})"
                 )
                 return False
 
@@ -279,11 +300,20 @@ class BidirectionalSyncMixin(models.AbstractModel):
                     break
 
             if not has_real_changes:
+                # Construir mensaje de debug con los id_fields de la entidad
+                entity_type = self._get_entity_type_for_sync()
+                if entity_type:
+                    config = ENTITY_CONFIGS.get(entity_type, {})
+                    id_fields = config.get('id_fields', [])
+                    id_debug = ', '.join([
+                        f"{k}={getattr(record, k, None)}"
+                        for k in id_fields if hasattr(record, k)
+                    ])
+                else:
+                    id_debug = f"ID {record.id}"
+
                 _logger.debug(
-                    f"Saltando registro ID {record.id}: sin cambios reales "
-                    f"(cliente_externo={getattr(record, 'cliente_externo', None)}, "
-                    f"contacto_externo={getattr(record, 'contacto_externo', None)}, "
-                    f"persona_contacto_externa={getattr(record, 'persona_contacto_externa', None)})"
+                    f"Saltando {record._name} {id_debug}: sin cambios reales"
                 )
                 return False
 

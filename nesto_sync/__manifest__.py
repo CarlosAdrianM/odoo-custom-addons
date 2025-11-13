@@ -1,9 +1,15 @@
 {
     'name': 'Nesto Sync',
-    'version': '2.3.1',  # 2.3.1: Enriquecimiento de mapeo de productos
+    'version': '2.3.2',  # 2.3.2: Refactor anti-bucle genérico usando entity_configs
     'summary': 'Sincronización bidireccional de tablas entre Nesto y Odoo via Google Pub/Sub',
     'description': '''
         Módulo de sincronización bidireccional entre Nesto y Odoo
+
+        Versión 2.3.2 (2025-11-13):
+        - Refactor: _should_sync_record() usa id_fields de entity_configs
+        - Eliminado código hardcoded de campos específicos (cliente_externo, etc.)
+        - Validación genérica que funciona para cualquier entidad
+        - Logs mejorados con info específica de cada entidad
 
         Versión 2.3.1 (2025-11-13):
         - Mapeo enriquecido de productos: Producto→default_code, PrecioProfesional, CodigoBarras
