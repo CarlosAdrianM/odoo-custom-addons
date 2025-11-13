@@ -246,3 +246,43 @@ class QuantityTransformer:
             qty = 0.0
 
         return {'qty_available': qty}
+
+
+@FieldTransformerRegistry.register('ficticio_to_detailed_type')
+class FicticioToDetailedTypeTransformer:
+    """
+    Transforma los campos Ficticio y Grupo a detailed_type de Odoo
+
+    Lógica:
+    - Si Ficticio == 0 → 'product' (almacenable)
+    - Si Ficticio == 1 y Grupo == "CUR" → 'service' (servicio)
+    - Si Ficticio == 1 y Grupo != "CUR" → 'consu' (consumible)
+    """
+
+    def transform(self, value, context):
+        """
+        Determina el tipo de producto según Ficticio y Grupo
+
+        Args:
+            value: Valor del campo Ficticio (int o bool)
+            context: Dict con 'nesto_data' que contiene el campo 'Grupo'
+
+        Returns:
+            Dict con detailed_type
+        """
+        # Obtener el valor de Ficticio (puede venir como int o bool)
+        ficticio = bool(value) if value is not None else False
+
+        # Si Ficticio es 0 (False), es producto almacenable
+        if not ficticio:
+            return {'detailed_type': 'product'}
+
+        # Si Ficticio es 1 (True), depende del Grupo
+        nesto_data = context.get('nesto_data', {})
+        grupo = nesto_data.get('Grupo', '')
+
+        # Si el grupo es CUR, es servicio; si no, es consumible
+        if grupo == 'CUR':
+            return {'detailed_type': 'service'}
+        else:
+            return {'detailed_type': 'consu'}

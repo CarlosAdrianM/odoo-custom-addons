@@ -42,14 +42,23 @@ Se configuró la entidad `producto` con:
 
 | Campo Nesto | Campo Odoo | Tipo | Observaciones |
 |------------|-----------|------|---------------|
-| `Producto` | `producto_externo` | ID | Identificador único |
+| `Producto` | `producto_externo` + `default_code` | ID | Identificador único + Referencia interna |
 | `Nombre` | `name` | Texto | Requerido |
-| `Precio` | `list_price` | Decimal | Precio de venta |
-| `Tamano` | `volume` | Decimal | Opcional (fase minimalista) |
+| `PrecioProfesional` | `list_price` | Decimal | Precio de venta |
+| `Tamanno` | `volume` | Decimal | Opcional |
+| `CodigoBarras` | `barcode` | Texto | Código de barras EAN |
+| `Ficticio` + `Grupo` | `detailed_type` | Selection | Ver lógica abajo |
+
+#### Lógica de `detailed_type` (Transformer)
+
+El campo `detailed_type` se determina usando el transformer `ficticio_to_detailed_type`:
+
+- **Si `Ficticio == 0`** → `'product'` (Producto almacenable)
+- **Si `Ficticio == 1` y `Grupo == "CUR"`** → `'service'` (Servicio)
+- **Si `Ficticio == 1` y `Grupo != "CUR"`** → `'consu'` (Consumible)
 
 #### Campos Fijos
 
-- `type`: Siempre `'product'` (producto almacenable)
 - `company_id`: ID de la compañía del usuario actual
 
 #### Configuración de Sincronización Bidireccional
@@ -194,29 +203,98 @@ curl -X POST https://tu-odoo.com/nesto_sync/webhook \
     "Tabla": "Productos",
     "Operacion": "Insert",
     "Datos": {
-      "Producto": "PROD001",
-      "Nombre": "Producto de Prueba",
-      "Precio": 19.99,
-      "Tamano": 1.5
+      "Producto": "17404",
+      "Nombre": "ROLLO PAPEL CAMILLA",
+      "PrecioProfesional": 7.49,
+      "Tamanno": 100,
+      "CodigoBarras": "0",
+      "Ficticio": 0,
+      "Grupo": "ACC"
     }
   }'
 ```
 
+### Ejemplo Completo de Mensaje desde Nesto
+
+```json
+{
+  "$id": "1",
+  "Producto": "17404",
+  "Nombre": "ROLLO PAPEL CAMILLA",
+  "Tamanno": 100,
+  "UnidadMedida": "m",
+  "Familia": "Productos Genéricos",
+  "PrecioProfesional": 7.49,
+  "PrecioPublicoFinal": 12.95,
+  "Estado": 0,
+  "Grupo": "ACC",
+  "Subgrupo": "Desechables",
+  "CodigoBarras": "0",
+  "Ficticio": 0
+}
+```
+
+**Campos procesados en esta fase:**
+- `Producto` → `producto_externo` + `default_code`
+- `Nombre` → `name`
+- `PrecioProfesional` → `list_price`
+- `Tamanno` → `volume`
+- `CodigoBarras` → `barcode`
+- `Ficticio` + `Grupo` → `detailed_type`
+
+**Campos ignorados (fase 2):**
+- `UnidadMedida`, `Familia`, `Subgrupo`, `PrecioPublicoFinal`, `Estado`
+
 ### Verificar en Base de Datos
 
 ```sql
-SELECT id, name, list_price, producto_externo, volume
+SELECT id, name, default_code, list_price, producto_externo, volume, barcode, detailed_type
 FROM product_template
-WHERE producto_externo = 'PROD001';
+WHERE producto_externo = '17404';
 ```
 
 ### Actualizar desde Odoo (UI)
 
 1. Ir a Inventario > Productos
-2. Buscar producto con `producto_externo = 'PROD001'`
+2. Buscar producto con `producto_externo = '17404'`
 3. Modificar nombre o precio
 4. Guardar
 5. Verificar que se publica mensaje a PubSub
+
+## Nuevos Componentes (v2.3.1)
+
+### Transformer: `ficticio_to_detailed_type`
+
+**Ubicación**: [transformers/field_transformers.py](transformers/field_transformers.py:251-288)
+
+Este transformer lee dos campos del mensaje de Nesto (`Ficticio` y `Grupo`) y determina el tipo de producto en Odoo:
+
+```python
+@FieldTransformerRegistry.register('ficticio_to_detailed_type')
+class FicticioToDetailedTypeTransformer:
+    def transform(self, value, context):
+        ficticio = bool(value) if value is not None else False
+
+        if not ficticio:
+            return {'detailed_type': 'product'}  # Almacenable
+
+        nesto_data = context.get('nesto_data', {})
+        grupo = nesto_data.get('Grupo', '')
+
+        if grupo == 'CUR':
+            return {'detailed_type': 'service'}  # Servicio
+        else:
+            return {'detailed_type': 'consu'}  # Consumible
+```
+
+**Uso en `entity_configs.py`:**
+
+```python
+'Ficticio': {
+    'transformer': 'ficticio_to_detailed_type',
+    'odoo_fields': ['detailed_type']
+}
+```
 
 ## Logs y Debugging
 

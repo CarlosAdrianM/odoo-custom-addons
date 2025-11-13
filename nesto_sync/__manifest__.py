@@ -1,9 +1,15 @@
 {
     'name': 'Nesto Sync',
-    'version': '2.3.0',  # 2.3.0: Sincronización de Productos (fase minimalista)
+    'version': '2.3.1',  # 2.3.1: Enriquecimiento de mapeo de productos
     'summary': 'Sincronización bidireccional de tablas entre Nesto y Odoo via Google Pub/Sub',
     'description': '''
         Módulo de sincronización bidireccional entre Nesto y Odoo
+
+        Versión 2.3.1 (2025-11-13):
+        - Mapeo enriquecido de productos: Producto→default_code, PrecioProfesional, CodigoBarras
+        - Transformer ficticio_to_detailed_type (Ficticio + Grupo → detailed_type)
+        - Tamanno (en lugar de Tamano)
+        - Lógica: Ficticio=0→product, Ficticio=1+Grupo=CUR→service, otros→consu
 
         Versión 2.3.0 (2025-11-13):
         - Nueva entidad: Productos (tabla Productos de Nesto → product.template)

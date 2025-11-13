@@ -238,22 +238,36 @@ ENTITY_CONFIGS = {
         # Mapeo de campos: Nesto -> Odoo
         'field_mappings': {
             # --- Campos simples (mapeo directo) ---
+            'Producto': {
+                'odoo_field': 'default_code',
+                'required': False,
+                'help': 'Referencia interna del producto'
+            },
             'Nombre': {
                 'odoo_field': 'name',
                 'required': True,
                 'default': '<Nombre producto no proporcionado>'
             },
-            'Precio': {
+            'PrecioProfesional': {
                 'odoo_field': 'list_price',
                 'required': False,
                 'default': 0.0
             },
-            # Tamaño y UnidadMedida se manejarán en una fase posterior con transformers
-            # Por ahora los dejamos como campos opcionales
-            'Tamano': {
+            'Tamanno': {
                 'odoo_field': 'volume',
                 'required': False
             },
+            'CodigoBarras': {
+                'odoo_field': 'barcode',
+                'required': False
+            },
+
+            # --- Campos con transformación ---
+            'Ficticio': {
+                'transformer': 'ficticio_to_detailed_type',
+                'odoo_fields': ['detailed_type']
+            },
+
             # UnidadMedida necesitará un transformer para mapear a uom_id
             # Por ahora lo dejamos comentado para la fase 2
             # 'UnidadMedida': {
@@ -262,11 +276,6 @@ ENTITY_CONFIGS = {
             # },
 
             # --- Campos fijos ---
-            '_type': {
-                'type': 'fixed',
-                'odoo_field': 'type',
-                'value': 'product'  # Producto almacenable
-            },
             '_company': {
                 'type': 'context',
                 'odoo_field': 'company_id',
