@@ -1,9 +1,16 @@
 {
     'name': 'Nesto Sync',
-    'version': '2.2.3',  # 2.2.3: Fix detección de cambios usando valores originales antes del write
+    'version': '2.3.0',  # 2.3.0: Sincronización de Productos (fase minimalista)
     'summary': 'Sincronización bidireccional de tablas entre Nesto y Odoo via Google Pub/Sub',
     'description': '''
         Módulo de sincronización bidireccional entre Nesto y Odoo
+
+        Versión 2.3.0 (2025-11-13):
+        - Nueva entidad: Productos (tabla Productos de Nesto → product.template)
+        - Campo producto_externo para mapear con referencia de Nesto
+        - Campos básicos: Nombre, Precio, Tamaño (fase minimalista)
+        - Sincronización bidireccional habilitada para productos
+        - Fase 2 pendiente: UnidadMedida, Grupo, Subgrupo, Familia, Proveedor
 
         Versión 2.2.3 (2025-11-11):
         - Fix detección de cambios: guardar valores originales ANTES del write
@@ -45,7 +52,7 @@
         - Soporte para jerarquías (Clientes + PersonasContacto)
     ''',
     'author': 'Carlos Adrián Martínez',
-    'depends': ['base'],
+    'depends': ['base', 'product'],
     'data': [
         'views/views.xml',
     ],

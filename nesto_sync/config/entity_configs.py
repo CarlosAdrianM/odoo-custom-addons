@@ -223,28 +223,93 @@ ENTITY_CONFIGS = {
     # },
 
     # ==========================================
-    # PRODUCTOS (Ejemplo para futuro)
+    # PRODUCTOS
     # ==========================================
-    # 'producto': {
-    #     'odoo_model': 'product.product',
-    #     'message_type': 'producto',
-    #     'id_fields': ['producto_externo'],
-    #     'field_mappings': {
-    #         'Nombre': {'odoo_field': 'name', 'required': True},
-    #         'Referencia': {'odoo_field': 'default_code'},
-    #         'DescripcionVenta': {'odoo_field': 'description_sale'},
-    #         'PrecioVenta': {'transformer': 'price', 'odoo_fields': ['list_price']},
-    #         'Activo': {'transformer': 'estado_to_active', 'odoo_fields': ['active']},
-    #         '_type': {'type': 'fixed', 'odoo_field': 'type', 'value': 'product'},
-    #         '_company': {'type': 'context', 'odoo_field': 'company_id', 'source': 'env.user.company_id.id'},
-    #     },
-    #     'external_id_mapping': {
-    #         'producto_externo': 'Producto',
-    #     },
-    #     'hierarchy': {'enabled': False},
-    #     'post_processors': [],
-    #     'validators': [],
-    # },
+    'producto': {
+        # Modelo de Odoo donde se guardan los datos
+        'odoo_model': 'product.template',
+
+        # Tipo de mensaje (para logs y detección)
+        'message_type': 'producto',
+
+        # Campos que identifican unívocamente un registro
+        'id_fields': ['producto_externo'],
+
+        # Mapeo de campos: Nesto -> Odoo
+        'field_mappings': {
+            # --- Campos simples (mapeo directo) ---
+            'Nombre': {
+                'odoo_field': 'name',
+                'required': True,
+                'default': '<Nombre producto no proporcionado>'
+            },
+            'Precio': {
+                'odoo_field': 'list_price',
+                'required': False,
+                'default': 0.0
+            },
+            # Tamaño y UnidadMedida se manejarán en una fase posterior con transformers
+            # Por ahora los dejamos como campos opcionales
+            'Tamano': {
+                'odoo_field': 'volume',
+                'required': False
+            },
+            # UnidadMedida necesitará un transformer para mapear a uom_id
+            # Por ahora lo dejamos comentado para la fase 2
+            # 'UnidadMedida': {
+            #     'transformer': 'unidad_medida',
+            #     'odoo_fields': ['uom_id', 'uom_po_id']
+            # },
+
+            # --- Campos fijos ---
+            '_type': {
+                'type': 'fixed',
+                'odoo_field': 'type',
+                'value': 'product'  # Producto almacenable
+            },
+            '_company': {
+                'type': 'context',
+                'odoo_field': 'company_id',
+                'source': 'env.user.company_id.id'
+            },
+        },
+
+        # Mapeo de IDs externos (Nesto -> Odoo)
+        'external_id_mapping': {
+            'producto_externo': 'Producto',
+        },
+
+        # Sin jerarquía por ahora
+        'hierarchy': {
+            'enabled': False
+        },
+
+        # Post-processors
+        'post_processors': [],
+
+        # Validadores
+        'validators': [],
+
+        # ==========================================
+        # SINCRONIZACIÓN BIDIRECCIONAL
+        # ==========================================
+
+        # Activar sincronización bidireccional (Odoo → Nesto)
+        'bidirectional': True,
+
+        # Topic de PubSub donde publicar
+        'pubsub_topic': 'sincronizacion-tablas',
+
+        # Tabla en Nesto
+        'nesto_table': 'Productos',
+
+        # Mapeo inverso: Odoo → Nesto
+        'reverse_field_mappings': {
+            # ⚠️ IDENTIFICADOR CRÍTICO
+            'producto_externo': {'nesto_field': 'Producto'},
+            # Los demás campos se infieren automáticamente
+        },
+    },
 }
 
 
