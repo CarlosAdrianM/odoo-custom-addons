@@ -324,6 +324,129 @@ Buscar por:
 - `product.template` (modelo)
 - `producto_externo` (campo)
 
+## Fixes Críticos Implementados
+
+### v2.3.3 - Fix Detección de Entidad por Campo "Tabla"
+
+**Fecha:** 2025-11-13
+
+**Problema Identificado:**
+El método `_detect_entity_type()` detectaba el tipo de entidad verificando la presencia de campos en orden secuencial:
+```python
+if 'Cliente' in message:
+    return 'cliente'  # ❌ Siempre se ejecutaba primero
+elif 'Producto' in message:
+    return 'producto'
+```
+
+Esto causaba que mensajes de **productos se procesaran como clientes** si contenían algún campo "Cliente" (por ejemplo, en logs del error se observó que el ID 15355 se actualizaba tanto para clientes como para productos).
+
+**Solución:**
+Ahora `_detect_entity_type()` usa el campo **"Tabla"** como prioridad 1:
+
+```python
+if 'Tabla' in message:
+    tabla = message['Tabla']
+    tabla_to_entity = {
+        'Clientes': 'cliente',
+        'Proveedores': 'proveedor',
+        'Productos': 'producto',
+    }
+    return tabla_to_entity[tabla]
+```
+
+**Resultado:**
+- ✅ Detección correcta de tipo de entidad usando metadata explícita
+- ✅ Fallback a detección por campos si no existe "Tabla"
+- ✅ Mensajes de error descriptivos
+
+**Ubicación:** [controllers/controllers.py:82-98](controllers/controllers.py#L82-L98)
+
+---
+
+### v2.3.4 - Manejo de Estructuras con/sin Wrapper
+
+**Fecha:** 2025-11-13
+
+**Contexto:**
+El usuario identificó que Nesto podría enviar mensajes con estructuras diferentes:
+- **Clientes:** `{"Cliente": {...datos...}, "Origen": "...", "Usuario": "..."}`
+- **Productos:** `{"Producto": "15191", "Nombre": "...", ...}` (plano)
+
+**Solución:**
+Añadido método `_extract_entity_data()` que maneja ambos casos automáticamente:
+
+```python
+def _extract_entity_data(self, message, entity_type):
+    wrapper_key = wrapper_keys.get(entity_type)  # 'Cliente', 'Producto', etc.
+
+    if wrapper_key and wrapper_key in message:
+        nested_data = message.get(wrapper_key)
+
+        if isinstance(nested_data, dict):
+            # Wrapper con objeto anidado
+            return nested_data
+        else:
+            # Valor simple, mensaje plano
+            return message
+    else:
+        # Sin wrapper, mensaje plano
+        return message
+```
+
+**Resultado (verificado en producción):**
+```
+"Mensaje plano detectado - 'Producto' contiene valor simple"
+"product.template creado con ID: 3"
+```
+
+- ✅ Compatibilidad con estructuras con wrapper (clientes)
+- ✅ Compatibilidad con estructuras planas (productos)
+- ✅ Logs de debug para identificar estructura detectada
+- ✅ Código defensivo y robusto
+
+**Ubicación:** [controllers/controllers.py:119-163](controllers/controllers.py#L119-L163)
+
+---
+
+## Estado Actual en Producción
+
+**Versión Desplegada:** 2.3.4
+**Fecha de Despliegue:** 2025-11-13
+**Estado:** ✅ Operativo
+
+### Logs de Producción (Verificados)
+
+```json
+{
+  "totalLogs": 18,
+  "logs": [
+    "INFO: Sincronizando entidad de tipo: producto",
+    "DEBUG: Mensaje plano detectado - 'Producto' contiene valor simple",
+    "INFO: Procesando mensaje de tipo producto",
+    "INFO: Creando nuevo product.template",
+    "INFO: product.template creado con ID: 3",
+    "DEBUG: Saltando sincronización para 1 nuevos registros (contexto skip_sync)"
+  ]
+}
+```
+
+### Verificación de Funcionalidad
+
+✅ **Nesto → Odoo:**
+- Detección correcta por campo "Tabla": "Productos"
+- Estructura plana manejada correctamente
+- Producto creado con ID 3
+- Campos mapeados: default_code='15191', volume=500
+
+✅ **Anti-bucle:**
+- `skip_sync=True` funcionando
+- No se publica el registro recién creado de vuelta a Nesto
+
+✅ **Sincronización Bidireccional:**
+- Configurada y lista para Odoo → Nesto
+- Pendiente de testing cuando se modifique un producto desde Odoo UI
+
 ## Referencias
 
 - Arquitectura general: [ARQUITECTURA_EXTENSIBLE.md](ARQUITECTURA_EXTENSIBLE.md)
