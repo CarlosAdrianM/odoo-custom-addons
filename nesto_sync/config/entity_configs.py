@@ -283,10 +283,14 @@ ENTITY_CONFIGS = {
                 'transformer': 'familia',
                 'odoo_fields': ['familia_id']
             },
-            'UrlImagen': {
-                'transformer': 'url_to_image',
-                'odoo_fields': ['image_1920']
-            },
+
+            # UrlImagen: Pendiente de implementar correctamente
+            # Problema: La descarga funciona pero necesita más testing
+            # TODO: Revisar y activar cuando sea necesario
+            # 'UrlImagen': {
+            #     'transformer': 'url_to_image',
+            #     'odoo_fields': ['image_1920']
+            # },
 
             # UnidadMedida necesitará un transformer para mapear a uom_id
             # Por ahora lo dejamos comentado para la fase 2
