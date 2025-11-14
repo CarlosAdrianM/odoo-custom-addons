@@ -1,9 +1,15 @@
 {
     'name': 'Nesto Sync',
-    'version': '2.4.0',  # 2.4.0: Enriquecimiento de sincronización de productos
+    'version': '2.4.1',  # 2.4.1: Fix jerarquía Grupo > Subgrupo
     'summary': 'Sincronización bidireccional de tablas entre Nesto y Odoo via Google Pub/Sub',
     'description': '''
         Módulo de sincronización bidireccional entre Nesto y Odoo
+
+        Versión 2.4.1 (2025-11-14):
+        - FIX: Jerarquía correcta Grupo > Subgrupo (dependiente)
+        - Grupos ahora son categorías raíz (sin padre)
+        - Subgrupos se crean bajo su Grupo correspondiente
+        - Ejemplo: ACC > Desechables, Cosméticos > Aceites
 
         Versión 2.4.0 (2025-11-14):
         - Productos: Mapeo de Estado → active (≥0 activo, <0 inactivo)

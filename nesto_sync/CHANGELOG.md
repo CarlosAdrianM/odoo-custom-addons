@@ -2,6 +2,31 @@
 
 Todos los cambios notables en este proyecto están documentados en este archivo.
 
+## [2.4.1] - 2025-11-14 🔧 FIX CRÍTICO
+
+### 🐛 Fixed - Jerarquía de Categorías
+- **Grupo > Subgrupo ahora es jerárquico (dependiente)**
+  - Antes: Grupos y Subgrupos eran independientes
+  - Problema: "Desechables" se creaba bajo "Subgrupos" genérico
+  - Ahora: Subgrupo se crea bajo su Grupo correspondiente
+  - Ejemplos:
+    - ✅ ACC > Desechables
+    - ✅ Cosméticos > Aceites
+    - ✅ Aparatos > IPL
+
+### 🔧 Technical Changes
+- `GrupoTransformer`: `parent_category_name = None` (categorías raíz)
+- `SubgrupoTransformer`: Usa `nesto_data['Grupo']` como nombre de padre
+- `ProductCategoryTransformer`: Búsqueda correcta para categorías raíz con `parent_id = False`
+- `GenericProcessor`: Añadido `context['nesto_data']` para acceso desde transformers
+
+### 🧪 Testing
+- ✅ Cosméticos (raíz) > Aceites (hijo)
+- ✅ ACC (raíz) > Desechables (hijo)
+- ✅ Familias/Marcas (raíz) > Eva Visnú (hijo)
+
+---
+
 ## [2.4.0] - 2025-11-14 🆕 LISTO PARA PRODUCCIÓN
 
 ### ✨ Added - Enriquecimiento de Productos
