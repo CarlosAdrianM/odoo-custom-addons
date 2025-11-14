@@ -336,6 +336,9 @@ class ProductCategoryTransformer:
         domain = [('name', '=', value)]
         if parent_id:
             domain.append(('parent_id', '=', parent_id))
+        else:
+            # Si no hay padre, buscar solo categorías de nivel raíz
+            domain.append(('parent_id', '=', False))
 
         category = env['product.category'].sudo().search(domain, limit=1)
 
@@ -354,16 +357,31 @@ class ProductCategoryTransformer:
 
 @FieldTransformerRegistry.register('grupo')
 class GrupoTransformer:
-    """Transformer específico para campo Grupo"""
+    """
+    Transformer específico para campo Grupo
+
+    Los Grupos son categorías de nivel raíz (sin padre).
+    Bajo cada Grupo se crean los Subgrupos como hijos.
+    Ejemplo: ACC > Desechables, Cosméticos > Cremas Faciales
+    """
 
     def transform(self, value, context):
-        """Busca o crea categoría de Grupo bajo 'Grupos'"""
+        """
+        Busca o crea categoría de Grupo a nivel raíz (sin padre)
+
+        Args:
+            value: Nombre del grupo (ej: "ACC", "Cosméticos", "Aparatos")
+            context: Dict con contexto
+
+        Returns:
+            Dict con grupo_id
+        """
         if not value:
             return {'grupo_id': None}
 
         context_with_config = {
             **context,
-            'parent_category_name': 'Grupos',
+            'parent_category_name': None,  # Sin padre - nivel raíz
             'field_name': 'Grupo',
             'target_field': 'grupo_id'
         }
@@ -374,16 +392,45 @@ class GrupoTransformer:
 
 @FieldTransformerRegistry.register('subgrupo')
 class SubgrupoTransformer:
-    """Transformer específico para campo Subgrupo"""
+    """
+    Transformer específico para campo Subgrupo
+
+    IMPORTANTE: El Subgrupo es dependiente del Grupo.
+    Crea la categoría bajo el Grupo como padre, no bajo "Subgrupos".
+    Ejemplo: ACC > Desechables, Cosméticos > Cremas Faciales
+    """
 
     def transform(self, value, context):
-        """Busca o crea categoría de Subgrupo bajo 'Subgrupos'"""
+        """
+        Busca o crea categoría de Subgrupo bajo el Grupo correspondiente
+
+        Args:
+            value: Nombre del subgrupo (ej: "Desechables", "Cremas Faciales")
+            context: Debe contener 'nesto_data' con el campo 'Grupo'
+
+        Returns:
+            Dict con subgrupo_id
+        """
         if not value:
             return {'subgrupo_id': None}
 
+        # Obtener el Grupo desde el mensaje de Nesto
+        nesto_data = context.get('nesto_data', {})
+        grupo_nombre = nesto_data.get('Grupo')
+
+        if not grupo_nombre:
+            # Si no hay Grupo, crear bajo "Subgrupos" genérico (fallback)
+            import logging
+            _logger = logging.getLogger(__name__)
+            _logger.warning(f"Subgrupo '{value}' sin Grupo asociado. Usando padre genérico 'Subgrupos'.")
+            parent_category_name = 'Subgrupos'
+        else:
+            # Usar el Grupo como padre del Subgrupo
+            parent_category_name = grupo_nombre
+
         context_with_config = {
             **context,
-            'parent_category_name': 'Subgrupos',
+            'parent_category_name': parent_category_name,
             'field_name': 'Subgrupo',
             'target_field': 'subgrupo_id'
         }

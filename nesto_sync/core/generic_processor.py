@@ -87,6 +87,7 @@ class GenericEntityProcessor:
             'env': self.env,
             'country_manager': self.country_manager,
             'message': message,
+            'nesto_data': message,  # Añadido para acceso en transformers (ej: SubgrupoTransformer)
             'is_parent': is_parent,
             'child_data': child_data,
             'entity_config': self.config
