@@ -2,6 +2,74 @@
 
 Todos los cambios notables en este proyecto están documentados en este archivo.
 
+## [2.4.0] - 2025-11-14 🆕 LISTO PARA PRODUCCIÓN
+
+### ✨ Added - Enriquecimiento de Productos
+- **Mapeo de Estado a active**
+  - `Estado >= 0` → `active = true` (producto activo)
+  - `Estado < 0` → `active = false` (producto inactivo)
+  - Usa transformer existente `estado_to_active`
+
+- **Campos de categorización**
+  - `Grupo` → `grupo_id` (Many2one a product.category)
+  - `Subgrupo` → `subgrupo_id` (Many2one a product.category)
+  - `Familia` → `familia_id` (Many2one a product.category)
+  - Creación automática de categorías bajo padres específicos:
+    - "Grupos" → Cosméticos, Aparatos, Accesorios
+    - "Subgrupos" → Cremas Faciales, IPL, Depilación, etc.
+    - "Familias/Marcas" → Eva Visnú, L'Oréal, etc.
+
+- **Descarga automática de imágenes**
+  - `UrlImagen` → `image_1920` (campo binario)
+  - Descarga desde URL con timeout 10s
+  - Validación con Pillow (PIL)
+  - Conversión a base64
+  - Manejo robusto de errores (timeout, 404, formato inválido)
+  - Genera automáticamente 5 resoluciones
+
+### 🔧 New Transformers
+- `grupo` - Busca/crea categoría de Grupo bajo "Grupos"
+- `subgrupo` - Busca/crea categoría de Subgrupo bajo "Subgrupos"
+- `familia` - Busca/crea categoría de Familia/Marca bajo "Familias/Marcas"
+- `url_to_image` - Descarga y procesa imágenes desde URL
+- `product_category` - Transformer genérico para categorías (base de los anteriores)
+
+### 📦 Model Changes
+- Añadidos campos en `product.template`:
+  - `grupo_id` (Many2one a product.category)
+  - `subgrupo_id` (Many2one a product.category)
+  - `familia_id` (Many2one a product.category)
+  - Todos con `ondelete='restrict'` para prevenir borrados accidentales
+
+### 🔄 OdooPublisher
+- Campo `Usuario` ahora usa formato `ODOO\{login}`
+- Ejemplos: `ODOO\admin`, `ODOO\carlosadrian`
+- Mantiene consistencia con formato Nesto (`NUEVAVISION\Carlos`)
+
+### 🔐 Security
+- Todos los transformers usan `.sudo()` para compatibilidad con endpoint público
+- Sin problemas de permisos en producción
+
+### 📋 Dependencies
+- Pillow (PIL) - Para validación de imágenes
+- requests - Para descarga de imágenes
+- Ambas ya instaladas en entorno virtual
+
+### 🧪 Testing
+- ✅ Prueba completa con producto TEST001
+- ✅ Creación de 6 categorías automáticas
+- ✅ Descarga de imagen (8684 bytes)
+- ✅ Todos los campos mapeados correctamente
+- ✅ Sin errores de permisos
+
+### 📄 Documentation
+- Añadido `DESPLIEGUE_V2.4.0.md` con instrucciones completas
+- Checklist de despliegue en producción
+- Tests post-despliegue
+- Guía de rollback
+
+---
+
 ## [2.3.4] - 2025-11-13 ✅ EN PRODUCCIÓN
 
 ### 🔴 CRÍTICO - Fixed
