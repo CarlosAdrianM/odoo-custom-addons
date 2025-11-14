@@ -148,7 +148,8 @@ class OdooPublisher:
             "Direccion": "...",
             "PersonasContacto": [...],  // ✅ Array de children directamente
             "Tabla": "Clientes",
-            "Source": "Odoo"
+            "Source": "Odoo",
+            "Usuario": "ODOO\\usuario"
         }
 
         Args:
@@ -159,13 +160,17 @@ class OdooPublisher:
             dict: Mensaje en formato plano compatible con subscriber
         """
         # El mensaje ya está construido correctamente por _build_message_from_odoo
-        # Solo necesitamos añadir metadatos Tabla y Source
+        # Solo necesitamos añadir metadatos Tabla, Source y Usuario
 
         message = data.copy()
 
         # Añadir metadatos
         message["Tabla"] = self.config.get('nesto_table', 'Clientes')
         message["Source"] = "Odoo"
+
+        # Añadir Usuario en formato ODOO\login
+        user_login = self.env.user.login if self.env.user else 'unknown'
+        message["Usuario"] = f"ODOO\\{user_login}"
 
         return message
 

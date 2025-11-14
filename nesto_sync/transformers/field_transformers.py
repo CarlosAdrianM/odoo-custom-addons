@@ -286,3 +286,216 @@ class FicticioToDetailedTypeTransformer:
             return {'detailed_type': 'service'}
         else:
             return {'detailed_type': 'consu'}
+
+
+@FieldTransformerRegistry.register('product_category')
+class ProductCategoryTransformer:
+    """
+    Transforma nombre de categoría a product.category
+    Busca o crea la categoría bajo un padre específico
+    """
+
+    def transform(self, value, context):
+        """
+        Busca o crea una categoría de producto
+
+        Args:
+            value: Nombre de la categoría (ej: "Cosméticos", "Cremas", "Eva Visnú")
+            context: Dict con:
+                - env: Environment de Odoo
+                - parent_category_name: Nombre de la categoría padre (opcional)
+                - field_name: Nombre del campo para logs
+
+        Returns:
+            Dict con category_id
+        """
+        if not value:
+            return {context.get('target_field', 'categ_id'): None}
+
+        env = context.get('env')
+        if not env:
+            raise ValueError("Environment no disponible en contexto")
+
+        # Obtener nombre de categoría padre si existe
+        parent_name = context.get('parent_category_name')
+        field_name = context.get('field_name', 'categoría')
+        target_field = context.get('target_field', 'categ_id')
+
+        # Buscar o crear categoría padre si se especificó
+        parent_id = None
+        if parent_name:
+            parent = env['product.category'].sudo().search([('name', '=', parent_name)], limit=1)
+            if not parent:
+                parent = env['product.category'].sudo().create({
+                    'name': parent_name,
+                    'parent_id': None
+                })
+            parent_id = parent.id
+
+        # Buscar categoría existente
+        domain = [('name', '=', value)]
+        if parent_id:
+            domain.append(('parent_id', '=', parent_id))
+
+        category = env['product.category'].sudo().search(domain, limit=1)
+
+        # Crear si no existe
+        if not category:
+            category = env['product.category'].sudo().create({
+                'name': value,
+                'parent_id': parent_id
+            })
+            import logging
+            _logger = logging.getLogger(__name__)
+            _logger.info(f"Categoría creada: {value} (parent: {parent_name or 'ninguno'}) - ID: {category.id}")
+
+        return {target_field: category.id}
+
+
+@FieldTransformerRegistry.register('grupo')
+class GrupoTransformer:
+    """Transformer específico para campo Grupo"""
+
+    def transform(self, value, context):
+        """Busca o crea categoría de Grupo bajo 'Grupos'"""
+        if not value:
+            return {'grupo_id': None}
+
+        context_with_config = {
+            **context,
+            'parent_category_name': 'Grupos',
+            'field_name': 'Grupo',
+            'target_field': 'grupo_id'
+        }
+
+        transformer = ProductCategoryTransformer()
+        return transformer.transform(value, context_with_config)
+
+
+@FieldTransformerRegistry.register('subgrupo')
+class SubgrupoTransformer:
+    """Transformer específico para campo Subgrupo"""
+
+    def transform(self, value, context):
+        """Busca o crea categoría de Subgrupo bajo 'Subgrupos'"""
+        if not value:
+            return {'subgrupo_id': None}
+
+        context_with_config = {
+            **context,
+            'parent_category_name': 'Subgrupos',
+            'field_name': 'Subgrupo',
+            'target_field': 'subgrupo_id'
+        }
+
+        transformer = ProductCategoryTransformer()
+        return transformer.transform(value, context_with_config)
+
+
+@FieldTransformerRegistry.register('familia')
+class FamiliaTransformer:
+    """Transformer específico para campo Familia (Marca)"""
+
+    def transform(self, value, context):
+        """Busca o crea categoría de Familia bajo 'Familias/Marcas'"""
+        if not value:
+            return {'familia_id': None}
+
+        context_with_config = {
+            **context,
+            'parent_category_name': 'Familias/Marcas',
+            'field_name': 'Familia',
+            'target_field': 'familia_id'
+        }
+
+        transformer = ProductCategoryTransformer()
+        return transformer.transform(value, context_with_config)
+
+
+@FieldTransformerRegistry.register('url_to_image')
+class UrlToImageTransformer:
+    """
+    Transforma URL de imagen a imagen en base64 para Odoo
+    Descarga la imagen desde la URL y la convierte a base64
+    """
+
+    def transform(self, value, context):
+        """
+        Descarga imagen desde URL y la convierte a base64
+
+        Args:
+            value: URL de la imagen
+            context: Dict con contexto
+
+        Returns:
+            Dict con image_1920 en base64 o None si falla
+        """
+        import logging
+        import requests
+        import base64
+        from io import BytesIO
+        from PIL import Image
+
+        _logger = logging.getLogger(__name__)
+
+        if not value:
+            return {'image_1920': None}
+
+        # Limpiar URL (a veces viene con espacios o caracteres raros)
+        url = str(value).strip()
+
+        # Si la URL es inválida o placeholder, retornar None
+        if not url or url in ['0', 'N/A', 'null', '']:
+            return {'image_1920': None}
+
+        # Validar que sea una URL válida
+        if not url.startswith(('http://', 'https://')):
+            _logger.warning(f"URL de imagen inválida (no HTTP/HTTPS): {url}")
+            return {'image_1920': None}
+
+        try:
+            # Descargar imagen con timeout
+            _logger.info(f"Descargando imagen desde: {url}")
+            response = requests.get(url, timeout=10, headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            })
+            response.raise_for_status()
+
+            # Verificar que sea una imagen
+            content_type = response.headers.get('Content-Type', '')
+            if not content_type.startswith('image/'):
+                _logger.warning(f"URL no devuelve una imagen (Content-Type: {content_type}): {url}")
+                return {'image_1920': None}
+
+            # Leer la imagen y convertirla
+            image_data = response.content
+
+            # Validar que sea una imagen válida usando PIL
+            try:
+                img = Image.open(BytesIO(image_data))
+                img.verify()  # Verificar integridad
+            except Exception as e:
+                _logger.warning(f"Imagen corrupta o formato inválido: {url} - Error: {e}")
+                return {'image_1920': None}
+
+            # Convertir a base64
+            image_base64 = base64.b64encode(image_data).decode('utf-8')
+
+            _logger.info(f"Imagen descargada correctamente: {url} ({len(image_data)} bytes)")
+            return {'image_1920': image_base64}
+
+        except requests.exceptions.Timeout:
+            _logger.warning(f"Timeout al descargar imagen: {url}")
+            return {'image_1920': None}
+
+        except requests.exceptions.HTTPError as e:
+            _logger.warning(f"Error HTTP al descargar imagen ({e.response.status_code}): {url}")
+            return {'image_1920': None}
+
+        except requests.exceptions.RequestException as e:
+            _logger.warning(f"Error al descargar imagen: {url} - Error: {e}")
+            return {'image_1920': None}
+
+        except Exception as e:
+            _logger.error(f"Error inesperado al procesar imagen: {url} - Error: {e}")
+            return {'image_1920': None}

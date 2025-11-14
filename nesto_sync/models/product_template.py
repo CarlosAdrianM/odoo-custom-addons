@@ -14,6 +14,28 @@ class ProductTemplate(models.Model):
         help="Referencia externa del producto en Nesto"
     )
 
+    # Campos de categorización adicionales desde Nesto
+    grupo_id = fields.Many2one(
+        'product.category',
+        string="Grupo",
+        help="Grupo principal del producto (Cosméticos, Aparatos, Accesorios)",
+        ondelete='restrict'
+    )
+
+    subgrupo_id = fields.Many2one(
+        'product.category',
+        string="Subgrupo",
+        help="Subgrupo del producto dentro del grupo (Cremas, IPL, Depilación, etc.)",
+        ondelete='restrict'
+    )
+
+    familia_id = fields.Many2one(
+        'product.category',
+        string="Familia/Marca",
+        help="Marca o familia del producto (Eva Visnú, L'Oréal, etc.)",
+        ondelete='restrict'
+    )
+
     @api.constrains('producto_externo')
     def _check_unique_producto_externo(self):
         """Validar que producto_externo sea único si está definido"""

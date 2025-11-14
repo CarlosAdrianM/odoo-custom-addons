@@ -1,9 +1,18 @@
 {
     'name': 'Nesto Sync',
-    'version': '2.3.4',  # 2.3.4: CRÍTICO - Manejar estructuras con/sin wrapper
+    'version': '2.4.0',  # 2.4.0: Enriquecimiento de sincronización de productos
     'summary': 'Sincronización bidireccional de tablas entre Nesto y Odoo via Google Pub/Sub',
     'description': '''
         Módulo de sincronización bidireccional entre Nesto y Odoo
+
+        Versión 2.4.0 (2025-11-14):
+        - Productos: Mapeo de Estado → active (≥0 activo, <0 inactivo)
+        - Productos: Campos de categorización (Grupo, Subgrupo, Familia → product.category)
+        - Productos: Descarga automática de imágenes desde UrlImagen → image_1920
+        - Transformers: grupo, subgrupo, familia (buscar/crear categorías automáticamente)
+        - Transformer: url_to_image (descarga, validación PIL, conversión base64)
+        - OdooPublisher: Campo Usuario con formato ODOO\login
+        - Modelo: Nuevos campos grupo_id, subgrupo_id, familia_id en product.template
 
         Versión 2.3.4 (2025-11-13):
         - CRÍTICO: Añadido _extract_entity_data() para manejar diferentes estructuras

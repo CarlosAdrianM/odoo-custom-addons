@@ -263,9 +263,29 @@ ENTITY_CONFIGS = {
             },
 
             # --- Campos con transformación ---
+            'Estado': {
+                'transformer': 'estado_to_active',
+                'odoo_fields': ['active']
+            },
             'Ficticio': {
                 'transformer': 'ficticio_to_detailed_type',
                 'odoo_fields': ['detailed_type']
+            },
+            'Grupo': {
+                'transformer': 'grupo',
+                'odoo_fields': ['grupo_id']
+            },
+            'Subgrupo': {
+                'transformer': 'subgrupo',
+                'odoo_fields': ['subgrupo_id']
+            },
+            'Familia': {
+                'transformer': 'familia',
+                'odoo_fields': ['familia_id']
+            },
+            'UrlImagen': {
+                'transformer': 'url_to_image',
+                'odoo_fields': ['image_1920']
             },
 
             # UnidadMedida necesitará un transformer para mapear a uom_id
