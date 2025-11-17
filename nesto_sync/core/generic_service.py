@@ -13,6 +13,44 @@ from odoo import models
 _logger = logging.getLogger(__name__)
 
 
+def _sanitize_value_for_logging(value):
+    """
+    Sanitiza un valor individual para logging, reemplazando datos binarios grandes con resúmenes
+
+    Args:
+        value: Valor a sanitizar (puede ser str, bytes, o cualquier otro tipo)
+
+    Returns:
+        Valor sanitizado apto para logging
+    """
+    # Detectar si es un campo de imagen (base64 o bytes)
+    if isinstance(value, bytes):
+        return f"<binary_data: {len(value)} bytes>"
+
+    if isinstance(value, str):
+        # Detectar base64 de imágenes o string representation de bytes
+        # Típicamente empiezan con caracteres específicos o "b'..."
+        is_image_data = (
+            value.startswith('iVBOR') or  # PNG base64
+            value.startswith('/9j/') or    # JPEG base64
+            value.startswith('R0lGOD') or  # GIF base64
+            value.startswith("b'iVBOR") or  # String repr of PNG bytes
+            value.startswith("b'/9j/") or   # String repr of JPEG bytes
+            value.startswith('b"iVBOR') or
+            value.startswith('b"/9j/')
+        )
+
+        # Si parece imagen y es suficientemente largo, sanitizar
+        if is_image_data and len(value) > 100:
+            return f"<image_data: {len(value)} bytes>"
+
+        # Truncar strings muy largos (no imagen)
+        if len(value) > 200:
+            return value[:200] + "..."
+
+    return value
+
+
 class GenericEntityService:
     """Service genérico para cualquier entidad"""
 
@@ -180,7 +218,10 @@ class GenericEntityService:
 
             # Comparar según tipo de campo
             if self._values_are_different(field, current_value, new_value, record):
-                _logger.info(f"Cambio en {field}: '{current_value}' -> '{new_value}'")
+                # Sanitizar valores para logging (evitar base64 de imágenes en logs)
+                sanitized_current = _sanitize_value_for_logging(current_value)
+                sanitized_new = _sanitize_value_for_logging(new_value)
+                _logger.info(f"Cambio en {field}: '{sanitized_current}' -> '{sanitized_new}'")
                 return True
 
         _logger.debug(f"No hay cambios en {self.config['odoo_model']} (ID: {record.id})")
