@@ -54,6 +54,12 @@
                         <field name="producto_externo"/>
                     </group>
                 </xpath>
+
+                <!-- Añadir volume_display junto al campo volume del módulo product_dimension -->
+                <!-- Si existe el campo volume, añadir volume_display después -->
+                <xpath expr="//field[@name='volume']" position="after">
+                    <field name="volume_display" readonly="1"/>
+                </xpath>
             </field>
         </record>
 
@@ -68,6 +74,7 @@
                     <field name="grupo_id" optional="hide"/>
                     <field name="subgrupo_id" optional="hide"/>
                     <field name="familia_id" optional="hide"/>
+                    <field name="volume_display" string="Volumen" optional="show"/>
                 </xpath>
             </field>
         </record>
