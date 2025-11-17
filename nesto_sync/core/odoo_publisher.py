@@ -168,7 +168,7 @@ class OdooPublisher:
         message["Tabla"] = self.config.get('nesto_table', 'Clientes')
         message["Source"] = "Odoo"
 
-        # Añadir Usuario en formato ODOO\login
+        # Añadir Usuario en formato ODOO\login (barra invertida + login)
         user_login = self.env.user.login if self.env.user else 'unknown'
         message["Usuario"] = f"ODOO\\{user_login}"
 

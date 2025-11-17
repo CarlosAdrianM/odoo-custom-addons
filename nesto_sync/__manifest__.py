@@ -28,7 +28,7 @@
         - Productos: Descarga automática de imágenes desde UrlImagen → image_1920
         - Transformers: grupo, subgrupo, familia (buscar/crear categorías automáticamente)
         - Transformer: url_to_image (descarga, validación PIL, conversión base64)
-        - OdooPublisher: Campo Usuario con formato ODOO\login
+        - OdooPublisher: Campo Usuario con formato ODOO\\login
         - Modelo: Nuevos campos grupo_id, subgrupo_id, familia_id en product.template
 
         Versión 2.3.4 (2025-11-13):
