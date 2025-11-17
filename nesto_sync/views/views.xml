@@ -50,15 +50,13 @@
                         <field name="subgrupo_id"/>
                         <field name="familia_id"/>
                     </group>
+                    <group string="Nesto - Dimensiones" name="nesto_dimensiones">
+                        <field name="volume" invisible="1"/>
+                        <field name="volume_display" readonly="1"/>
+                    </group>
                     <group string="Nesto - Sincronización" name="nesto_sync">
                         <field name="producto_externo"/>
                     </group>
-                </xpath>
-
-                <!-- Añadir volume_display junto al campo volume del módulo product_dimension -->
-                <!-- Si existe el campo volume, añadir volume_display después -->
-                <xpath expr="//field[@name='volume']" position="after">
-                    <field name="volume_display" readonly="1"/>
                 </xpath>
             </field>
         </record>
