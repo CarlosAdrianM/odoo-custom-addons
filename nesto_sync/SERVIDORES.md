@@ -43,9 +43,11 @@ pwd
 **Usuario SSH**: `root`
 **Comando de conexión**: `ssh root@217.61.212.170` o `ssh root@nuevavisionodoo`
 **Path del módulo**: `/opt/odoo/custom_addons/nesto_sync` (⚠️ **DIFERENTE AL DESARROLLO**)
-**Servicio Odoo**: `odoo.service` o `odoo16.service` (verificar con `systemctl list-units | grep odoo`)
-**Base de datos**: (verificar con el usuario)
+**Archivo de configuración**: `/etc/odoo/odoo.conf`
+**Servicio Odoo**: `odoo.service`
+**Base de datos**: `odoo_nv`
 **Instalación Odoo**: Sistema (no virtualenv), ubicado en `/usr/bin/odoo`
+**Logs**: `/var/log/odoo/odoo-server.log`
 
 **Propósito**:
 - Servidor de producción donde corren los clientes reales
@@ -127,8 +129,8 @@ find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 python3 -c "import google.cloud.pubsub_v1; print('OK')"
 # Si da error → pip3 install --break-system-packages google-cloud-pubsub
 
-# 7. Actualizar módulo (verificar nombre de la base de datos primero)
-python3 /usr/bin/odoo -c /opt/odoo/odoo.conf -d [NOMBRE_BD] -u nesto_sync --stop-after-init
+# 7. Actualizar módulo (base de datos: odoo_nv)
+/usr/bin/odoo -c /etc/odoo/odoo.conf -d odoo_nv -u nesto_sync --stop-after-init
 
 # 8. Verificar servicio Odoo
 systemctl list-units | grep odoo  # Ver el nombre exacto del servicio
@@ -283,9 +285,10 @@ Environment="GOOGLE_APPLICATION_CREDENTIALS=/opt/odoo16/secrets/google-cloud-cre
 - **SSH**: `ssh root@217.61.212.170` o `ssh root@nuevavisionodoo`
 - **URL**: `https://sede.nuevavision.es`
 - **Path**: `/opt/odoo/custom_addons/nesto_sync`
-- **Servicio**: `sudo systemctl status odoo` (verificar nombre exacto)
-- **Logs**: `sudo journalctl -u odoo -f`
-- **Base de datos**: (consultar con usuario)
+- **Config**: `/etc/odoo/odoo.conf`
+- **Servicio**: `sudo systemctl status odoo`
+- **Logs**: `/var/log/odoo/odoo-server.log` o `sudo journalctl -u odoo -f`
+- **Base de datos**: `odoo_nv`
 
 ---
 
