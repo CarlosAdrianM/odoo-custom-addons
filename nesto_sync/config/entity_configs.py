@@ -253,9 +253,12 @@ ENTITY_CONFIGS = {
                 'required': False,
                 'default': 0.0
             },
+            # Tamaño y UnidadMedida se procesan juntos con un transformer especial
+            # El transformer detecta el tipo (peso/volumen/longitud) y mapea al campo correcto
+            # dimensional_uom_id se omite porque es un campo related que maneja product_dimension
             'Tamanno': {
-                'odoo_field': 'volume',
-                'required': False
+                'transformer': 'unidad_medida_y_tamanno',
+                'odoo_fields': ['weight', 'volume', 'product_length', 'uom_id', 'uom_po_id']
             },
             'CodigoBarras': {
                 'odoo_field': 'barcode',
@@ -284,13 +287,12 @@ ENTITY_CONFIGS = {
                 'odoo_fields': ['familia_id']
             },
 
-            # UrlImagen: Pendiente de implementar correctamente
-            # Problema: La descarga funciona pero necesita más testing
-            # TODO: Revisar y activar cuando sea necesario
-            # 'UrlImagen': {
-            #     'transformer': 'url_to_image',
-            #     'odoo_fields': ['image_1920']
-            # },
+            # UrlImagen: Descargar imagen del producto
+            # Optimizado: Solo descarga si cambió la URL (comparando con url_imagen_actual)
+            'UrlImagen': {
+                'transformer': 'url_to_image',
+                'odoo_fields': ['image_1920', 'url_imagen_actual']
+            },
 
             # UnidadMedida necesitará un transformer para mapear a uom_id
             # Por ahora lo dejamos comentado para la fase 2

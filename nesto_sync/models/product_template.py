@@ -36,6 +36,12 @@ class ProductTemplate(models.Model):
         ondelete='restrict'
     )
 
+    # Campo para cachear la URL de la imagen (para evitar descargas innecesarias)
+    url_imagen_actual = fields.Char(
+        string="URL Imagen Actual",
+        help="URL de la imagen actualmente cargada. Se usa para detectar si cambió la imagen."
+    )
+
     @api.constrains('producto_externo')
     def _check_unique_producto_externo(self):
         """Validar que producto_externo sea único si está definido"""

@@ -1,9 +1,20 @@
 {
     'name': 'Nesto Sync',
-    'version': '2.4.1',  # 2.4.1: Fix jerarquía Grupo > Subgrupo
+    'version': '2.5.0',  # 2.5.0: UnidadMedida, Dimensiones y UrlImagen optimizada
     'summary': 'Sincronización bidireccional de tablas entre Nesto y Odoo via Google Pub/Sub',
     'description': '''
         Módulo de sincronización bidireccional entre Nesto y Odoo
+
+        Versión 2.5.0 (2025-11-17):
+        - Productos: UnidadMedida + Tamaño → weight/volume/product_length (según tipo)
+        - Productos: Conversiones automáticas a unidades base (kg, m³, m)
+        - Productos: Mapeo UnidadMedida → uom_id (búsqueda en product.uom)
+        - Productos: Soporte de dimensiones (product_length) via módulo OCA product_dimension
+        - Productos: UrlImagen optimizada (solo descarga si cambió la URL)
+        - Productos: Campo url_imagen_actual para cachear URL y evitar descargas repetidas
+        - Productos: Vistas mejoradas con campos Grupo, Subgrupo, Familia visibles
+        - Transformer: unidad_medida_y_tamanno (detecta tipo: peso/volumen/longitud)
+        - Dependencia: Módulo product_dimension (OCA) para campos de dimensiones
 
         Versión 2.4.1 (2025-11-14):
         - FIX: Jerarquía correcta Grupo > Subgrupo (dependiente)

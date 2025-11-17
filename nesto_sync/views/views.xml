@@ -32,5 +32,66 @@
                 </xpath>
             </field>
         </record>
+
+        <!-- ====================================== -->
+        <!-- VISTAS DE PRODUCTOS (product.template) -->
+        <!-- ====================================== -->
+
+        <!-- Vista de formulario heredada para productos -->
+        <record id="view_product_template_form_inherited" model="ir.ui.view">
+            <field name="name">product.template.form.inherited.nesto</field>
+            <field name="model">product.template</field>
+            <field name="inherit_id" ref="product.product_template_only_form_view"/>
+            <field name="arch" type="xml">
+                <!-- Añadir campos de Nesto en la pestaña "General Information" -->
+                <xpath expr="//page[@name='general_information']//group[@name='group_general']" position="after">
+                    <group string="Nesto - Categorización" name="nesto_categorias">
+                        <field name="grupo_id"/>
+                        <field name="subgrupo_id"/>
+                        <field name="familia_id"/>
+                    </group>
+                    <group string="Nesto - Sincronización" name="nesto_sync">
+                        <field name="producto_externo"/>
+                    </group>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Vista de árbol/lista heredada para productos -->
+        <record id="view_product_template_tree_inherited" model="ir.ui.view">
+            <field name="name">product.template.tree.inherited.nesto</field>
+            <field name="model">product.template</field>
+            <field name="inherit_id" ref="product.product_template_tree_view"/>
+            <field name="arch" type="xml">
+                <!-- Añadir columnas de categorización -->
+                <xpath expr="//field[@name='default_code']" position="after">
+                    <field name="grupo_id" optional="hide"/>
+                    <field name="subgrupo_id" optional="hide"/>
+                    <field name="familia_id" optional="hide"/>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Vista de búsqueda heredada para productos -->
+        <record id="view_product_template_filter_inherited" model="ir.ui.view">
+            <field name="name">product.template.search.inherited.nesto</field>
+            <field name="model">product.template</field>
+            <field name="inherit_id" ref="product.product_template_search_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//search" position="inside">
+                    <!-- Añadir filtros de búsqueda -->
+                    <field name="producto_externo"/>
+                    <field name="grupo_id"/>
+                    <field name="subgrupo_id"/>
+                    <field name="familia_id"/>
+
+                    <!-- Añadir agrupación por categorías -->
+                    <filter string="Grupo" name="group_by_grupo" context="{'group_by': 'grupo_id'}"/>
+                    <filter string="Subgrupo" name="group_by_subgrupo" context="{'group_by': 'subgrupo_id'}"/>
+                    <filter string="Familia" name="group_by_familia" context="{'group_by': 'familia_id'}"/>
+                </xpath>
+            </field>
+        </record>
+
     </data>
 </odoo>

@@ -464,18 +464,20 @@ class UrlToImageTransformer:
     """
     Transforma URL de imagen a imagen en base64 para Odoo
     Descarga la imagen desde la URL y la convierte a base64
+
+    OPTIMIZACIÓN: Solo descarga si la URL cambió respecto a url_imagen_actual
     """
 
     def transform(self, value, context):
         """
-        Descarga imagen desde URL y la convierte a base64
+        Descarga imagen desde URL y la convierte a base64 (solo si cambió la URL)
 
         Args:
             value: URL de la imagen
-            context: Dict con contexto
+            context: Dict con contexto (debe incluir 'existing_record' si existe)
 
         Returns:
-            Dict con image_1920 en base64 o None si falla
+            Dict con image_1920 en base64 y url_imagen_actual
         """
         import logging
         import requests
@@ -486,19 +488,28 @@ class UrlToImageTransformer:
         _logger = logging.getLogger(__name__)
 
         if not value:
-            return {'image_1920': None}
+            return {'image_1920': None, 'url_imagen_actual': None}
 
         # Limpiar URL (a veces viene con espacios o caracteres raros)
         url = str(value).strip()
 
         # Si la URL es inválida o placeholder, retornar None
         if not url or url in ['0', 'N/A', 'null', '']:
-            return {'image_1920': None}
+            return {'image_1920': None, 'url_imagen_actual': None}
 
         # Validar que sea una URL válida
         if not url.startswith(('http://', 'https://')):
             _logger.warning(f"URL de imagen inválida (no HTTP/HTTPS): {url}")
-            return {'image_1920': None}
+            return {'image_1920': None, 'url_imagen_actual': None}
+
+        # OPTIMIZACIÓN: Verificar si la URL cambió
+        existing_record = context.get('existing_record')
+        if existing_record and hasattr(existing_record, 'url_imagen_actual'):
+            url_actual = existing_record.url_imagen_actual
+            if url_actual == url:
+                _logger.info(f"URL de imagen no cambió ({url}), no se descarga nuevamente")
+                # No retornar nada para que no se sobrescriba la imagen
+                return {}
 
         try:
             # Descargar imagen con timeout
@@ -512,7 +523,7 @@ class UrlToImageTransformer:
             content_type = response.headers.get('Content-Type', '')
             if not content_type.startswith('image/'):
                 _logger.warning(f"URL no devuelve una imagen (Content-Type: {content_type}): {url}")
-                return {'image_1920': None}
+                return {'url_imagen_actual': url}  # Guardar URL pero no imagen
 
             # Leer la imagen y convertirla
             image_data = response.content
@@ -523,26 +534,62 @@ class UrlToImageTransformer:
                 img.verify()  # Verificar integridad
             except Exception as e:
                 _logger.warning(f"Imagen corrupta o formato inválido: {url} - Error: {e}")
-                return {'image_1920': None}
+                return {'url_imagen_actual': url}  # Guardar URL pero no imagen
 
             # Convertir a base64
             image_base64 = base64.b64encode(image_data).decode('utf-8')
 
             _logger.info(f"Imagen descargada correctamente: {url} ({len(image_data)} bytes)")
-            return {'image_1920': image_base64}
+            return {
+                'image_1920': image_base64,
+                'url_imagen_actual': url  # Guardar la URL para futuras comparaciones
+            }
 
         except requests.exceptions.Timeout:
             _logger.warning(f"Timeout al descargar imagen: {url}")
-            return {'image_1920': None}
+            return {'url_imagen_actual': url}  # Guardar URL para reintentar después
 
         except requests.exceptions.HTTPError as e:
             _logger.warning(f"Error HTTP al descargar imagen ({e.response.status_code}): {url}")
-            return {'image_1920': None}
+            return {'url_imagen_actual': url}
 
         except requests.exceptions.RequestException as e:
             _logger.warning(f"Error al descargar imagen: {url} - Error: {e}")
-            return {'image_1920': None}
+            return {'url_imagen_actual': url}
 
         except Exception as e:
             _logger.error(f"Error inesperado al procesar imagen: {url} - Error: {e}")
-            return {'image_1920': None}
+            return {'url_imagen_actual': url}
+
+
+@FieldTransformerRegistry.register('unidad_medida_y_tamanno')
+class UnidadMedidaYTamannoTransformer:
+    """
+    Transformer que procesa UnidadMedida y Tamaño juntos
+
+    Detecta el tipo de unidad (peso, volumen, longitud) y mapea Tamaño
+    al campo correcto (weight, volume, product_length).
+
+    También busca la unidad de medida en product.uom y la asigna a uom_id.
+    """
+
+    def transform(self, value, context):
+        """
+        Transforma UnidadMedida y Tamaño a campos de Odoo
+
+        Args:
+            value: Valor de Tamaño (puede ser None, se obtiene de context)
+            context: Dict con 'env' y 'nesto_data'
+
+        Returns:
+            Dict con weight/volume/product_length, dimensional_uom_id, uom_id
+        """
+        from ..transformers.unidad_medida_transformer import transform_unidad_medida_y_tamanno
+
+        env = context.get('env')
+        nesto_data = context.get('nesto_data', {})
+
+        if not env:
+            raise ValueError("Environment no disponible en contexto")
+
+        return transform_unidad_medida_y_tamanno(env, nesto_data)
