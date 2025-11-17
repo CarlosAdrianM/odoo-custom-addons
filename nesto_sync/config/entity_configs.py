@@ -287,9 +287,9 @@ ENTITY_CONFIGS = {
                 'odoo_fields': ['familia_id']
             },
 
-            # UrlImagen: Descargar imagen del producto
+            # UrlFoto: Descargar imagen del producto
             # Optimizado: Solo descarga si cambió la URL (comparando con url_imagen_actual)
-            'UrlImagen': {
+            'UrlFoto': {
                 'transformer': 'url_to_image',
                 'odoo_fields': ['image_1920', 'url_imagen_actual']
             },
