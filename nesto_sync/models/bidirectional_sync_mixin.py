@@ -19,6 +19,40 @@ from ..core.odoo_publisher import OdooPublisher
 _logger = logging.getLogger(__name__)
 
 
+def _sanitize_vals_for_logging(vals):
+    """
+    Sanitiza un diccionario de valores para logging, reemplazando campos grandes con resúmenes
+
+    Args:
+        vals (dict): Diccionario con valores
+
+    Returns:
+        dict: Diccionario sanitizado apto para logging
+    """
+    if not isinstance(vals, dict):
+        return vals
+
+    sanitized = {}
+    # Campos que típicamente contienen datos binarios o grandes
+    binary_fields = ('image_1920', 'image_1024', 'image_512', 'image_256', 'image_128')
+
+    for key, value in vals.items():
+        if key in binary_fields and value:
+            # Si es una imagen, mostrar resumen con tamaño aproximado
+            if isinstance(value, (str, bytes)):
+                size_bytes = len(value) if isinstance(value, bytes) else len(value.encode('utf-8'))
+                sanitized[key] = f"<image_data: {size_bytes} bytes>"
+            else:
+                sanitized[key] = "<image_data>"
+        elif isinstance(value, str) and len(value) > 200:
+            # Truncar strings muy largos
+            sanitized[key] = value[:200] + "..."
+        else:
+            sanitized[key] = value
+
+    return sanitized
+
+
 class BidirectionalSyncMixin(models.AbstractModel):
     """
     Mixin abstracto para sincronización bidireccional
@@ -41,7 +75,7 @@ class BidirectionalSyncMixin(models.AbstractModel):
             return super(BidirectionalSyncMixin, self).write(vals)
 
         _logger.debug(
-            f"BidirectionalSyncMixin.write() llamado en {self._name} con vals: {vals}, "
+            f"BidirectionalSyncMixin.write() llamado en {self._name} con vals: {_sanitize_vals_for_logging(vals)}, "
             f"IDs: {self.ids}"
         )
 
