@@ -45,3 +45,7 @@ Thumbs.db
 secrets/
 .env
 .env.*
+
+# Test files (local development only)
+test_*.py
+test_*.sql
