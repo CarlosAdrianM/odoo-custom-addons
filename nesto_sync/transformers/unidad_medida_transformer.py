@@ -146,8 +146,18 @@ def transform_unidad_medida_y_tamanno(env, nesto_data):
         _logger.info(f"Tamanno {tamanno} {unidad_medida_str} → weight = {valor_convertido} kg")
 
     elif unit_type == 'volume':
+        # IMPORTANTE: Usar volume_ml en lugar de volume para evitar problemas de redondeo
+        # Convertir el valor de m³ a mililitros (1 m³ = 1,000,000 ml)
+        volume_ml = valor_convertido * 1000000
+
+        # Guardar en volume_ml (campo preciso)
+        result['volume_ml'] = volume_ml
+
+        # También guardar en volume para mantener compatibilidad con módulos que lo usen
+        # Pero este valor puede sufrir redondeo en la BD
         result['volume'] = valor_convertido
-        _logger.info(f"Tamanno {tamanno} {unidad_medida_str} → volume = {valor_convertido} m³")
+
+        _logger.info(f"Tamanno {tamanno} {unidad_medida_str} → volume_ml = {volume_ml} ml (volume = {valor_convertido} m³)")
 
     elif unit_type == 'length':
         result['product_length'] = valor_convertido

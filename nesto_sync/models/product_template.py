@@ -42,6 +42,14 @@ class ProductTemplate(models.Model):
         help="URL de la imagen actualmente cargada. Se usa para detectar si cambió la imagen."
     )
 
+    # Campo para almacenar el volumen en mililitros (evita problemas de redondeo)
+    # Este campo se usa como fuente de verdad para volúmenes pequeños
+    volume_ml = fields.Float(
+        string="Volumen (ml)",
+        digits=(16, 2),  # Precisión suficiente para almacenar decimales
+        help="Volumen en mililitros. Se usa para productos con volúmenes pequeños que el campo 'volume' (m³) no puede representar con precisión"
+    )
+
     # Campo calculado para mostrar volumen en unidades legibles (ml o l)
     volume_display = fields.Char(
         string="Volumen",
@@ -50,32 +58,48 @@ class ProductTemplate(models.Model):
         help="Volumen en mililitros (ml) o litros (l) para mejor legibilidad"
     )
 
-    @api.depends('volume')
+    @api.depends('volume', 'volume_ml')
     def _compute_volume_display(self):
         """
         Calcula la visualización del volumen en unidades legibles
 
-        Convierte de m³ a:
-        - ml si < 1 litro (0.001 m³)
-        - l si >= 1 litro
+        PRIORIDAD:
+        1. Si volume_ml tiene valor, usarlo (más preciso para volúmenes pequeños)
+        2. Si no, usar volume (m³)
 
         Ejemplos:
-        - 0.0001 m³ → "100 ml"
-        - 0.002 m³ → "2 l"
-        - 0.0025 m³ → "2.5 l"
-        - 0 m³ → "" (vacío)
+        - volume_ml = 50 → "50 ml"
+        - volume_ml = 1500 → "1.5 l"
+        - volume = 0.002 m³ → "2 l"
+        - Ambos en 0 → "" (vacío)
         """
         for product in self:
-            if not product.volume or product.volume == 0:
-                product.volume_display = ""
-            else:
+            # PRIORIDAD 1: Usar volume_ml si está definido
+            if product.volume_ml and product.volume_ml > 0:
+                volume_ml = product.volume_ml
+
+                if volume_ml < 1000:
+                    # Mostrar en mililitros
+                    if volume_ml == int(volume_ml):
+                        product.volume_display = f"{int(volume_ml)} ml"
+                    else:
+                        product.volume_display = f"{volume_ml:g} ml"
+                else:
+                    # Convertir a litros y mostrar
+                    volume_l = volume_ml / 1000
+                    if volume_l == int(volume_l):
+                        product.volume_display = f"{int(volume_l)} l"
+                    else:
+                        product.volume_display = f"{volume_l:g} l"
+
+            # PRIORIDAD 2: Usar volume (m³) si está definido
+            elif product.volume and product.volume > 0:
                 # Convertir m³ a litros (1 m³ = 1000 l)
                 volume_liters = product.volume * 1000
 
                 if volume_liters < 1:
                     # Mostrar en mililitros si es menos de 1 litro
                     volume_ml = volume_liters * 1000
-                    # Usar :g para eliminar ceros innecesarios (.00 → , .50 → .5)
                     if volume_ml == int(volume_ml):
                         product.volume_display = f"{int(volume_ml)} ml"
                     else:
@@ -86,6 +110,10 @@ class ProductTemplate(models.Model):
                         product.volume_display = f"{int(volume_liters)} l"
                     else:
                         product.volume_display = f"{volume_liters:g} l"
+
+            else:
+                # Sin volumen
+                product.volume_display = ""
 
     @api.constrains('producto_externo')
     def _check_unique_producto_externo(self):
