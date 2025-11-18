@@ -1,9 +1,23 @@
 {
     'name': 'Nesto Sync',
-    'version': '2.5.0',  # 2.5.0: UnidadMedida, Dimensiones y UrlImagen optimizada
+    'version': '2.6.0',  # 2.6.0: Transformers inversos completos y fix redondeo volumen
     'summary': 'Sincronización bidireccional de tablas entre Nesto y Odoo via Google Pub/Sub',
     'description': '''
         Módulo de sincronización bidireccional entre Nesto y Odoo
+
+        Versión 2.6.0 (2025-11-18):
+        - FIX CRÍTICO: Redondeo de volumen - nuevo campo volume_ml para precisión exacta
+        - Campo volume_ml (Float) almacena volumen en mililitros sin pérdida de precisión
+        - Campo volume (m³) se mantiene por compatibilidad pero puede sufrir redondeo
+        - volume_display ahora prioriza volume_ml sobre volume para cálculos
+        - Productos: Transformers inversos completos para sincronización Odoo → Nesto
+        - Reverse transformer: ficticio_to_detailed_type (detailed_type → Ficticio)
+        - Reverse transformer: grupo (grupo_id → nombre Grupo)
+        - Reverse transformer: subgrupo (subgrupo_id → nombre Subgrupo)
+        - Reverse transformer: familia (familia_id → nombre Familia)
+        - Reverse transformer: url_to_image (url_imagen_actual → UrlFoto)
+        - Reverse transformer: unidad_medida_y_tamanno (volume_ml/weight/length → Tamaño + UnidadMedida)
+        - Soporte multi-campo en transformers inversos (devolver dict con múltiples campos)
 
         Versión 2.5.0 (2025-11-17):
         - Productos: UnidadMedida + Tamaño → weight/volume/product_length (según tipo)
