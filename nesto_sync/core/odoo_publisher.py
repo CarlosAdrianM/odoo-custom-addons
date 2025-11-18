@@ -117,9 +117,21 @@ class OdooPublisher:
             # Aplicar transformer inverso si existe
             if 'reverse_transformer' in mapping:
                 transformer_name = mapping['reverse_transformer']
-                value = self._apply_reverse_transformer(
+                transformed_value = self._apply_reverse_transformer(
                     transformer_name, value, record, mapping
                 )
+
+                # Si el transformer devuelve un dict, es un transformer multi-campo
+                # Ejemplo: {'Tamanno': 50, 'UnidadMedida': 'ml'}
+                if isinstance(transformed_value, dict):
+                    # Añadir todos los campos del dict al mensaje
+                    for key, val in transformed_value.items():
+                        if val not in (None, False, '', 0):
+                            message[key] = val
+                    # Continuar con el siguiente campo
+                    continue
+                else:
+                    value = transformed_value
 
             # Solo añadir el campo si tiene valor real
             # Omitir: None, False, 0, string vacío
@@ -320,9 +332,129 @@ class OdooPublisher:
 
             return None
 
+        elif transformer_name == 'ficticio_to_detailed_type':
+            # Convertir detailed_type (odoo) a Ficticio (nesto)
+            # 'product' → Ficticio=0
+            # 'service' → Ficticio=1 (con Grupo=CUR)
+            # 'consu' → Ficticio=1
+            detailed_type = getattr(record, 'detailed_type', 'product')
+
+            if detailed_type == 'product':
+                return 0  # Almacenable
+            else:
+                return 1  # Ficticio (service o consumible)
+
+        elif transformer_name == 'grupo':
+            # Convertir grupo_id (Many2one a product.category) a nombre de Grupo
+            grupo = getattr(record, 'grupo_id', None)
+            if grupo and hasattr(grupo, 'name'):
+                return grupo.name
+            return None
+
+        elif transformer_name == 'subgrupo':
+            # Convertir subgrupo_id (Many2one a product.category) a nombre de Subgrupo
+            subgrupo = getattr(record, 'subgrupo_id', None)
+            if subgrupo and hasattr(subgrupo, 'name'):
+                return subgrupo.name
+            return None
+
+        elif transformer_name == 'familia':
+            # Convertir familia_id (Many2one a product.category) a nombre de Familia
+            familia = getattr(record, 'familia_id', None)
+            if familia and hasattr(familia, 'name'):
+                return familia.name
+            return None
+
+        elif transformer_name == 'url_to_image':
+            # Convertir image_1920 a URL
+            # Solo devolver la URL guardada (url_imagen_actual)
+            # No intentamos reconstruir la imagen desde base64
+            url = getattr(record, 'url_imagen_actual', None)
+            return url if url else None
+
+        elif transformer_name == 'unidad_medida_y_tamanno':
+            # Convertir weight/volume_ml/volume/product_length a Tamaño y UnidadMedida
+            # Este transformer debe reconstruir el valor original desde Odoo
+
+            # Prioridad: volume_ml > volume > weight > product_length
+            volume_ml = getattr(record, 'volume_ml', 0)
+            volume = getattr(record, 'volume', 0)
+            weight = getattr(record, 'weight', 0)
+            product_length = getattr(record, 'product_length', 0)
+
+            # Determinar qué campo usar y su unidad
+            if volume_ml and volume_ml > 0:
+                # Ya tenemos el volumen en ml, usarlo directamente
+                if volume_ml < 1000:
+                    # Devolver en ml
+                    return {
+                        'Tamanno': round(volume_ml, 2),
+                        'UnidadMedida': 'ml'
+                    }
+                else:
+                    # Devolver en litros
+                    volume_l = volume_ml / 1000
+                    return {
+                        'Tamanno': round(volume_l, 2),
+                        'UnidadMedida': 'l'
+                    }
+
+            elif volume and volume > 0:
+                # Fallback: usar volume (m³) si volume_ml no está disponible
+                volume_ml_from_m3 = volume * 1000000  # 1 m³ = 1,000,000 ml
+
+                if volume_ml_from_m3 < 1000:
+                    # Devolver en ml
+                    return {
+                        'Tamanno': round(volume_ml_from_m3, 2),
+                        'UnidadMedida': 'ml'
+                    }
+                else:
+                    # Devolver en litros
+                    volume_l = volume_ml_from_m3 / 1000
+                    return {
+                        'Tamanno': round(volume_l, 2),
+                        'UnidadMedida': 'l'
+                    }
+
+            elif weight and weight > 0:
+                # Convertir de kg a g o kg (lo más apropiado)
+                if weight < 1:
+                    # Devolver en gramos
+                    weight_g = weight * 1000
+                    return {
+                        'Tamanno': round(weight_g, 2),
+                        'UnidadMedida': 'g'
+                    }
+                else:
+                    # Devolver en kg
+                    return {
+                        'Tamanno': round(weight, 2),
+                        'UnidadMedida': 'kg'
+                    }
+
+            elif product_length and product_length > 0:
+                # Convertir de m a cm o m (lo más apropiado)
+                if product_length < 1:
+                    # Devolver en cm
+                    length_cm = product_length * 100
+                    return {
+                        'Tamanno': round(length_cm, 2),
+                        'UnidadMedida': 'cm'
+                    }
+                else:
+                    # Devolver en metros
+                    return {
+                        'Tamanno': round(product_length, 2),
+                        'UnidadMedida': 'm'
+                    }
+
+            # Si no hay ningún valor, devolver None
+            return None
+
         else:
             # Transformer no implementado
-            _logger.debug(f"Reverse transformer '{transformer_name}' no implementado, usando valor directo")
+            _logger.warning(f"Reverse transformer '{transformer_name}' no implementado, usando valor directo")
             return value
 
     def _add_children_to_message(self, record, message):
