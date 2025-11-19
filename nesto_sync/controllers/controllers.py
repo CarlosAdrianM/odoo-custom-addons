@@ -108,6 +108,7 @@ class NestoSyncController(http.Controller):
         except ValueError as e:
             # Errores de validación (datos malformados, campos requeridos faltantes, etc.)
             error_msg = str(e)
+            # Log conciso sin traceback (se guarda completo en DLQ si es necesario)
             _logger.error(f"[{message_id}] Error de validación: {error_msg}")
 
             if message_id:
@@ -137,10 +138,9 @@ class NestoSyncController(http.Controller):
             # Errores inesperados (bugs, excepciones no controladas, errores de BD, etc.)
             error_msg = str(e)
             error_trace = traceback.format_exc()
-            _logger.error(
-                f"[{message_id}] Error inesperado en sincronización: {error_msg}",
-                exc_info=True
-            )
+
+            # Log conciso: solo el error, sin traceback (ya se guarda en DLQ)
+            _logger.error(f"[{message_id}] Error en sincronización: {error_msg}")
 
             if message_id:
                 retry_info = self._handle_retry(
