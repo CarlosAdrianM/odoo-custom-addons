@@ -46,6 +46,7 @@ secrets/
 .env
 .env.*
 
-# Test files (local development only)
+# Test files (local development only - pero permitir tests/ oficiales)
 test_*.py
 test_*.sql
+!tests/test_*.py
