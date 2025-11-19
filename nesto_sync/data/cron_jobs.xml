@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Cron job para limpieza automática de registros de reintentos antiguos -->
+    <record id="ir_cron_cleanup_retry_records" model="ir.cron">
+        <field name="name">Nesto Sync: Limpiar registros de reintentos antiguos</field>
+        <field name="model_id" ref="model_nesto_sync_message_retry"/>
+        <field name="state">code</field>
+        <field name="code">model.cleanup_old_records()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="active" eval="True"/>
+        <field name="doall" eval="False"/>
+        <field name="user_id" ref="base.user_admin"/>
+    </record>
+</odoo>

@@ -1,9 +1,25 @@
 {
     'name': 'Nesto Sync',
-    'version': '2.6.0',  # 2.6.0: Transformers inversos completos y fix redondeo volumen
+    'version': '2.7.0',  # 2.7.0: Sistema DLQ para evitar mensajes infinitos
     'summary': 'Sincronización bidireccional de tablas entre Nesto y Odoo via Google Pub/Sub',
     'description': '''
         Módulo de sincronización bidireccional entre Nesto y Odoo
+
+        Versión 2.7.0 (2025-11-19):
+        - NUEVA FUNCIONALIDAD: Dead Letter Queue (DLQ) para mensajes que fallan repetidamente
+        - Sistema de tracking de reintentos con límite configurable (3 reintentos por defecto)
+        - Modelo nesto.sync.failed.message: Almacena mensajes que no se pudieron procesar
+        - Modelo nesto.sync.message.retry: Tracking temporal de reintentos por messageId
+        - Controller mejorado: Extrae messageId de PubSub y gestiona reintentos automáticamente
+        - Nuevas vistas Odoo: Gestión visual de mensajes fallidos con acciones de reprocesamiento
+        - Botones de acción: Reprocesar, Marcar como Resuelto, Marcar como Fallo Permanente
+        - Cron job automático: Limpieza de registros de reintentos antiguos (7 días)
+        - Menú "Dead Letter Queue" en Odoo con dos vistas: Mensajes Fallidos y Tracking de Reintentos
+        - Evita bucles infinitos: Después de N intentos, mensaje se mueve a DLQ y se hace ACK
+        - Logs enriquecidos: Cada mensaje incluye [messageId] para mejor trazabilidad
+        - Información completa del error: Mensaje, stack trace, datos crudos, número de reintentos
+        - Permisos de seguridad: Admins pueden gestionar, usuarios pueden ver
+        - Arquitectura autocontenida: Toda la funcionalidad dentro del módulo nesto_sync
 
         Versión 2.6.0 (2025-11-18):
         - FIX CRÍTICO: Redondeo de volumen - nuevo campo volume_ml para precisión exacta
@@ -115,9 +131,12 @@
         - Soporte para jerarquías (Clientes + PersonasContacto)
     ''',
     'author': 'Carlos Adrián Martínez',
-    'depends': ['base', 'product'],
+    'depends': ['base', 'product', 'mail'],
     'data': [
+        'security/ir.model.access.csv',
         'views/views.xml',
+        'views/failed_message_views.xml',
+        'data/cron_jobs.xml',
     ],
     'installable': True,
     'application': False,
