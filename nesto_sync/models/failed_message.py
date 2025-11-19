@@ -125,84 +125,18 @@ class NestoSyncFailedMessage(models.Model):
                 }
             }
 
-        # Marcar como reprocesando
-        self.write({'state': 'reprocessing'})
-        self.env.cr.commit()
-
-        try:
-            # Importar aquí para evitar dependencias circulares
-            from odoo.addons.nesto_sync.controllers.controllers import NestoSyncController
-
-            controller = NestoSyncController()
-
-            # Reprocesar el mensaje
-            # Convertir raw_data de nuevo a bytes para simular request
-            import json
-            raw_bytes = self.raw_data.encode('utf-8')
-
-            # Procesar usando la lógica del controller
-            # Nota: Esto es un procesamiento manual, no viene de PubSub
-            response = controller._process_message_internal(
-                raw_bytes,
-                self.env,
-                force_reprocess=True  # Flag para indicar que es reprocesamiento manual
-            )
-
-            if response.get('status') == 200:
-                # Éxito
-                self.write({
-                    'state': 'resolved',
-                    'resolved_date': fields.Datetime.now(),
-                    'resolved_by': self.env.user.id,
-                    'resolution_notes': 'Reprocesado manualmente con éxito'
-                })
-
-                return {
-                    'type': 'ir.actions.client',
-                    'tag': 'display_notification',
-                    'params': {
-                        'type': 'success',
-                        'message': 'Mensaje reprocesado con éxito',
-                        'sticky': False,
-                    }
-                }
-            else:
-                # Falló de nuevo
-                error_msg = response.get('message', 'Error desconocido')
-                self.write({
-                    'state': 'failed',
-                    'error_message': f"{self.error_message}\n\n[Reintento manual falló: {error_msg}]",
-                    'last_attempt_date': fields.Datetime.now()
-                })
-
-                return {
-                    'type': 'ir.actions.client',
-                    'tag': 'display_notification',
-                    'params': {
-                        'type': 'danger',
-                        'message': f'Error al reprocesar: {error_msg}',
-                        'sticky': True,
-                    }
-                }
-
-        except Exception as e:
-            _logger.error(f"Error al reprocesar mensaje {self.message_id}: {str(e)}", exc_info=True)
-
-            self.write({
-                'state': 'failed',
-                'error_message': f"{self.error_message}\n\n[Reintento manual falló: {str(e)}]",
-                'last_attempt_date': fields.Datetime.now()
-            })
-
-            return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'type': 'danger',
-                    'message': f'Error al reprocesar: {str(e)}',
-                    'sticky': True,
-                }
+        # Por ahora, mostrar mensaje indicando que debe corregirse manualmente
+        # TODO: Implementar reprocesamiento automático en versión futura
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'type': 'info',
+                'title': 'Reprocesamiento Manual',
+                'message': 'Por favor, corrija el problema en Odoo o Nesto y use "Marcar como Resuelto". El reprocesamiento automático estará disponible en una versión futura.',
+                'sticky': True,
             }
+        }
 
     def action_mark_permanently_failed(self):
         """Marca el mensaje como fallo permanente (no se puede resolver)."""

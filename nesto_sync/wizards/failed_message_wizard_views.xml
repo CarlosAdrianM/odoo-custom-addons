@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vista del wizard para marcar mensajes -->
+    <record id="view_failed_message_wizard_form" model="ir.ui.view">
+        <field name="name">nesto.sync.failed.message.wizard.form</field>
+        <field name="model">nesto.sync.failed.message.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Gestionar Mensaje Fallido">
+                <group>
+                    <field name="failed_message_id" invisible="1"/>
+                    <field name="action" widget="radio"/>
+                    <field name="resolution_notes" placeholder="Explica por qué se marca de esta manera..."/>
+                </group>
+                <footer>
+                    <button string="Confirmar" name="action_confirm" type="object" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

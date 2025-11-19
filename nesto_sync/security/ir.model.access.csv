@@ -3,3 +3,4 @@ access_nesto_sync_failed_message_admin,nesto.sync.failed.message admin,model_nes
 access_nesto_sync_failed_message_user,nesto.sync.failed.message user,model_nesto_sync_failed_message,base.group_user,1,0,0,0
 access_nesto_sync_message_retry_admin,nesto.sync.message.retry admin,model_nesto_sync_message_retry,base.group_system,1,1,1,1
 access_nesto_sync_message_retry_user,nesto.sync.message.retry user,model_nesto_sync_message_retry,base.group_user,1,0,0,0
+access_nesto_sync_failed_message_wizard,nesto.sync.failed.message.wizard,model_nesto_sync_failed_message_wizard,base.group_user,1,1,1,1

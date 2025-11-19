@@ -136,6 +136,7 @@
         'security/ir.model.access.csv',
         'views/views.xml',
         'views/failed_message_views.xml',
+        'wizards/failed_message_wizard_views.xml',
         'data/cron_jobs.xml',
     ],
     'installable': True,
