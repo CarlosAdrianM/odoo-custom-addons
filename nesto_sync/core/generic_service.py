@@ -365,11 +365,8 @@ class GenericEntityService:
         except Exception as e:
             _logger.error(f"Excepción al crear {self.config['odoo_model']}: {str(e)}")
             self.env.cr.rollback()
-            return Response(
-                response=json.dumps({'error': str(e)}),
-                status=500,
-                content_type='application/json'
-            )
+            # Re-lanzar la excepción para que el controller active el sistema DLQ
+            raise
 
     def _update_record(self, record, values):
         """
@@ -413,8 +410,5 @@ class GenericEntityService:
         except Exception as e:
             _logger.error(f"Error al actualizar {self.config['odoo_model']}: {str(e)}")
             self.env.cr.rollback()
-            return Response(
-                response=json.dumps({'error': str(e)}),
-                status=500,
-                content_type='application/json'
-            )
+            # Re-lanzar la excepción para que el controller active el sistema DLQ
+            raise
