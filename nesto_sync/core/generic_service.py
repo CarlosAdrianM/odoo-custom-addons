@@ -380,6 +380,9 @@ class GenericEntityService:
             Response HTTP
         """
         try:
+            # Copiar valores para no modificar el original
+            values = values.copy()
+
             # Protección contra jerarquías recursivas
             # Si el parent_id es el mismo que el ID del registro, eliminarlo
             if 'parent_id' in values and values['parent_id'] == record.id:
@@ -387,8 +390,22 @@ class GenericEntityService:
                     f"Eliminando parent_id recursivo: registro {record.id} "
                     f"intentaba asignarse a sí mismo como parent"
                 )
-                values = values.copy()  # No modificar el original
                 del values['parent_id']
+
+            # IMPORTANTE: Eliminar id_fields que no han cambiado
+            # Esto evita que se disparen validaciones de unicidad innecesarias
+            for id_field in self.config.get('id_fields', []):
+                if id_field in values:
+                    current_value = record[id_field]
+                    new_value = values[id_field]
+
+                    # Si el valor no ha cambiado, eliminarlo de la actualización
+                    if current_value == new_value:
+                        _logger.debug(
+                            f"Omitiendo campo {id_field} en actualización "
+                            f"(valor sin cambios: {current_value})"
+                        )
+                        del values[id_field]
 
             # CRÍTICO: Añadir skip_sync=True para evitar bucle infinito
             # Este write viene de Nesto, NO debe volver a publicarse
