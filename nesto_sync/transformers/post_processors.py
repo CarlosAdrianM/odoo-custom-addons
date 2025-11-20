@@ -352,7 +352,19 @@ class SyncProductBom:
                     )
                     continue
 
-            producto_id = kit_item.get('ProductoId')
+            # Si kit_item es un int o string simple, asumimos que es el ProductoId directamente
+            # Formato alternativo: ProductosKit = [41224, 41225, ...]
+            if isinstance(kit_item, (int, str)):
+                producto_id = str(kit_item)
+                cantidad = 1  # Cantidad por defecto
+            elif isinstance(kit_item, dict):
+                producto_id = kit_item.get('ProductoId')
+                cantidad = kit_item.get('Cantidad', 1)
+            else:
+                _logger.warning(
+                    f"ProductosKit contiene item con tipo inesperado: {type(kit_item)}, valor: {kit_item}"
+                )
+                continue
 
             if not producto_id:
                 _logger.warning(f"ProductosKit contiene item sin ProductoId: {kit_item}")
@@ -510,8 +522,15 @@ class SyncProductBom:
 
         # Comparar con componentes nuevos
         for kit_item in productos_kit_data:
-            producto_id = kit_item.get('ProductoId')
-            cantidad = kit_item.get('Cantidad', 1)
+            # Manejar formato alternativo (int/string directo)
+            if isinstance(kit_item, (int, str)):
+                producto_id = str(kit_item)
+                cantidad = 1
+            elif isinstance(kit_item, dict):
+                producto_id = kit_item.get('ProductoId')
+                cantidad = kit_item.get('Cantidad', 1)
+            else:
+                continue
 
             if not producto_id:
                 continue
@@ -547,8 +566,15 @@ class SyncProductBom:
 
         # Crear nuevas líneas
         for kit_item in productos_kit_data:
-            producto_id = kit_item.get('ProductoId')
-            cantidad = kit_item.get('Cantidad', 1)
+            # Manejar formato alternativo (int/string directo)
+            if isinstance(kit_item, (int, str)):
+                producto_id = str(kit_item)
+                cantidad = 1
+            elif isinstance(kit_item, dict):
+                producto_id = kit_item.get('ProductoId')
+                cantidad = kit_item.get('Cantidad', 1)
+            else:
+                continue
 
             if not producto_id:
                 continue
@@ -585,8 +611,15 @@ class SyncProductBom:
         # Preparar líneas de BOM
         bom_lines = []
         for kit_item in productos_kit_data:
-            producto_id = kit_item.get('ProductoId')
-            cantidad = kit_item.get('Cantidad', 1)
+            # Manejar formato alternativo (int/string directo)
+            if isinstance(kit_item, (int, str)):
+                producto_id = str(kit_item)
+                cantidad = 1
+            elif isinstance(kit_item, dict):
+                producto_id = kit_item.get('ProductoId')
+                cantidad = kit_item.get('Cantidad', 1)
+            else:
+                continue
 
             if not producto_id:
                 continue
