@@ -276,7 +276,7 @@ ENTITY_CONFIGS = {
             },
             'Grupo': {
                 'transformer': 'grupo',
-                'odoo_fields': ['grupo_id']
+                'odoo_fields': ['grupo_id', 'sale_ok']
             },
             'Subgrupo': {
                 'transformer': 'subgrupo',

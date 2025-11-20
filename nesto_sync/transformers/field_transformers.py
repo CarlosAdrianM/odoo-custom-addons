@@ -363,18 +363,23 @@ class GrupoTransformer:
     Los Grupos son categorías de nivel raíz (sin padre).
     Bajo cada Grupo se crean los Subgrupos como hijos.
     Ejemplo: ACC > Desechables, Cosméticos > Cremas Faciales
+
+    IMPORTANTE: También establece sale_ok según el grupo:
+    - MTP (Materias Primas) → sale_ok = False (no se venden directamente)
+    - Otros grupos → sale_ok = True (se pueden vender)
     """
 
     def transform(self, value, context):
         """
         Busca o crea categoría de Grupo a nivel raíz (sin padre)
+        También establece sale_ok según si es MTP o no
 
         Args:
-            value: Nombre del grupo (ej: "ACC", "Cosméticos", "Aparatos")
+            value: Nombre del grupo (ej: "ACC", "Cosméticos", "Aparatos", "MTP")
             context: Dict con contexto
 
         Returns:
-            Dict con grupo_id
+            Dict con grupo_id y sale_ok
         """
         if not value:
             return {'grupo_id': None}
@@ -387,7 +392,13 @@ class GrupoTransformer:
         }
 
         transformer = ProductCategoryTransformer()
-        return transformer.transform(value, context_with_config)
+        result = transformer.transform(value, context_with_config)
+
+        # Añadir sale_ok según el grupo
+        # MTP (Materias Primas) no se vende directamente
+        result['sale_ok'] = (value != 'MTP')
+
+        return result
 
 
 @FieldTransformerRegistry.register('subgrupo')
