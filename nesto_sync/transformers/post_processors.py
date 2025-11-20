@@ -325,11 +325,33 @@ class SyncProductBom:
         Raises:
             ValueError: Si algún componente no existe
         """
+        import json
+
         product_product_model = env['product.product']
         components = {}
         missing_components = []
 
+        # Si productos_kit_data es un string JSON, deserializarlo
+        if isinstance(productos_kit_data, str):
+            try:
+                productos_kit_data = json.loads(productos_kit_data)
+            except json.JSONDecodeError as e:
+                raise ValueError(
+                    f"ProductosKit contiene JSON inválido para producto "
+                    f"{parent_product.producto_externo}: {e}"
+                )
+
         for kit_item in productos_kit_data:
+            # Si kit_item es un string, deserializarlo también
+            if isinstance(kit_item, str):
+                try:
+                    kit_item = json.loads(kit_item)
+                except json.JSONDecodeError as e:
+                    _logger.warning(
+                        f"ProductosKit contiene item con JSON inválido: {kit_item}, error: {e}"
+                    )
+                    continue
+
             producto_id = kit_item.get('ProductoId')
 
             if not producto_id:
