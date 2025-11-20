@@ -264,8 +264,9 @@ class SyncProductBom:
         )
 
         # Buscar BOM existente del producto
+        # Usar sudo() para bypassear permisos
         bom_model = env['mrp.bom']
-        existing_bom = bom_model.search([
+        existing_bom = bom_model.sudo().search([
             ('product_tmpl_id', '=', product_record.id),
             ('active', '=', True)
         ], limit=1)
@@ -373,7 +374,8 @@ class SyncProductBom:
             # Buscar producto por producto_externo
             # IMPORTANTE: Buscamos en product.product, no product.template
             # porque la BOM apunta a variantes específicas
-            component = product_product_model.search([
+            # Usar sudo() para bypassear permisos (el usuario del webhook puede no tener acceso)
+            component = product_product_model.sudo().search([
                 ('product_tmpl_id.producto_externo', '=', str(producto_id))
             ], limit=1)
 
@@ -466,7 +468,8 @@ class SyncProductBom:
         path.append(current_externo)
 
         # Buscar BOM del producto actual
-        bom = env['mrp.bom'].search([
+        # Usar sudo() para bypassear permisos
+        bom = env['mrp.bom'].sudo().search([
             ('product_tmpl_id', '=', product.product_tmpl_id.id),
             ('active', '=', True)
         ], limit=1)
@@ -634,6 +637,7 @@ class SyncProductBom:
             }))
 
         # Crear BOM
+        # Usar sudo() para bypassear permisos
         bom_vals = {
             'product_tmpl_id': product_record.id,
             'product_qty': 1.0,
@@ -641,7 +645,7 @@ class SyncProductBom:
             'bom_line_ids': bom_lines,
         }
 
-        bom = env['mrp.bom'].create(bom_vals)
+        bom = env['mrp.bom'].sudo().create(bom_vals)
 
         _logger.info(
             f"BOM creada (ID {bom.id}) con {len(bom_lines)} componentes"
