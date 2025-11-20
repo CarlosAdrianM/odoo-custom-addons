@@ -131,7 +131,7 @@
         - Soporte para jerarquías (Clientes + PersonasContacto)
     ''',
     'author': 'Carlos Adrián Martínez',
-    'depends': ['base', 'product', 'mail'],
+    'depends': ['base', 'product', 'mail', 'mrp'],
     'data': [
         'security/ir.model.access.csv',
         'views/views.xml',

@@ -145,6 +145,10 @@ class OdooPublisher:
         if self.config.get('hierarchy', {}).get('enabled'):
             self._add_children_to_message(record, message)
 
+        # Procesar ProductosKit si es un producto
+        if self.entity_type == 'producto':
+            self._add_productos_kit_to_message(record, message)
+
         return message
 
     def _wrap_in_sync_message(self, data, record):
@@ -525,6 +529,49 @@ class OdooPublisher:
             children_list.append(child_data)
 
         message[child_field_name] = children_list
+
+    def _add_productos_kit_to_message(self, record, message):
+        """
+        Añade ProductosKit al mensaje si el producto tiene BOM
+
+        Args:
+            record: Registro product.template
+            message (dict): Mensaje a modificar (se añade campo ProductosKit)
+        """
+        # Buscar BOM del producto
+        bom = self.env['mrp.bom'].search([
+            ('product_tmpl_id', '=', record.id),
+            ('active', '=', True)
+        ], limit=1)
+
+        if not bom:
+            # No tiene BOM, añadir array vacío
+            message['ProductosKit'] = []
+            return
+
+        # Construir lista de componentes
+        productos_kit = []
+
+        for line in bom.bom_line_ids:
+            # Obtener producto_externo del componente
+            producto_externo = line.product_id.product_tmpl_id.producto_externo
+
+            # Si no tiene producto_externo, lanzar error → DLQ
+            if not producto_externo:
+                raise ValueError(
+                    f"Componente de BOM sin producto_externo: "
+                    f"product.product ID {line.product_id.id}, "
+                    f"product.template ID {line.product_id.product_tmpl_id.id}. "
+                    f"Todos los productos deben tener producto_externo para sincronizar."
+                )
+
+            # Añadir a la lista
+            productos_kit.append({
+                'ProductoId': producto_externo,
+                'Cantidad': int(line.product_qty) if line.product_qty == int(line.product_qty) else line.product_qty
+            })
+
+        message['ProductosKit'] = productos_kit
 
     def _serialize_odoo_value(self, value):
         """

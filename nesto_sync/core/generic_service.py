@@ -335,12 +335,19 @@ class GenericEntityService:
             Response HTTP
         """
         try:
+            # Extraer _productos_kit_data si existe (campo especial que no se guarda)
+            productos_kit_data = values.pop('_productos_kit_data', None)
+
             # CRÍTICO: Añadir skip_sync=True para evitar bucle infinito
             # Este create viene de Nesto, NO debe publicarse
             record = self.model.sudo().with_context(skip_sync=True).create(values)
 
             if record:
                 _logger.info(f"{self.config['odoo_model']} creado con ID: {record.id}")
+
+                # Procesar BOM si es producto y tiene _productos_kit_data
+                if productos_kit_data is not None and self.config.get('odoo_model') == 'product.template':
+                    self._sync_product_bom(record, productos_kit_data)
 
                 if not self.test_mode:
                     self.env.cr.commit()
@@ -383,6 +390,9 @@ class GenericEntityService:
             # Copiar valores para no modificar el original
             values = values.copy()
 
+            # Extraer _productos_kit_data si existe (campo especial que no se guarda)
+            productos_kit_data = values.pop('_productos_kit_data', None)
+
             # Protección contra jerarquías recursivas
             # Si el parent_id es el mismo que el ID del registro, eliminarlo
             if 'parent_id' in values and values['parent_id'] == record.id:
@@ -412,6 +422,10 @@ class GenericEntityService:
             record.sudo().with_context(skip_sync=True).write(values)
             _logger.info(f"{self.config['odoo_model']} actualizado: ID {record.id}")
 
+            # Procesar BOM si es producto y tiene _productos_kit_data
+            if productos_kit_data is not None and self.config.get('odoo_model') == 'product.template':
+                self._sync_product_bom(record, productos_kit_data)
+
             if not self.test_mode:
                 self.env.cr.commit()
 
@@ -428,4 +442,27 @@ class GenericEntityService:
             _logger.error(f"Error al actualizar {self.config['odoo_model']}: {str(e)}")
             self.env.cr.rollback()
             # Re-lanzar la excepción para que el controller active el sistema DLQ
+            raise
+
+    def _sync_product_bom(self, product_record, productos_kit_data):
+        """
+        Sincroniza la BOM de un producto usando el post-processor SyncProductBom
+
+        Args:
+            product_record: Registro product.template
+            productos_kit_data: Lista de dicts con ProductoId y Cantidad
+
+        Raises:
+            ValueError: Si algún componente no existe o hay ciclos
+        """
+        from ..transformers.post_processors import SyncProductBom
+
+        try:
+            SyncProductBom.sync_bom_after_save(self.env, product_record, productos_kit_data)
+        except Exception as e:
+            _logger.error(
+                f"Error sincronizando BOM para producto {product_record.producto_externo}: {e}",
+                exc_info=True
+            )
+            # Re-lanzar para que vaya a DLQ
             raise

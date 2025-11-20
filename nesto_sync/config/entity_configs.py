@@ -320,7 +320,9 @@ ENTITY_CONFIGS = {
         },
 
         # Post-processors
-        'post_processors': [],
+        'post_processors': [
+            'sync_product_bom',  # Sincronizar BOM desde ProductosKit
+        ],
 
         # Validadores
         'validators': [],
