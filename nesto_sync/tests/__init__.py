@@ -15,3 +15,7 @@ from . import test_integration_end_to_end
 
 # Tests sincronización bidireccional
 from . import test_bidirectional_sync
+
+# Tests BOM (Bills of Materials)
+from . import test_bom_sync
+from . import test_bom_integration

@@ -1,9 +1,26 @@
 {
     'name': 'Nesto Sync',
-    'version': '2.7.0',  # 2.7.0: Sistema DLQ para evitar mensajes infinitos
+    'version': '2.8.0',  # 2.8.0: Sincronización bidireccional de BOMs (ProductosKit)
     'summary': 'Sincronización bidireccional de tablas entre Nesto y Odoo via Google Pub/Sub',
     'description': '''
         Módulo de sincronización bidireccional entre Nesto y Odoo
+
+        Versión 2.8.0 (2025-11-20):
+        - NUEVA FUNCIONALIDAD: Sincronización bidireccional de BOMs (Bills of Materials)
+        - ProductosKit de Nesto → mrp.bom de Odoo (creación/actualización/eliminación automática)
+        - BOMs de Odoo → ProductosKit en mensajes publicados a Nesto
+        - Validación estricta: Componentes faltantes → DLQ (evita sincronizaciones incompletas)
+        - Detección de ciclos infinitos con DFS (máx. 10 niveles de profundidad)
+        - BOM tipo 'normal' (no phantom) para gestión correcta de stock y facturación
+        - Soporte múltiples formatos ProductosKit: objetos, arrays de IDs, JSON strings
+        - Productos MTP (Materias Primas): sale_ok=False automático (no vendibles, solo para BOMs)
+        - Transformer GrupoTransformer: Mapea Grupo='MTP' → sale_ok=False
+        - Sin conversión inversa sale_ok → Grupo (relación unidireccional)
+        - Manejo de permisos: sudo() en búsquedas/creación de BOMs para webhook
+        - Post-processor SyncProductBom: Ejecuta después de crear/actualizar producto
+        - Optimización: Compara BOM existente vs nueva para evitar updates innecesarios
+        - Tests unitarios: 11 tests para validaciones, formatos, y casos edge
+        - Tests integración: 8 tests end-to-end para flujos completos
 
         Versión 2.7.0 (2025-11-19):
         - NUEVA FUNCIONALIDAD: Dead Letter Queue (DLQ) para mensajes que fallan repetidamente
