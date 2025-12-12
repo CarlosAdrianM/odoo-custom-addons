@@ -76,6 +76,7 @@
 
 - [PROXIMA_SESION.md](PROXIMA_SESION.md) - **Tareas pendientes para la próxima sesión**
 - [ROADMAP.md](ROADMAP.md) - **Issues pendientes y hoja de ruta**
+- [ISSUE_SINCRONIZACION_VENDEDORES.md](ISSUE_SINCRONIZACION_VENDEDORES.md) - **Issue #1: Sincronización de Vendedores** ⭐ PRÓXIMA SESIÓN
 
 ## ⚠️ Estado Actual
 
@@ -88,23 +89,31 @@
 
 ### 🚧 Pendiente
 
-#### 1. **Sincronización a Producción** (Alta Prioridad)
+#### 1. **Sincronización de Vendedores en Clientes** ⭐ PRÓXIMA SESIÓN (Alta Prioridad)
+Implementar auto-mapeo híbrido de vendedores (email + fallback manual)
+- **Issue**: [ISSUE_SINCRONIZACION_VENDEDORES.md](ISSUE_SINCRONIZACION_VENDEDORES.md)
+- **Propuesta técnica**: [PROPUESTA_SINCRONIZACION_VENDEDORES_v2.md](PROPUESTA_SINCRONIZACION_VENDEDORES_v2.md)
+- **Versión objetivo**: v2.9.0
+- **Estimación**: 1-2 sesiones
+- **Bloqueante**: Requiere cambios en NestoAPI
+
+#### 2. **Sincronización a Producción** (Alta Prioridad)
 Código funcional en desarrollo (Odoo18), pendiente de desplegar a producción (nuevavisionodoo)
 - Ver: [PROXIMA_SESION.md](PROXIMA_SESION.md)
 
-#### 2. **Reprocesamiento Automático DLQ**
+#### 3. **Reprocesamiento Automático DLQ**
 Sistema de reintentos automáticos para mensajes fallidos
 - Ver: [models/failed_message.py:129](models/failed_message.py#L129)
 - Ver: [docs/DLQ_SYSTEM.md](docs/DLQ_SYSTEM.md#TODO)
 
-#### 3. **Dashboard de Métricas**
+#### 4. **Dashboard de Métricas**
 Panel para visualizar estadísticas de sincronización
 - Ver: [docs/DLQ_SYSTEM.md](docs/DLQ_SYSTEM.md#TODO)
 
-#### 4. **Expansión a Nuevas Entidades**
+#### 5. **Expansión a Nuevas Entidades**
 - Proveedores (res.partner con supplier_rank)
 - Seguimientos de clientes
-- Ver: [ROADMAP.md](ROADMAP.md#fase-5)
+- Ver: [ROADMAP.md](ROADMAP.md#fase-6)
 
 ## 📚 Documentación por Tema
 
@@ -131,6 +140,10 @@ Panel para visualizar estadísticas de sincronización
 3. [PRODUCCION_READY.md](PRODUCCION_READY.md)
 4. [DESPLIEGUE.md](DESPLIEGUE.md)
 5. [INSTRUCCIONES_DESPLIEGUE_PRODUCCION.md](INSTRUCCIONES_DESPLIEGUE_PRODUCCION.md)
+
+### Issues y Propuestas
+1. [ISSUE_SINCRONIZACION_VENDEDORES.md](ISSUE_SINCRONIZACION_VENDEDORES.md) - ⭐ Issue #1: Vendedores
+2. [PROPUESTA_SINCRONIZACION_VENDEDORES_v2.md](PROPUESTA_SINCRONIZACION_VENDEDORES_v2.md) - Análisis técnico v2
 
 ---
 

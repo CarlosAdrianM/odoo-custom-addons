@@ -66,9 +66,23 @@ Sistema de sincronización bidireccional entre Odoo 16 y Nesto mediante Google P
 - [ ] Verificar que no hay bucles infinitos
 - [ ] Coordinar con NestoAPI
 
-### Fase 5: Expansión a Nuevas Entidades
+### Fase 5: Sincronización de Vendedores (PRÓXIMO)
+- [ ] **Fase 1**: Vendedor principal (estética) - Auto-mapeo híbrido
+  - [ ] Crear modelo `nesto.vendedor` (tabla de mapeo fallback)
+  - [ ] Implementar `VendedorTransformer` con auto-mapeo por email
+  - [ ] Añadir campo `vendedor_externo` en `res.partner`
+  - [ ] Coordinar con NestoAPI: Publicar `Vendedor`, `VendedorEmail`, `VendedorNombre`
+  - [ ] Sincronización bidireccional (Odoo ↔ Nesto)
+  - [ ] Tests y documentación
+- [ ] **Fase 2**: Vendedor peluquería - STAND-BY
+- [ ] **Fase 3**: Jerarquía de vendedores (Director → Jefe → Vendedor)
+  - [ ] Sincronizar desde tabla `EquiposVenta`
+  - [ ] Integración con `crm.team` de Odoo
+
+Ver: [ISSUE_SINCRONIZACION_VENDEDORES.md](ISSUE_SINCRONIZACION_VENDEDORES.md)
+
+### Fase 6: Expansión a Nuevas Entidades
 - [ ] Proveedores (res.partner con supplier_rank)
-- [ ] Productos (product.product)
 - [ ] Seguimientos de clientes
 - [ ] [Añadir más según necesidades]
 
@@ -94,4 +108,17 @@ Sistema de sincronización bidireccional entre Odoo 16 y Nesto mediante Google P
 - Complejidad al escalar a múltiples entidades
 
 ---
-**Última actualización**: 2025-11-07
+
+## 📌 Issues Abiertas
+
+### Issue #1: Sincronización de Vendedores en Clientes
+- **Estado**: 📝 Documentada, pendiente de implementación
+- **Prioridad**: Alta
+- **Versión objetivo**: v2.9.0
+- **Archivo**: [ISSUE_SINCRONIZACION_VENDEDORES.md](ISSUE_SINCRONIZACION_VENDEDORES.md)
+- **Descripción**: Implementar auto-mapeo híbrido de vendedores (email + fallback manual)
+- **Estimación**: 1-2 sesiones
+- **Bloqueantes**: Requiere cambios en NestoAPI
+
+---
+**Última actualización**: 2025-12-12
