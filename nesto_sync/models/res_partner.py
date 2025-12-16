@@ -12,6 +12,15 @@ class ResPartner(models.Model):
     contacto_externo = fields.Char(string="Contacto Externo", index=True)
     persona_contacto_externa = fields.Char(string="Persona de Contacto Externa", index=True)
 
+    # Vendedor de Nesto (para sincronización bidireccional)
+    # Este campo almacena el código del vendedor en Nesto (ej: "001", "002")
+    # Se usa para mapear user_id cuando llega un mensaje con Vendedor + VendedorEmail
+    vendedor_externo = fields.Char(
+        string="Código Vendedor (Nesto)",
+        help="Código del vendedor en Nesto (ej: 001, 002). Se sincroniza automáticamente.",
+        index=True,
+    )
+
     # Logging delegado a BidirectionalSyncMixin - no duplicar aquí
 
     @api.constrains('cliente_externo', 'contacto_externo', 'persona_contacto_externa')

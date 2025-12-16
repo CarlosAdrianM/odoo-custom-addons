@@ -573,6 +573,91 @@ class UrlToImageTransformer:
             return {'url_imagen_actual': url}
 
 
+@FieldTransformerRegistry.register('vendedor')
+class VendedorTransformer:
+    """
+    Transforma código de vendedor Nesto → user_id en Odoo mediante auto-mapeo por email
+
+    Estrategia conservadora:
+    1. Si no viene Vendedor → no hacer nada (mantener comportamiento actual)
+    2. Si viene Vendedor + VendedorEmail → buscar usuario por email
+    3. Si usuario existe → asignar user_id
+    4. Si no existe → guardar vendedor_externo para referencia (user_id=False)
+
+    IMPORTANTE: Este transformer NO rompe la sincronización existente.
+    Si el campo Vendedor no viene en el mensaje, simplemente retorna dict vacío.
+    """
+
+    def transform(self, value, context):
+        """
+        Auto-mapea vendedor de Nesto a user_id de Odoo por email
+
+        Args:
+            value: Código del vendedor (ej: "001")
+            context: Dict con 'nesto_data' y 'env'
+
+        Returns:
+            Dict con user_id y vendedor_externo (o dict vacío si no hay vendedor)
+        """
+        import logging
+        _logger = logging.getLogger(__name__)
+
+        # Obtener datos del contexto
+        nesto_data = context.get('nesto_data', {})
+        env = context.get('env')
+
+        # Código del vendedor
+        vendedor_codigo = str(value).strip() if value else ''
+
+        # Si no hay código de vendedor, no hacer nada (comportamiento conservador)
+        if not vendedor_codigo:
+            return {}
+
+        # Obtener email del vendedor desde el mensaje
+        vendedor_email = nesto_data.get('VendedorEmail', '')
+        if vendedor_email:
+            vendedor_email = str(vendedor_email).strip().lower()
+
+        # Si no hay email, solo guardar el código para referencia
+        if not vendedor_email:
+            _logger.debug(
+                f"Vendedor '{vendedor_codigo}' sin email en mensaje. "
+                f"Guardando código en vendedor_externo, user_id no asignado."
+            )
+            return {
+                'user_id': False,
+                'vendedor_externo': vendedor_codigo
+            }
+
+        # Buscar usuario en Odoo por email (login)
+        if env:
+            user = env['res.users'].sudo().search([
+                ('login', '=ilike', vendedor_email),
+                ('active', '=', True)
+            ], limit=1)
+
+            if user:
+                _logger.info(
+                    f"Vendedor '{vendedor_codigo}' auto-mapeado por email: "
+                    f"{vendedor_email} → user_id={user.id} ({user.name})"
+                )
+                return {
+                    'user_id': user.id,
+                    'vendedor_externo': vendedor_codigo
+                }
+
+            # Email no encontrado en Odoo
+            _logger.warning(
+                f"Vendedor '{vendedor_codigo}' ({vendedor_email}) no encontrado en Odoo. "
+                f"Guardando código en vendedor_externo, user_id no asignado."
+            )
+
+        return {
+            'user_id': False,
+            'vendedor_externo': vendedor_codigo
+        }
+
+
 @FieldTransformerRegistry.register('unidad_medida_y_tamanno')
 class UnidadMedidaYTamannoTransformer:
     """

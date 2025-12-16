@@ -69,6 +69,15 @@ ENTITY_CONFIGS = {
                 'odoo_field': 'persona_contacto_externa'
             },
 
+            # --- Vendedor (auto-mapeo por email) ---
+            # Nesto envía Vendedor (código) + VendedorEmail (email del vendedor)
+            # El transformer busca usuario en Odoo por email y asigna user_id
+            # Si no viene Vendedor en el mensaje, no se hace nada (comportamiento conservador)
+            'Vendedor': {
+                'transformer': 'vendedor',
+                'odoo_fields': ['user_id', 'vendedor_externo']
+            },
+
             # --- Campos fijos ---
             '_country': {
                 'transformer': 'spain_country',
@@ -184,6 +193,8 @@ ENTITY_CONFIGS = {
             # ⚠️ IDENTIFICADORES CRÍTICOS - DEBEN IR SIEMPRE
             'cliente_externo': {'nesto_field': 'Cliente'},
             'contacto_externo': {'nesto_field': 'Contacto'},
+            # Vendedor: sincroniza código hacia Nesto
+            'vendedor_externo': {'nesto_field': 'Vendedor'},
             # Los demás campos (Nombre, Direccion, etc.) se infieren automáticamente
             # y mantienen sus nombres en español
         },
