@@ -16,7 +16,8 @@ from ..transformers.field_transformers import (
     CargosTransformer,
     PriceTransformer,
     QuantityTransformer,
-    FieldTransformerRegistry
+    FieldTransformerRegistry,
+    VendedorTransformer
 )
 from ..models.country_manager import CountryManager
 
@@ -254,3 +255,115 @@ class TestCountryCodeTransformer(TransactionCase):
         result = self.transformer.transform(None, self.context)
 
         self.assertIsNone(result['country_id'])
+
+
+class TestVendedorTransformer(TransactionCase):
+    """Tests para VendedorTransformer - Auto-mapeo de vendedores por email"""
+
+    def setUp(self):
+        super().setUp()
+        self.transformer = VendedorTransformer()
+
+        # Crear usuario de prueba
+        self.user_juan = self.env['res.users'].sudo().create({
+            'name': 'Juan Pérez',
+            'login': 'juan@nuevavision.es',
+            'email': 'juan@nuevavision.es',
+        })
+
+    def test_auto_mapeo_exitoso(self):
+        """Test: Auto-mapeo por email funciona correctamente"""
+        context = {
+            'env': self.env,
+            'nesto_data': {
+                'VendedorEmail': 'juan@nuevavision.es'
+            }
+        }
+
+        result = self.transformer.transform('001', context)
+
+        self.assertEqual(result['user_id'], self.user_juan.id)
+        self.assertEqual(result['vendedor_externo'], '001')
+
+    def test_auto_mapeo_email_case_insensitive(self):
+        """Test: Auto-mapeo ignora mayúsculas/minúsculas en email"""
+        context = {
+            'env': self.env,
+            'nesto_data': {
+                'VendedorEmail': 'JUAN@NUEVAVISION.ES'
+            }
+        }
+
+        result = self.transformer.transform('001', context)
+
+        self.assertEqual(result['user_id'], self.user_juan.id)
+        self.assertEqual(result['vendedor_externo'], '001')
+
+    def test_email_no_encontrado(self):
+        """Test: Email que no existe en Odoo → user_id=False"""
+        context = {
+            'env': self.env,
+            'nesto_data': {
+                'VendedorEmail': 'noexiste@email.com'
+            }
+        }
+
+        result = self.transformer.transform('002', context)
+
+        self.assertFalse(result['user_id'])
+        self.assertEqual(result['vendedor_externo'], '002')
+
+    def test_sin_email_en_mensaje(self):
+        """Test: Mensaje sin VendedorEmail → user_id=False, guarda código"""
+        context = {
+            'env': self.env,
+            'nesto_data': {}  # Sin VendedorEmail
+        }
+
+        result = self.transformer.transform('003', context)
+
+        self.assertFalse(result['user_id'])
+        self.assertEqual(result['vendedor_externo'], '003')
+
+    def test_sin_codigo_vendedor(self):
+        """Test: Sin código de vendedor → dict vacío (comportamiento conservador)"""
+        context = {
+            'env': self.env,
+            'nesto_data': {
+                'VendedorEmail': 'juan@nuevavision.es'
+            }
+        }
+
+        result = self.transformer.transform('', context)
+
+        # Debe retornar dict vacío, no afecta nada
+        self.assertEqual(result, {})
+
+    def test_vendedor_none(self):
+        """Test: Vendedor None → dict vacío"""
+        context = {
+            'env': self.env,
+            'nesto_data': {}
+        }
+
+        result = self.transformer.transform(None, context)
+
+        self.assertEqual(result, {})
+
+    def test_email_con_espacios(self):
+        """Test: Email con espacios se limpia correctamente"""
+        context = {
+            'env': self.env,
+            'nesto_data': {
+                'VendedorEmail': '  juan@nuevavision.es  '
+            }
+        }
+
+        result = self.transformer.transform('001', context)
+
+        self.assertEqual(result['user_id'], self.user_juan.id)
+
+    def test_registro_en_registry(self):
+        """Test: VendedorTransformer está registrado correctamente"""
+        transformer = FieldTransformerRegistry.get('vendedor')
+        self.assertIsInstance(transformer, VendedorTransformer)
