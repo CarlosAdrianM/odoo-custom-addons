@@ -193,8 +193,14 @@ ENTITY_CONFIGS = {
             # ⚠️ IDENTIFICADORES CRÍTICOS - DEBEN IR SIEMPRE
             'cliente_externo': {'nesto_field': 'Cliente'},
             'contacto_externo': {'nesto_field': 'Contacto'},
-            # Vendedor: sincroniza código hacia Nesto
-            'vendedor_externo': {'nesto_field': 'Vendedor'},
+            # Vendedor: usa transformer que genera Vendedor + VendedorEmail
+            # - Si vendedor_externo existe → Vendedor=código, VendedorEmail=user_id.login
+            # - Si solo user_id existe → Vendedor="", VendedorEmail=user_id.login
+            #   (NestoAPI hará reverse lookup por email)
+            'user_id': {
+                'nesto_field': 'Vendedor',  # Campo principal
+                'reverse_transformer': 'vendedor'  # Genera dict con Vendedor + VendedorEmail
+            },
             # Los demás campos (Nombre, Direccion, etc.) se infieren automáticamente
             # y mantienen sus nombres en español
         },

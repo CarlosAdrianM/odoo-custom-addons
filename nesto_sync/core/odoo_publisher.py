@@ -376,6 +376,31 @@ class OdooPublisher:
             url = getattr(record, 'url_imagen_actual', None)
             return url if url else None
 
+        elif transformer_name == 'vendedor':
+            # Convertir user_id + vendedor_externo a Vendedor + VendedorEmail
+            # CASO 1: Si vendedor_externo está definido, usarlo directamente
+            # CASO 2: Si solo hay user_id, enviar Vendedor="" + VendedorEmail para que NestoAPI haga reverse lookup
+            vendedor_externo = getattr(record, 'vendedor_externo', None)
+            user_id = getattr(record, 'user_id', None)
+
+            result = {}
+
+            # Código de vendedor (si existe)
+            if vendedor_externo:
+                result['Vendedor'] = vendedor_externo
+            else:
+                result['Vendedor'] = ''  # Vacío: NestoAPI hará reverse lookup por email
+
+            # Email del vendedor (desde user_id)
+            if user_id and hasattr(user_id, 'login'):
+                result['VendedorEmail'] = user_id.login
+            elif user_id and hasattr(user_id, 'email'):
+                result['VendedorEmail'] = user_id.email
+            else:
+                result['VendedorEmail'] = None
+
+            return result
+
         elif transformer_name == 'unidad_medida_y_tamanno':
             # Convertir weight/volume_ml/volume/product_length a Tamaño y UnidadMedida
             # Este transformer debe reconstruir el valor original desde Odoo
