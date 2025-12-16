@@ -20,6 +20,11 @@ ENTITY_CONFIGS = {
         # Se usan para buscar si el registro ya existe
         'id_fields': ['cliente_externo', 'contacto_externo', 'persona_contacto_externa'],
 
+        # Campos REQUERIDOS para sincronización bidireccional
+        # Solo estos campos deben tener valor para que se sincronice
+        # persona_contacto_externa es OPCIONAL (solo aplica a personas de contacto, no a clientes)
+        'required_id_fields': ['cliente_externo', 'contacto_externo'],
+
         # Mapeo de campos: Nesto -> Odoo
         'field_mappings': {
             # --- Campos simples (mapeo directo) ---

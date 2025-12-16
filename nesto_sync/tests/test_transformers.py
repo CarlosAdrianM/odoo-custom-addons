@@ -312,16 +312,20 @@ class TestVendedorTransformer(TransactionCase):
 
         self.assertFalse(result['user_id'])
 
-    def test_sin_email_en_mensaje(self):
-        """Test: Mensaje sin VendedorEmail → dict vacío (no modifica user_id)"""
+    def test_sin_campo_vendedor_email_en_mensaje(self):
+        """Test: Mensaje sin campo VendedorEmail → dict vacío (no modifica user_id)
+
+        Cuando el campo VendedorEmail NO está presente en el mensaje,
+        no debemos modificar el user_id actual del cliente.
+        """
         context = {
             'env': self.env,
-            'nesto_data': {}  # Sin VendedorEmail
+            'nesto_data': {}  # Sin campo VendedorEmail
         }
 
         result = self.transformer.transform('003', context)
 
-        # Sin email, no se modifica nada
+        # Campo ausente = no modificar nada
         self.assertEqual(result, {})
 
     def test_codigo_vendedor_ignorado(self):
@@ -357,3 +361,58 @@ class TestVendedorTransformer(TransactionCase):
         """Test: VendedorTransformer está registrado correctamente"""
         transformer = FieldTransformerRegistry.get('vendedor')
         self.assertIsInstance(transformer, VendedorTransformer)
+
+    def test_email_vacio_explicito_quita_vendedor(self):
+        """Test: VendedorEmail='' (vacío explícito) → user_id=False (quita vendedor)
+
+        Caso especial: En Nesto, el vendedor 'NV' no tiene email y es equivalente
+        a "sin vendedor". Cuando llega VendedorEmail='' debemos QUITAR el vendedor,
+        no mantener el que ya tenía.
+        """
+        context = {
+            'env': self.env,
+            'nesto_data': {
+                'Vendedor': 'NV',  # Vendedor especial sin email
+                'VendedorEmail': ''  # Email vacío explícito
+            }
+        }
+
+        result = self.transformer.transform('NV', context)
+
+        # Debe devolver user_id=False para QUITAR el vendedor
+        self.assertEqual(result, {'user_id': False})
+
+    def test_email_null_quita_vendedor(self):
+        """Test: VendedorEmail=null → user_id=False (quita vendedor)"""
+        context = {
+            'env': self.env,
+            'nesto_data': {
+                'Vendedor': 'NV',
+                'VendedorEmail': None  # Email null
+            }
+        }
+
+        result = self.transformer.transform('NV', context)
+
+        # Debe devolver user_id=False para QUITAR el vendedor
+        self.assertEqual(result, {'user_id': False})
+
+    def test_campo_vendedor_email_ausente_no_modifica(self):
+        """Test: Sin campo VendedorEmail en mensaje → dict vacío (no modifica)
+
+        Diferencia importante:
+        - VendedorEmail AUSENTE → no modificar (dict vacío)
+        - VendedorEmail = '' o null → quitar vendedor (user_id=False)
+        """
+        context = {
+            'env': self.env,
+            'nesto_data': {
+                'Vendedor': '001'
+                # VendedorEmail NO está en el mensaje
+            }
+        }
+
+        result = self.transformer.transform('001', context)
+
+        # Sin el campo VendedorEmail, no modificamos nada
+        self.assertEqual(result, {})

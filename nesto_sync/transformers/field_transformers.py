@@ -579,13 +579,17 @@ class VendedorTransformer:
     Transforma VendedorEmail → user_id en Odoo mediante auto-mapeo por email
 
     Estrategia simple (solo email como fuente de verdad):
-    1. Si no viene VendedorEmail → no hacer nada (user_id no cambia)
-    2. Si viene VendedorEmail → buscar usuario por email
-    3. Si usuario existe → asignar user_id
-    4. Si no existe → user_id=False (sin vendedor asignado)
+    1. Si VendedorEmail AUSENTE en mensaje → no hacer nada (dict vacío)
+    2. Si VendedorEmail = '' o None → quitar vendedor (user_id=False)
+    3. Si VendedorEmail tiene valor → buscar usuario por email
+    4. Si usuario existe → asignar user_id
+    5. Si no existe → user_id=False (sin vendedor asignado)
 
     IMPORTANTE: El código de vendedor (campo Vendedor) se IGNORA en Odoo.
     Cada sistema resuelve el código desde el email de forma independiente.
+
+    Caso especial: En Nesto, el vendedor 'NV' no tiene email y es equivalente
+    a "sin vendedor". Cuando llega VendedorEmail='' debemos QUITAR el vendedor.
     """
 
     def transform(self, value, context):
@@ -597,7 +601,9 @@ class VendedorTransformer:
             context: Dict con 'nesto_data' y 'env'
 
         Returns:
-            Dict con user_id (o dict vacío si no hay VendedorEmail)
+            - Dict vacío {} si VendedorEmail no está en el mensaje
+            - {'user_id': False} si VendedorEmail es vacío o None (quitar vendedor)
+            - {'user_id': id} si se encuentra usuario por email
         """
         import logging
         _logger = logging.getLogger(__name__)
@@ -606,15 +612,27 @@ class VendedorTransformer:
         nesto_data = context.get('nesto_data', {})
         env = context.get('env')
 
-        # Obtener email del vendedor desde el mensaje
-        # El código (value) se ignora - solo usamos email como fuente de verdad
-        vendedor_email = nesto_data.get('VendedorEmail', '')
+        # IMPORTANTE: Distinguir entre campo AUSENTE vs campo VACÍO
+        # - Campo AUSENTE: no modificar el vendedor actual
+        # - Campo VACÍO ('', None): quitar el vendedor (caso vendedor 'NV' sin email)
+        if 'VendedorEmail' not in nesto_data:
+            # Campo ausente - no modificar nada
+            return {}
+
+        # El campo está presente - obtener su valor
+        vendedor_email = nesto_data.get('VendedorEmail')
+
+        # Limpiar el email si existe
         if vendedor_email:
             vendedor_email = str(vendedor_email).strip().lower()
 
-        # Si no hay email, no hacer nada (comportamiento conservador)
+        # Si el email es vacío o None, QUITAR el vendedor
+        # Caso especial: vendedor 'NV' en Nesto = sin vendedor
         if not vendedor_email:
-            return {}
+            _logger.info(
+                f"VendedorEmail vacío en mensaje - quitando vendedor del cliente"
+            )
+            return {'user_id': False}
 
         # Buscar usuario en Odoo por email (login)
         if env:

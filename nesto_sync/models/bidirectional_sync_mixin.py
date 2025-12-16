@@ -271,9 +271,13 @@ class BidirectionalSyncMixin(models.AbstractModel):
         entity_type = self._get_entity_type_for_sync()
         if entity_type:
             config = ENTITY_CONFIGS.get(entity_type, {})
-            id_fields = config.get('id_fields', [])
+            # Usar required_id_fields si está definido, sino id_fields como fallback
+            # required_id_fields especifica qué campos son OBLIGATORIOS para sincronizar
+            # Por ejemplo, para clientes: cliente_externo y contacto_externo son obligatorios,
+            # pero persona_contacto_externa es opcional (solo aplica a personas de contacto)
+            id_fields = config.get('required_id_fields', config.get('id_fields', []))
 
-            # Verificar que TODOS los id_fields requeridos tengan valor
+            # Verificar que los campos requeridos tengan valor
             missing_fields = []
             id_values = {}
             for id_field in id_fields:
