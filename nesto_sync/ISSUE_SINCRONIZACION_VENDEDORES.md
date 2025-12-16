@@ -3,15 +3,41 @@
 > **Tipo**: Feature / Enhancement
 > **Prioridad**: Alta
 > **Versión objetivo**: v2.9.0
-> **Estimación**: 1-2 sesiones de desarrollo
+> **Estado**: EN PROGRESO - Odoo implementado, pendiente NestoAPI
+> **Última actualización**: 2025-12-16
+
+---
+
+## 🚦 Estado Actual (2025-12-16)
+
+### Implementado en Odoo:
+- [x] `VendedorTransformer` con auto-mapeo solo por email (sin `vendedor_externo`)
+- [x] Distingue entre `VendedorEmail` AUSENTE vs VACÍO
+- [x] Tests para todos los casos edge (vendedor NV, email vacío, etc.)
+- [x] Sincronización bidireccional: Odoo publica `VendedorEmail` a PubSub
+- [x] Reverse transformer genera `{VendedorEmail: email}` desde `user_id`
+
+### Pendiente en NestoAPI:
+- [ ] Añadir campos `Vendedor` y `VendedorEmail` al mensaje de cliente
+- [ ] Hacer JOIN con tabla `Vendedores` para obtener email
+- [ ] Procesar `VendedorEmail` en mensajes entrantes (resolver código por email)
+
+### Problema reportado:
+La sincronización de vendedores desde Odoo a Nesto **no funciona** todavía.
+Posibles causas a investigar:
+1. NestoAPI no procesa el campo `VendedorEmail`
+2. NestoAPI no envía `VendedorEmail` en mensajes salientes
+3. Verificar logs en ambos sistemas
+
+Ver documentación de requerimientos: [REQUERIMIENTOS_NESTOAPI_VENDEDORES.md](REQUERIMIENTOS_NESTOAPI_VENDEDORES.md)
 
 ---
 
 ## 📋 Descripción
 
-Implementar sincronización del vendedor asignado a cada cliente desde Nesto a Odoo, usando **auto-mapeo híbrido** (email + fallback manual).
+Implementar sincronización del vendedor asignado a cada cliente entre Nesto y Odoo, usando **solo el email como fuente de verdad**.
 
-Actualmente, cuando se sincronizan clientes desde Nesto a Odoo, **no se incluye información del vendedor asignado**. Esto obliga a asignar vendedores manualmente en Odoo, lo cual es ineficiente y propenso a errores.
+**Principio clave**: `VendedorEmail` es el identificador universal. Cada sistema resuelve el código de vendedor desde el email de forma independiente.
 
 ---
 
@@ -19,15 +45,15 @@ Actualmente, cuando se sincronizan clientes desde Nesto a Odoo, **no se incluye 
 
 ### Fase 1: Vendedor Principal (MVP)
 
-- [x] Sincronizar vendedor de estética desde `Clientes.Vendedor`
-- [x] Auto-mapeo por email (automático)
-- [x] Fallback a tabla manual (para excepciones)
-- [x] Sincronización bidireccional (Odoo ↔ Nesto)
-- [x] Logs claros cuando falla el mapeo
+- [x] VendedorTransformer con auto-mapeo por email
+- [x] Tests completos incluyendo casos edge
+- [x] Sincronización bidireccional Odoo → Nesto (publica VendedorEmail)
+- [ ] **PENDIENTE**: NestoAPI debe enviar VendedorEmail en mensajes
+- [ ] **PENDIENTE**: NestoAPI debe procesar VendedorEmail entrante
 
 ### Fase 2: Vendedor Peluquería
 
-⏸️ **STAND-BY** - Pendiente de decisión de negocio
+STAND-BY - Pendiente de decisión de negocio
 
 ### Fase 3: Jerarquía de Vendedores
 

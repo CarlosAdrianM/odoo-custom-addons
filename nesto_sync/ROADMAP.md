@@ -66,20 +66,19 @@ Sistema de sincronización bidireccional entre Odoo 16 y Nesto mediante Google P
 - [ ] Verificar que no hay bucles infinitos
 - [ ] Coordinar con NestoAPI
 
-### Fase 5: Sincronización de Vendedores (PRÓXIMO)
-- [ ] **Fase 1**: Vendedor principal (estética) - Auto-mapeo híbrido
-  - [ ] Crear modelo `nesto.vendedor` (tabla de mapeo fallback)
-  - [ ] Implementar `VendedorTransformer` con auto-mapeo por email
-  - [ ] Añadir campo `vendedor_externo` en `res.partner`
-  - [ ] Coordinar con NestoAPI: Publicar `Vendedor`, `VendedorEmail`
-  - [ ] Sincronización bidireccional (Odoo ↔ Nesto)
-  - [ ] Tests y documentación
+### Fase 5: Sincronización de Vendedores (EN PROGRESO)
+- [x] **Fase 1**: Vendedor principal - Auto-mapeo solo por email
+  - [x] `VendedorTransformer` con auto-mapeo por email (sin `vendedor_externo`)
+  - [x] Distingue AUSENTE vs VACÍO en `VendedorEmail`
+  - [x] Tests completos para todos los casos edge
+  - [x] Sincronización bidireccional Odoo → Nesto (publica `VendedorEmail`)
+  - [ ] **PENDIENTE NestoAPI**: Enviar `VendedorEmail` en mensajes de cliente
+  - [ ] **PENDIENTE NestoAPI**: Procesar `VendedorEmail` entrante (resolver código por email)
 - [ ] **Fase 2**: Vendedor peluquería - STAND-BY
 - [ ] **Fase 3**: Jerarquía de vendedores (Director → Jefe → Vendedor)
-  - [ ] Sincronizar desde tabla `EquiposVenta`
-  - [ ] Integración con `crm.team` de Odoo
 
 Ver: [ISSUE_SINCRONIZACION_VENDEDORES.md](ISSUE_SINCRONIZACION_VENDEDORES.md)
+Ver: [REQUERIMIENTOS_NESTOAPI_VENDEDORES.md](REQUERIMIENTOS_NESTOAPI_VENDEDORES.md)
 
 ### Fase 6: Expansión a Nuevas Entidades
 - [ ] Proveedores (res.partner con supplier_rank)
@@ -112,13 +111,17 @@ Ver: [ISSUE_SINCRONIZACION_VENDEDORES.md](ISSUE_SINCRONIZACION_VENDEDORES.md)
 ## 📌 Issues Abiertas
 
 ### Issue #1: Sincronización de Vendedores en Clientes
-- **Estado**: 📝 Documentada, pendiente de implementación
+- **Estado**: EN PROGRESO - Odoo implementado, pendiente NestoAPI
 - **Prioridad**: Alta
 - **Versión objetivo**: v2.9.0
 - **Archivo**: [ISSUE_SINCRONIZACION_VENDEDORES.md](ISSUE_SINCRONIZACION_VENDEDORES.md)
-- **Descripción**: Implementar auto-mapeo híbrido de vendedores (email + fallback manual)
-- **Estimación**: 1-2 sesiones
-- **Bloqueantes**: Requiere cambios en NestoAPI
+- **Descripción**: Sincronización de vendedores usando solo email como fuente de verdad
+- **Bloqueante**: NestoAPI debe implementar envío/recepción de `VendedorEmail`
+
+### Issue #2: Sincronización de PersonasContacto
+- **Estado**: COMPLETADA (2025-12-16)
+- **Descripción**: Cuando se modifica una PersonaContacto en Odoo, se publica el cliente padre con todas sus PersonasContacto
+- **Solución**: El mixin detecta si el registro tiene `parent_id` y publica el padre completo
 
 ---
-**Última actualización**: 2025-12-12
+**Última actualización**: 2025-12-16
