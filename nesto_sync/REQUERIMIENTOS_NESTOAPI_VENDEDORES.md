@@ -8,12 +8,15 @@
 
 ## 📋 Resumen
 
-Para implementar la sincronización de vendedores en clientes, necesitamos que NestoAPI publique información adicional del vendedor en los mensajes de PubSub de clientes.
+Para implementar la sincronización de vendedores en clientes, usamos **solo el email como fuente de verdad**. Cada sistema (Odoo, Nesto, Prestashop) resuelve el código de vendedor desde el email de forma independiente.
+
+**Principio clave**: `VendedorEmail` es el identificador universal. El código `Vendedor` es específico de cada sistema.
 
 **Cambios necesarios**:
-1. ✅ Añadir 2 campos nuevos al mensaje de cliente: `Vendedor` y `VendedorEmail`
-2. ✅ Hacer JOIN con tabla `Vendedores` para obtener el email
-3. ✅ Procesar campo `Vendedor` en mensajes entrantes (ya suscrito a PubSub)
+1. ✅ Añadir campo `VendedorEmail` al mensaje de cliente (obligatorio)
+2. ✅ Añadir campo `Vendedor` al mensaje (informativo, para otros sistemas)
+3. ✅ Hacer JOIN con tabla `Vendedores` para obtener el email
+4. ✅ **Procesar `VendedorEmail` en mensajes entrantes** → resolver código por email
 
 ---
 
@@ -186,24 +189,24 @@ else if (string.IsNullOrWhiteSpace(dto.VendedorEmail))
 }
 ```
 
-### 5. Procesar Mensajes Entrantes (Suscripción) - CON AUTO-MAPEO POR EMAIL
+### 5. Procesar Mensajes Entrantes (Suscripción) - SIEMPRE POR EMAIL
 
-NestoAPI ya está suscrito al topic PubSub. Cuando reciba un mensaje de actualización de cliente desde Odoo (u otro sistema), debe procesar el campo `Vendedor`.
+NestoAPI ya está suscrito al topic PubSub. Cuando reciba un mensaje de actualización de cliente desde Odoo (u otro sistema), debe procesar **solo el campo `VendedorEmail`**.
 
-#### ⚠️ CASO ESPECIAL: Vendedor vacío + VendedorEmail presente
+#### ⚠️ IMPORTANTE: Odoo solo envía VendedorEmail
 
-Cuando Odoo cambia el vendedor de un cliente seleccionando un usuario diferente, **Odoo no conoce el código del vendedor en Nesto**. En este caso, Odoo envía:
+Odoo **nunca** envía el código de vendedor. Solo envía el email del usuario asignado:
 
 ```json
 {
   "Cliente": "12345",
   "Contacto": "0",
-  "Vendedor": "",                              // ← Vacío (Odoo no conoce el código)
-  "VendedorEmail": "inakimartinez@nuevavision.es"  // ← Email del nuevo vendedor
+  "VendedorEmail": "inakimartinez@nuevavision.es"  // ← Solo email
+  // ... otros campos ...
 }
 ```
 
-**NestoAPI debe hacer reverse lookup**: buscar el código de vendedor por email.
+**NestoAPI SIEMPRE debe resolver el código de vendedor desde el email.**
 
 ```csharp
 // Al recibir mensaje de PubSub con actualización de cliente
@@ -221,8 +224,8 @@ public async Task ProcessClienteUpdate(ClienteUpdateMessage message)
         return;
     }
 
-    // ⬇️ NUEVO: Procesar cambio de vendedor
-    await ProcessVendedorChange(cliente, message);
+    // ⬇️ Procesar cambio de vendedor POR EMAIL
+    await ProcessVendedorByEmail(cliente, message);
 
     // Procesar otros campos...
     // ...
@@ -234,60 +237,39 @@ public async Task ProcessClienteUpdate(ClienteUpdateMessage message)
 }
 
 /// <summary>
-/// Procesa cambio de vendedor con auto-mapeo por email cuando el código viene vacío
+/// Procesa cambio de vendedor SIEMPRE por email
+/// El email es la única fuente de verdad para identificar vendedores
 /// </summary>
-private async Task ProcessVendedorChange(Cliente cliente, ClienteUpdateMessage message)
+private async Task ProcessVendedorByEmail(Cliente cliente, ClienteUpdateMessage message)
 {
-    string vendedorCodigo = message.Vendedor?.Trim();
     string vendedorEmail = message.VendedorEmail?.Trim().ToLower();
 
-    // CASO 1: Viene código de vendedor válido → usar directamente
-    if (!string.IsNullOrWhiteSpace(vendedorCodigo))
+    // Si no viene email, no hacer nada
+    if (string.IsNullOrWhiteSpace(vendedorEmail))
     {
-        var vendedorExiste = await dbContext.Vendedores
-            .AnyAsync(v => v.Empresa == cliente.Empresa &&
-                          v.Número == vendedorCodigo);
-
-        if (vendedorExiste)
-        {
-            cliente.Vendedor = vendedorCodigo;
-            _logger.LogInformation(
-                $"Vendedor actualizado: Cliente {cliente.NºCliente} → Vendedor {vendedorCodigo}");
-        }
-        else
-        {
-            _logger.LogWarning(
-                $"Vendedor {vendedorCodigo} no existe en Nesto, ignorando");
-        }
+        _logger.LogDebug($"Cliente {cliente.NºCliente}: Sin VendedorEmail en mensaje");
         return;
     }
 
-    // CASO 2: Código vacío + Email presente → AUTO-MAPEO POR EMAIL
-    if (!string.IsNullOrWhiteSpace(vendedorEmail))
+    // Buscar vendedor por email
+    var vendedor = await dbContext.Vendedores
+        .Where(v => v.Empresa == cliente.Empresa &&
+                    v.Mail.ToLower() == vendedorEmail)
+        .FirstOrDefaultAsync();
+
+    if (vendedor != null)
     {
-        var vendedor = await dbContext.Vendedores
-            .Where(v => v.Empresa == cliente.Empresa &&
-                        v.Mail.ToLower() == vendedorEmail)
-            .FirstOrDefaultAsync();
-
-        if (vendedor != null)
-        {
-            cliente.Vendedor = vendedor.Número;
-            _logger.LogInformation(
-                $"Vendedor auto-mapeado por email: Cliente {cliente.NºCliente} → " +
-                $"Email {vendedorEmail} → Vendedor {vendedor.Número}");
-        }
-        else
-        {
-            _logger.LogWarning(
-                $"No se encontró vendedor con email {vendedorEmail} en Nesto. " +
-                $"Cliente {cliente.NºCliente} no actualizado.");
-        }
-        return;
+        cliente.Vendedor = vendedor.Número;
+        _logger.LogInformation(
+            $"Vendedor asignado por email: Cliente {cliente.NºCliente} → " +
+            $"Email {vendedorEmail} → Vendedor {vendedor.Número}");
     }
-
-    // CASO 3: Ni código ni email → no hacer nada
-    _logger.LogDebug($"Cliente {cliente.NºCliente}: Sin datos de vendedor en mensaje");
+    else
+    {
+        _logger.LogWarning(
+            $"No se encontró vendedor con email {vendedorEmail} en Nesto. " +
+            $"Cliente {cliente.NºCliente} no actualizado.");
+    }
 }
 ```
 
@@ -315,52 +297,26 @@ private async Task ProcessVendedorChange(Cliente cliente, ClienteUpdateMessage m
    - Prestashop: Usa el código para su lógica
 ```
 
-### Flujo 2: Otros Sistemas → Nesto (Suscripción) - CON CÓDIGO
+### Flujo 2: Odoo → Nesto (Suscripción) - SIEMPRE POR EMAIL
 
 ```
-1. Usuario cambia vendedor en Odoo (cliente que YA tenía vendedor_externo)
+1. Usuario cambia vendedor en Odoo (selecciona usuario)
          ↓
 2. Odoo PUBLICA mensaje a PubSub:
    {
      "Tabla": "Clientes",
      "Cliente": "12345",
      "Contacto": "0",
-     "Vendedor": "002",                    // ← Odoo conoce el código
-     "VendedorEmail": "maria@nuevavision.es"
+     "VendedorEmail": "inaki@nuevavision.es"  // ← Solo email
    }
          ↓
 3. NestoAPI (SUSCRITO) recibe mensaje
          ↓
-4. NestoAPI valida que vendedor "002" existe
+4. NestoAPI busca en tabla Vendedores: WHERE Mail = 'inaki@nuevavision.es'
          ↓
-5. NestoAPI actualiza Clientes.Vendedor = "002"
+5. Encuentra vendedor "IMZ" → Actualiza Clientes.Vendedor = "IMZ"
          ↓
 6. Cambio guardado en BD Nesto ✅
-```
-
-### Flujo 3: Otros Sistemas → Nesto (Suscripción) - SIN CÓDIGO (Auto-mapeo por Email)
-
-```
-1. Usuario cambia vendedor en Odoo (selecciona usuario, pero NO conoce código Nesto)
-         ↓
-2. Odoo PUBLICA mensaje a PubSub:
-   {
-     "Tabla": "Clientes",
-     "Cliente": "12345",
-     "Contacto": "0",
-     "Vendedor": "",                       // ← Vacío (Odoo no conoce el código)
-     "VendedorEmail": "inaki@nuevavision.es"  // ← Solo email del usuario seleccionado
-   }
-         ↓
-3. NestoAPI (SUSCRITO) recibe mensaje
-         ↓
-4. NestoAPI detecta Vendedor vacío + VendedorEmail presente
-         ↓
-5. NestoAPI busca en tabla Vendedores: WHERE Mail = 'inaki@nuevavision.es'
-         ↓
-6. Encuentra vendedor "IMZ" → Actualiza Clientes.Vendedor = "IMZ"
-         ↓
-7. Cambio guardado en BD Nesto ✅
 ```
 
 ---
@@ -381,18 +337,14 @@ private async Task ProcessVendedorChange(Cliente cliente, ClienteUpdateMessage m
 
 ### Suscripción (PubSub → Nesto)
 
-- [ ] **Procesar campo `Vendedor`** en mensajes entrantes
-- [ ] **Validar** que vendedor existe antes de actualizar
-- [ ] **⚠️ AUTO-MAPEO POR EMAIL**: Si `Vendedor` vacío + `VendedorEmail` presente:
-  - [ ] Buscar vendedor por email en tabla `Vendedores`
-  - [ ] Si existe → usar ese código
-  - [ ] Si no existe → log warning, no actualizar
-- [ ] **Logs** cuando vendedor no existe
+- [ ] **Procesar campo `VendedorEmail`** en mensajes entrantes (SIEMPRE por email)
+- [ ] **Buscar vendedor** por email en tabla `Vendedores`
+- [ ] **Si existe** → usar código para actualizar `Clientes.Vendedor`
+- [ ] **Si no existe** → log warning, no actualizar vendedor
 - [ ] **Testing**:
-  - [ ] Mensaje con vendedor válido → Actualiza
-  - [ ] Mensaje con vendedor inexistente → Log warning, no actualiza
-  - [ ] **Mensaje con Vendedor="" + VendedorEmail válido → Auto-mapea y actualiza**
-  - [ ] **Mensaje con Vendedor="" + VendedorEmail inexistente → Log warning, no actualiza**
+  - [ ] Mensaje con VendedorEmail válido → Actualiza
+  - [ ] Mensaje con VendedorEmail inexistente → Log warning, no actualiza
+  - [ ] Mensaje sin VendedorEmail → No modifica vendedor
 
 ---
 
@@ -474,16 +426,16 @@ INCLUDE (Mail);
 ## ✅ Criterios de Aceptación
 
 ### Publicación (Nesto → PubSub)
-1. ✅ Mensaje de cliente incluye 2 campos nuevos: `Vendedor`, `VendedorEmail`
-2. ✅ Si cliente tiene vendedor válido → Campos completos
+1. ✅ Mensaje de cliente incluye `VendedorEmail` (obligatorio) y `Vendedor` (informativo)
+2. ✅ Si cliente tiene vendedor válido → Ambos campos completos
 3. ✅ Si cliente sin vendedor → Campos vienen como `null`
 4. ✅ Si vendedor sin email → `VendedorEmail` es `null`, `Vendedor` tiene código
 
 ### Suscripción (PubSub → Nesto)
-5. ✅ NestoAPI procesa campo `Vendedor` en mensajes entrantes
-6. ✅ **Si `Vendedor` tiene código válido → Actualiza directamente**
-7. ✅ **Si `Vendedor` vacío + `VendedorEmail` presente → Auto-mapea por email y actualiza**
-8. ✅ **Si `VendedorEmail` no existe en tabla Vendedores → Log warning, no actualiza vendedor**
+5. ✅ NestoAPI procesa **solo** campo `VendedorEmail` en mensajes entrantes
+6. ✅ **SIEMPRE busca vendedor por email** → resuelve código desde email
+7. ✅ **Si email existe** → Actualiza `Clientes.Vendedor` con el código encontrado
+8. ✅ **Si email no existe** → Log warning, no actualiza vendedor
 
 ### General
 9. ✅ No rompe sincronización de clientes existente

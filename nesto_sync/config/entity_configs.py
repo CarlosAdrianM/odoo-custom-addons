@@ -69,13 +69,13 @@ ENTITY_CONFIGS = {
                 'odoo_field': 'persona_contacto_externa'
             },
 
-            # --- Vendedor (auto-mapeo por email) ---
-            # Nesto envía Vendedor (código) + VendedorEmail (email del vendedor)
+            # --- Vendedor (auto-mapeo SOLO por email) ---
+            # Nesto envía VendedorEmail (email del vendedor)
             # El transformer busca usuario en Odoo por email y asigna user_id
-            # Si no viene Vendedor en el mensaje, no se hace nada (comportamiento conservador)
+            # El código de vendedor (campo Vendedor) se IGNORA - cada sistema lo resuelve
             'Vendedor': {
                 'transformer': 'vendedor',
-                'odoo_fields': ['user_id', 'vendedor_externo']
+                'odoo_fields': ['user_id']  # Solo user_id, sin vendedor_externo
             },
 
             # --- Campos fijos ---
@@ -193,13 +193,11 @@ ENTITY_CONFIGS = {
             # ⚠️ IDENTIFICADORES CRÍTICOS - DEBEN IR SIEMPRE
             'cliente_externo': {'nesto_field': 'Cliente'},
             'contacto_externo': {'nesto_field': 'Contacto'},
-            # Vendedor: usa transformer que genera Vendedor + VendedorEmail
-            # - Si vendedor_externo existe → Vendedor=código, VendedorEmail=user_id.login
-            # - Si solo user_id existe → Vendedor="", VendedorEmail=user_id.login
-            #   (NestoAPI hará reverse lookup por email)
+            # Vendedor: solo envía VendedorEmail
+            # NestoAPI resolverá el código de vendedor desde el email
             'user_id': {
-                'nesto_field': 'Vendedor',  # Campo principal
-                'reverse_transformer': 'vendedor'  # Genera dict con Vendedor + VendedorEmail
+                'nesto_field': 'VendedorEmail',  # Solo email
+                'reverse_transformer': 'vendedor'  # Genera dict con VendedorEmail
             },
             # Los demás campos (Nombre, Direccion, etc.) se infieren automáticamente
             # y mantienen sus nombres en español

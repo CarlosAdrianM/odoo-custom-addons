@@ -258,7 +258,7 @@ class TestCountryCodeTransformer(TransactionCase):
 
 
 class TestVendedorTransformer(TransactionCase):
-    """Tests para VendedorTransformer - Auto-mapeo de vendedores por email"""
+    """Tests para VendedorTransformer - Auto-mapeo SOLO por email (sin vendedor_externo)"""
 
     def setUp(self):
         super().setUp()
@@ -280,10 +280,11 @@ class TestVendedorTransformer(TransactionCase):
             }
         }
 
+        # El código de vendedor se ignora, solo importa VendedorEmail
         result = self.transformer.transform('001', context)
 
         self.assertEqual(result['user_id'], self.user_juan.id)
-        self.assertEqual(result['vendedor_externo'], '001')
+        self.assertNotIn('vendedor_externo', result)  # Ya no existe este campo
 
     def test_auto_mapeo_email_case_insensitive(self):
         """Test: Auto-mapeo ignora mayúsculas/minúsculas en email"""
@@ -297,7 +298,6 @@ class TestVendedorTransformer(TransactionCase):
         result = self.transformer.transform('001', context)
 
         self.assertEqual(result['user_id'], self.user_juan.id)
-        self.assertEqual(result['vendedor_externo'], '001')
 
     def test_email_no_encontrado(self):
         """Test: Email que no existe en Odoo → user_id=False"""
@@ -311,10 +311,9 @@ class TestVendedorTransformer(TransactionCase):
         result = self.transformer.transform('002', context)
 
         self.assertFalse(result['user_id'])
-        self.assertEqual(result['vendedor_externo'], '002')
 
     def test_sin_email_en_mensaje(self):
-        """Test: Mensaje sin VendedorEmail → user_id=False, guarda código"""
+        """Test: Mensaje sin VendedorEmail → dict vacío (no modifica user_id)"""
         context = {
             'env': self.env,
             'nesto_data': {}  # Sin VendedorEmail
@@ -322,11 +321,11 @@ class TestVendedorTransformer(TransactionCase):
 
         result = self.transformer.transform('003', context)
 
-        self.assertFalse(result['user_id'])
-        self.assertEqual(result['vendedor_externo'], '003')
+        # Sin email, no se modifica nada
+        self.assertEqual(result, {})
 
-    def test_sin_codigo_vendedor(self):
-        """Test: Sin código de vendedor → dict vacío (comportamiento conservador)"""
+    def test_codigo_vendedor_ignorado(self):
+        """Test: El código de vendedor se ignora, solo importa el email"""
         context = {
             'env': self.env,
             'nesto_data': {
@@ -334,21 +333,12 @@ class TestVendedorTransformer(TransactionCase):
             }
         }
 
+        # Aunque no venga código, si hay email funciona
         result = self.transformer.transform('', context)
-
-        # Debe retornar dict vacío, no afecta nada
-        self.assertEqual(result, {})
-
-    def test_vendedor_none(self):
-        """Test: Vendedor None → dict vacío"""
-        context = {
-            'env': self.env,
-            'nesto_data': {}
-        }
+        self.assertEqual(result['user_id'], self.user_juan.id)
 
         result = self.transformer.transform(None, context)
-
-        self.assertEqual(result, {})
+        self.assertEqual(result['user_id'], self.user_juan.id)
 
     def test_email_con_espacios(self):
         """Test: Email con espacios se limpia correctamente"""
