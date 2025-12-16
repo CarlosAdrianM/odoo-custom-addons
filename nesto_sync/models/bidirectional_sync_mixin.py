@@ -196,6 +196,11 @@ class BidirectionalSyncMixin(models.AbstractModel):
         """
         Sincroniza registros a Nesto en bloques
 
+        IMPORTANTE: Si el registro es un "child" (tiene parent_id), publicamos
+        el PADRE con todos sus children, no el child directamente.
+        Esto asegura que NestoAPI reciba el formato correcto:
+        {Cliente: ..., PersonasContacto: [...]}
+
         Args:
             entity_type (str): Tipo de entidad ('cliente', 'producto', etc.)
             vals (dict): Valores que se están actualizando/creando
@@ -212,6 +217,12 @@ class BidirectionalSyncMixin(models.AbstractModel):
             # Crear publisher
             publisher = OdooPublisher(entity_type, self.env)
 
+            # Obtener configuración para detectar si es jerárquico
+            config = ENTITY_CONFIGS.get(entity_type, {})
+            hierarchy_config = config.get('hierarchy', {})
+            is_hierarchical = hierarchy_config.get('enabled', False)
+            parent_field = hierarchy_config.get('parent_field', 'parent_id')
+
             # Procesar en bloques
             total = len(self)
             num_batches = (total - 1) // batch_size + 1
@@ -220,6 +231,9 @@ class BidirectionalSyncMixin(models.AbstractModel):
                 _logger.info(
                     f"Sincronizando {total} registros de {entity_type} en {num_batches} bloques"
                 )
+
+            # Set para evitar publicar el mismo padre múltiples veces
+            published_parents = set()
 
             for i in range(0, total, batch_size):
                 batch = self[i:i+batch_size]
@@ -234,8 +248,17 @@ class BidirectionalSyncMixin(models.AbstractModel):
                         # Solo sincronizar si es relevante
                         # Pasar valores originales para comparación correcta
                         record_original_values = original_values.get(record.id, {})
-                        if self._should_sync_record(record, vals, record_original_values):
-                            publisher.publish_record(record)
+                        if not self._should_sync_record(record, vals, record_original_values):
+                            continue
+
+                        # Determinar qué publicar: el registro o su padre
+                        record_to_publish = self._get_record_to_publish(
+                            record, is_hierarchical, parent_field, published_parents
+                        )
+
+                        if record_to_publish:
+                            publisher.publish_record(record_to_publish)
+
                     except Exception as e:
                         _logger.error(
                             f"Error sincronizando {entity_type} ID {record.id}: {str(e)}"
@@ -247,6 +270,95 @@ class BidirectionalSyncMixin(models.AbstractModel):
                 f"Error en sincronización bidireccional de {entity_type}: {str(e)}",
                 exc_info=True
             )
+
+    def _get_record_to_publish(self, record, is_hierarchical, parent_field, published_parents):
+        """
+        Determina qué registro publicar: el registro mismo o su padre
+
+        REGLA: Si el registro tiene parent_id (es un child), publicamos el padre
+        con todos sus children. Esto asegura el formato correcto en NestoAPI.
+
+        Args:
+            record: Registro a evaluar
+            is_hierarchical (bool): Si la entidad es jerárquica
+            parent_field (str): Nombre del campo parent (ej: 'parent_id')
+            published_parents (set): Set de IDs de padres ya publicados (para evitar duplicados)
+
+        Returns:
+            record o None: Registro a publicar, o None si ya fue publicado
+        """
+        if not is_hierarchical:
+            # No es jerárquico, publicar el registro directamente
+            return record
+
+        # Verificar si el registro tiene parent
+        parent = getattr(record, parent_field, None) if hasattr(record, parent_field) else None
+
+        if not parent:
+            # Es un registro principal (no tiene parent), publicar directamente
+            return record
+
+        # Es un child → publicar el PADRE con todos sus children
+        parent_id = parent.id
+
+        # Evitar publicar el mismo padre múltiples veces en la misma operación
+        if parent_id in published_parents:
+            _logger.debug(
+                f"Padre ID {parent_id} ya fue publicado en esta operación, "
+                f"saltando child ID {record.id}"
+            )
+            return None
+
+        # Verificar que el PADRE tenga los campos requeridos para sincronizar
+        if not self._parent_has_required_fields(parent):
+            _logger.warning(
+                f"Child ID {record.id} tiene padre ID {parent_id} pero el padre "
+                f"no tiene los campos requeridos para sincronizar. Saltando."
+            )
+            return None
+
+        # Marcar padre como publicado
+        published_parents.add(parent_id)
+
+        _logger.info(
+            f"Child ID {record.id} modificado -> Publicando PADRE ID {parent_id} "
+            f"con todos sus PersonasContacto"
+        )
+
+        return parent
+
+    def _parent_has_required_fields(self, parent):
+        """
+        Verifica que el padre tenga los campos requeridos para sincronizar
+
+        Args:
+            parent: Registro padre
+
+        Returns:
+            bool: True si el padre tiene los campos requeridos
+        """
+        entity_type = self._get_entity_type_for_sync()
+        if not entity_type:
+            return True
+
+        config = ENTITY_CONFIGS.get(entity_type, {})
+        required_fields = config.get('required_id_fields', config.get('id_fields', []))
+
+        for field in required_fields:
+            if hasattr(parent, field):
+                value = getattr(parent, field, None)
+                if not value:
+                    _logger.debug(
+                        f"Padre ID {parent.id} no tiene valor en campo requerido '{field}'"
+                    )
+                    return False
+            else:
+                _logger.warning(
+                    f"Padre ID {parent.id} no tiene campo '{field}'"
+                )
+                return False
+
+        return True
 
     def _should_sync_record(self, record, vals, original_values=None):
         """
