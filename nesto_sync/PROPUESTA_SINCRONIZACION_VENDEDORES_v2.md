@@ -96,14 +96,13 @@ FechaModificacion DATETIME
   "Cliente": "12345",
   "Contacto": "0",
   "Nombre": "Cliente Ejemplo",
-  "Vendedor": "001",                    // ⬅️ NUEVO: Código vendedor
-  "VendedorEmail": "juan@nuevavision.es", // ⬅️ NUEVO: Email para auto-mapeo
-  "VendedorNombre": "Juan Pérez",        // ⬅️ OPCIONAL: Para logs/debug
+  "Vendedor": "001",                       // ⬅️ NUEVO: Código vendedor (CHAR(3))
+  "VendedorEmail": "juan@nuevavision.es"   // ⬅️ NUEVO: Email para auto-mapeo
   // ... resto de campos ...
 }
 ```
 
-**Mínimo requerido**: `Vendedor` + `VendedorEmail`
+**Campos requeridos**: `Vendedor` + `VendedorEmail` (solo 2 campos nuevos)
 
 ### 2. Transformer con Auto-mapeo
 
@@ -123,7 +122,6 @@ class VendedorTransformer(FieldTransformer):
     Entrada:
         Vendedor: "001"
         VendedorEmail: "juan@nuevavision.es"
-        VendedorNombre: "Juan Pérez" (opcional)
 
     Salida:
         user_id: 6 (ID de res.users)
@@ -132,7 +130,6 @@ class VendedorTransformer(FieldTransformer):
     def transform(self, value, record_values, env):
         vendedor_codigo = value  # "001"
         vendedor_email = record_values.get('VendedorEmail', '').strip().lower()
-        vendedor_nombre = record_values.get('VendedorNombre', '')
 
         if not vendedor_codigo:
             return {'user_id': False, 'vendedor_externo': False}
@@ -226,10 +223,9 @@ ENTITY_CONFIGS = {
             # ... campos existentes ...
 
             # ⬅️ NUEVO: Vendedor con auto-mapeo
-            # El transformer procesará 3 campos del mensaje:
-            #   - Vendedor (código)
-            #   - VendedorEmail (para mapeo)
-            #   - VendedorNombre (opcional, para logs)
+            # El transformer procesará 2 campos del mensaje:
+            #   - Vendedor (código CHAR(3))
+            #   - VendedorEmail (para auto-mapeo por email)
             'Vendedor': {
                 'transformer': 'vendedor',
                 'odoo_fields': ['user_id', 'vendedor_externo']
@@ -247,7 +243,7 @@ ENTITY_CONFIGS = {
 }
 ```
 
-**Nota**: El transformer accede a `VendedorEmail` y `VendedorNombre` desde `record_values`, no necesitan estar en `field_mappings`.
+**Nota**: El transformer accede a `VendedorEmail` desde `record_values`, no necesita estar en `field_mappings`.
 
 ### 4. Campo en res.partner
 
@@ -378,7 +374,6 @@ Vendedor: "003"  → Superior: "001"  (Jefe → Director)
   "Cliente": "12345",
   "Vendedor": "005",
   "VendedorEmail": "vendedor@nv.es",
-  "VendedorNombre": "Pedro López",
   "VendedorJefe": "003",              // ⬅️ NUEVO (Fase 3)
   "VendedorJefeEmail": "jefe@nv.es",  // ⬅️ NUEVO (Fase 3)
   "VendedorDirector": "001",          // ⬅️ NUEVO (Fase 3) - hard-coded en Nesto
@@ -397,7 +392,6 @@ var equipo = dbContext.EquiposVenta
 
 message.Vendedor = vendedor.Numero;
 message.VendedorEmail = vendedor.Mail;
-message.VendedorNombre = vendedor.Descripcion;
 message.VendedorJefe = equipo?.Superior;
 message.VendedorDirector = "001";  // Hard-coded
 ```
@@ -443,8 +437,9 @@ partner.user_id = vendedor_user_id  # Vendedor individual
 ### Fase 1: Vendedor Principal (MVP) - 1 sesión
 
 **Backend (NestoAPI)**:
-- [ ] Añadir campos al mensaje: `Vendedor`, `VendedorEmail`, `VendedorNombre`
+- [ ] Añadir campos al mensaje: `Vendedor`, `VendedorEmail`
 - [ ] Publicar datos desde `Clientes.Vendedor` + JOIN con `Vendedores`
+- [ ] Procesar campo `Vendedor` en mensajes entrantes (suscripción)
 
 **Backend (Odoo)**:
 - [ ] Crear `VendedorTransformer` con auto-mapeo por email

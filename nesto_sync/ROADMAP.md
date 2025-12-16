@@ -71,7 +71,7 @@ Sistema de sincronización bidireccional entre Odoo 16 y Nesto mediante Google P
   - [ ] Crear modelo `nesto.vendedor` (tabla de mapeo fallback)
   - [ ] Implementar `VendedorTransformer` con auto-mapeo por email
   - [ ] Añadir campo `vendedor_externo` en `res.partner`
-  - [ ] Coordinar con NestoAPI: Publicar `Vendedor`, `VendedorEmail`, `VendedorNombre`
+  - [ ] Coordinar con NestoAPI: Publicar `Vendedor`, `VendedorEmail`
   - [ ] Sincronización bidireccional (Odoo ↔ Nesto)
   - [ ] Tests y documentación
 - [ ] **Fase 2**: Vendedor peluquería - STAND-BY

@@ -90,14 +90,13 @@ Añadir al mensaje de cliente:
   "Cliente": "12345",
   "Contacto": "0",
   "Nombre": "Cliente Ejemplo",
-  "Vendedor": "001",           // ⬅️ NUEVO: Vendedor de estética
-  "VendedorNombre": "Juan Pérez",  // ⬅️ NUEVO (opcional): Descripción del vendedor
-  "VendedorEmail": "juan@nv.es",   // ⬅️ NUEVO (opcional): Email del vendedor
+  "Vendedor": "001",                       // ⬅️ NUEVO: Vendedor de estética (CHAR(3))
+  "VendedorEmail": "juan@nuevavision.es"   // ⬅️ NUEVO: Email para auto-mapeo
   // ... resto de campos ...
 }
 ```
 
-**Alternativa mínima**: Solo enviar `"Vendedor": "001"` y hacer lookup en Odoo.
+**Nota**: `VendedorNombre` NO es necesario. Cada sistema tiene su propia forma de almacenar nombres.
 
 #### 1.2. Tabla de Mapeo en Odoo
 

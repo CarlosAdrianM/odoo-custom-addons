@@ -1,7 +1,7 @@
 # Requerimientos para NestoAPI: Sincronización de Vendedores
 
 > **Destinatario**: Equipo de desarrollo NestoAPI (C# / WebApi)
-> **Fecha**: 2025-12-12
+> **Fecha**: 2025-12-12 (Actualizado: 2025-12-16)
 > **Issue relacionada**: [ISSUE_SINCRONIZACION_VENDEDORES.md](ISSUE_SINCRONIZACION_VENDEDORES.md)
 
 ---
@@ -11,17 +11,46 @@
 Para implementar la sincronización de vendedores en clientes, necesitamos que NestoAPI publique información adicional del vendedor en los mensajes de PubSub de clientes.
 
 **Cambios necesarios**:
-1. ✅ Añadir 3 campos nuevos al mensaje de cliente
-2. ✅ Hacer JOIN con tabla `Vendedores`
-3. ✅ Implementar endpoint para recibir actualizaciones desde Odoo (opcional, Fase 1b)
+1. ✅ Añadir 2 campos nuevos al mensaje de cliente: `Vendedor` y `VendedorEmail`
+2. ✅ Hacer JOIN con tabla `Vendedores` para obtener el email
+3. ✅ Procesar campo `Vendedor` en mensajes entrantes (ya suscrito a PubSub)
 
 ---
 
-## 🔴 FASE 1A: Nesto → Odoo (PRIORITARIO)
+## 🏗️ Arquitectura: Patrón PubSub Puro
 
-### Cambio en Mensaje PubSub de Cliente
+**IMPORTANTE**: Todos los sistemas (Odoo, Nesto, Prestashop futuro, etc.) son **peers** que:
+- **Publican** mensajes al topic PubSub
+- **Se suscriben** al topic para recibir mensajes
 
-**Ubicación**: `NestoAPI/Services/PubSubPublisher.cs` (o archivo similar)
+```
+                    ┌─────────────────┐
+                    │   PubSub Topic  │
+                    │ sincronizacion- │
+                    │     tablas      │
+                    └────────┬────────┘
+                             │
+           ┌─────────────────┼─────────────────┐
+           │                 │                 │
+           ▼                 ▼                 ▼
+     ┌──────────┐      ┌──────────┐      ┌──────────┐
+     │   Odoo   │      │  Nesto   │      │Prestashop│
+     │          │      │          │      │ (futuro) │
+     └──────────┘      └──────────┘      └──────────┘
+           │                 │                 │
+           │   PUBLICA       │   PUBLICA       │
+           └────────►  PubSub  ◄────────────────┘
+```
+
+**NO hay endpoints directos entre sistemas**. Todo pasa por PubSub.
+
+---
+
+## 🔴 Cambios Requeridos en NestoAPI
+
+### 1. Añadir Campos al Mensaje de Cliente (Publicación)
+
+**Ubicación**: Donde se construye el mensaje de cliente para publicar a PubSub
 
 **Campos actuales** (ejemplo):
 ```json
@@ -40,31 +69,28 @@ Para implementar la sincronización de vendedores en clientes, necesitamos que N
 }
 ```
 
-**Campos a AÑADIR** (3 nuevos):
+**Campos a AÑADIR** (2 nuevos):
 ```json
 {
   "Cliente": "12345",
   "Contacto": "0",
   // ... campos existentes ...
 
-  // ⬇️ NUEVOS CAMPOS (Fase 1A)
-  "Vendedor": "001",                     // Clientes.Vendedor (CHAR(3))
-  "VendedorEmail": "juan@nuevavision.es", // Vendedores.Mail (VARCHAR)
-  "VendedorNombre": "Juan Pérez"         // Vendedores.Descripción (VARCHAR)
+  // ⬇️ NUEVOS CAMPOS
+  "Vendedor": "001",                      // Clientes.Vendedor (CHAR(3))
+  "VendedorEmail": "juan@nuevavision.es"  // Vendedores.Mail (VARCHAR) - JOIN
 }
 ```
 
-### Query SQL Necesario en NestoAPI
+**Nota**: `VendedorNombre` NO es necesario. Cada sistema tiene su propia forma de almacenar nombres.
+
+### 2. Query SQL con JOIN
 
 **Pseudocódigo C#**:
 
 ```csharp
-// Método: BuildClienteMessage() o similar
-// Ubicación: Services/PubSubPublisher.cs o Controllers/ClientesController.cs
-
 public ClienteDTO BuildClienteMessage(string empresa, string cliente, string contacto)
 {
-    // Query actual (aproximado)
     var clienteData = dbContext.Clientes
         .Where(c => c.Empresa == empresa &&
                     c.NºCliente == cliente &&
@@ -73,30 +99,27 @@ public ClienteDTO BuildClienteMessage(string empresa, string cliente, string con
 
     if (clienteData == null) return null;
 
-    // ⬇️ NUEVO: JOIN con tabla Vendedores
+    // ⬇️ NUEVO: JOIN con tabla Vendedores para obtener email
     var vendedor = dbContext.Vendedores
         .Where(v => v.Empresa == clienteData.Empresa &&
                     v.Número == clienteData.Vendedor)
         .FirstOrDefault();
 
-    // Construir DTO
     return new ClienteDTO
     {
         Cliente = clienteData.NºCliente,
         Contacto = clienteData.Contacto,
         Nombre = clienteData.Nombre,
-        Direccion = clienteData.Dirección,
         // ... resto de campos existentes ...
 
         // ⬇️ NUEVOS CAMPOS
-        Vendedor = clienteData.Vendedor,           // CHAR(3) - Ej: "001"
-        VendedorEmail = vendedor?.Mail,            // VARCHAR - Ej: "juan@nv.es"
-        VendedorNombre = vendedor?.Descripción     // VARCHAR - Ej: "Juan Pérez"
+        Vendedor = clienteData.Vendedor,    // CHAR(3) - Ej: "001"
+        VendedorEmail = vendedor?.Mail      // VARCHAR - Ej: "juan@nv.es"
     };
 }
 ```
 
-**SQL equivalente** (para referencia):
+**SQL equivalente**:
 ```sql
 SELECT
     c.Empresa,
@@ -107,9 +130,8 @@ SELECT
     c.Vendedor,
     -- ... otros campos ...
 
-    -- ⬇️ NUEVOS: JOIN con Vendedores
-    v.Mail AS VendedorEmail,
-    v.Descripción AS VendedorNombre
+    -- ⬇️ NUEVO: JOIN con Vendedores
+    v.Mail AS VendedorEmail
 
 FROM Clientes c
 LEFT JOIN Vendedores v ON v.Empresa = c.Empresa
@@ -120,47 +142,9 @@ WHERE c.Empresa = @empresa
   AND c.Contacto = @contacto;
 ```
 
-### Validaciones Recomendadas
+### 3. Actualizar DTO
 
-**Antes de publicar** el mensaje a PubSub:
-
-```csharp
-// Validación 1: Cliente sin vendedor asignado
-if (string.IsNullOrWhiteSpace(dto.Vendedor))
-{
-    _logger.LogWarning($"Cliente {dto.Cliente}-{dto.Contacto} sin vendedor asignado");
-    // No incluir campos de vendedor en el mensaje
-    dto.Vendedor = null;
-    dto.VendedorEmail = null;
-    dto.VendedorNombre = null;
-}
-
-// Validación 2: Vendedor sin email (auto-mapeo fallará en Odoo)
-else if (string.IsNullOrWhiteSpace(dto.VendedorEmail))
-{
-    _logger.LogWarning(
-        $"Vendedor {dto.Vendedor} del cliente {dto.Cliente}-{dto.Contacto} " +
-        $"sin email. Auto-mapeo fallará en Odoo."
-    );
-    // Publicar de todas formas, Odoo usará fallback manual
-}
-
-// Validación 3: Vendedor no existe en tabla Vendedores
-else if (vendedor == null)
-{
-    _logger.LogWarning(
-        $"Vendedor {dto.Vendedor} del cliente {dto.Cliente}-{dto.Contacto} " +
-        $"no encontrado en tabla Vendedores"
-    );
-    // Publicar solo código, sin email ni nombre
-    dto.VendedorEmail = null;
-    dto.VendedorNombre = null;
-}
-```
-
-### DTO (Data Transfer Object)
-
-**Añadir propiedades** a la clase `ClienteDTO` (o similar):
+**Añadir propiedades** a la clase `ClienteDTO`:
 
 ```csharp
 public class ClienteDTO
@@ -177,226 +161,150 @@ public class ClienteDTO
 
     [JsonProperty("VendedorEmail")]
     public string VendedorEmail { get; set; }
+}
+```
 
-    [JsonProperty("VendedorNombre")]
-    public string VendedorNombre { get; set; }
+### 4. Validaciones Recomendadas
+
+```csharp
+// Validación 1: Cliente sin vendedor asignado
+if (string.IsNullOrWhiteSpace(dto.Vendedor))
+{
+    _logger.LogWarning($"Cliente {dto.Cliente}-{dto.Contacto} sin vendedor asignado");
+    dto.Vendedor = null;
+    dto.VendedorEmail = null;
+}
+
+// Validación 2: Vendedor sin email (auto-mapeo fallará en otros sistemas)
+else if (string.IsNullOrWhiteSpace(dto.VendedorEmail))
+{
+    _logger.LogWarning(
+        $"Vendedor {dto.Vendedor} del cliente {dto.Cliente}-{dto.Contacto} " +
+        $"sin email. Auto-mapeo por email fallará."
+    );
+    // Publicar de todas formas con solo el código
+}
+```
+
+### 5. Procesar Mensajes Entrantes (Suscripción)
+
+NestoAPI ya está suscrito al topic PubSub. Cuando reciba un mensaje de actualización de cliente desde Odoo (u otro sistema), debe procesar el campo `Vendedor`:
+
+```csharp
+// Al recibir mensaje de PubSub con actualización de cliente
+public async Task ProcessClienteUpdate(ClienteUpdateMessage message)
+{
+    var cliente = await dbContext.Clientes
+        .Where(c => c.Empresa == message.Empresa &&
+                    c.NºCliente == message.Cliente &&
+                    c.Contacto == message.Contacto)
+        .FirstOrDefaultAsync();
+
+    if (cliente == null)
+    {
+        _logger.LogWarning($"Cliente {message.Cliente}-{message.Contacto} no encontrado");
+        return;
+    }
+
+    // ⬇️ NUEVO: Procesar cambio de vendedor si viene en el mensaje
+    if (!string.IsNullOrWhiteSpace(message.Vendedor))
+    {
+        // Validar que el vendedor existe
+        var vendedorExiste = await dbContext.Vendedores
+            .AnyAsync(v => v.Empresa == message.Empresa &&
+                          v.Número == message.Vendedor);
+
+        if (vendedorExiste)
+        {
+            cliente.Vendedor = message.Vendedor;
+        }
+        else
+        {
+            _logger.LogWarning($"Vendedor {message.Vendedor} no existe, ignorando");
+        }
+    }
+
+    // Procesar otros campos...
+    // ...
+
+    cliente.FechaModificacion = DateTime.Now;
+    cliente.Usuario = "PubSub";
+
+    await dbContext.SaveChangesAsync();
 }
 ```
 
 ---
 
-## 🔵 FASE 1B: Odoo → Nesto (OPCIONAL, menor prioridad)
+## 🔄 Flujos Completos
 
-### Endpoint para Recibir Actualizaciones desde Odoo
-
-Cuando un usuario cambia el vendedor asignado a un cliente en Odoo, Odoo publicará un mensaje a PubSub que NestoAPI debe procesar.
-
-**Ubicación**: `NestoAPI/Controllers/ClientesController.cs` (o similar)
-
-**Endpoint nuevo** (o ampliar uno existente):
-
-```csharp
-[HttpPost]
-[Route("api/clientes/actualizar")]
-public async Task<IActionResult> ActualizarCliente([FromBody] ClienteUpdateDTO dto)
-{
-    try
-    {
-        // Validar datos de entrada
-        if (string.IsNullOrWhiteSpace(dto.Empresa) ||
-            string.IsNullOrWhiteSpace(dto.Cliente) ||
-            string.IsNullOrWhiteSpace(dto.Contacto))
-        {
-            return BadRequest("Empresa, Cliente y Contacto son obligatorios");
-        }
-
-        // Buscar cliente
-        var cliente = await _dbContext.Clientes
-            .Where(c => c.Empresa == dto.Empresa &&
-                        c.NºCliente == dto.Cliente &&
-                        c.Contacto == dto.Contacto)
-            .FirstOrDefaultAsync();
-
-        if (cliente == null)
-        {
-            return NotFound($"Cliente {dto.Cliente}-{dto.Contacto} no encontrado");
-        }
-
-        // Procesar solo los campos que vienen en el DTO
-        // (Odoo solo enviará campos modificados)
-
-        // ⬇️ NUEVO: Actualizar vendedor
-        if (!string.IsNullOrWhiteSpace(dto.Vendedor))
-        {
-            // Validar que el vendedor existe
-            var vendedor = await _dbContext.Vendedores
-                .Where(v => v.Empresa == dto.Empresa &&
-                            v.Número == dto.Vendedor)
-                .FirstOrDefaultAsync();
-
-            if (vendedor == null)
-            {
-                return BadRequest($"Vendedor {dto.Vendedor} no existe en tabla Vendedores");
-            }
-
-            // Actualizar
-            cliente.Vendedor = dto.Vendedor;
-        }
-
-        // Actualizar otros campos si vienen en el DTO
-        // (nombre, dirección, teléfono, etc.)
-
-        // Campos de auditoría
-        cliente.Usuario = User.Identity?.Name ?? "Odoo";
-        cliente.FechaModificacion = DateTime.Now;
-
-        // Guardar cambios
-        await _dbContext.SaveChangesAsync();
-
-        _logger.LogInformation(
-            $"Cliente {dto.Cliente}-{dto.Contacto} actualizado desde Odoo. " +
-            $"Vendedor: {dto.Vendedor}"
-        );
-
-        return Ok(new {
-            success = true,
-            message = "Cliente actualizado correctamente",
-            vendedor = dto.Vendedor
-        });
-    }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, $"Error al actualizar cliente {dto.Cliente}");
-        return StatusCode(500, "Error interno del servidor");
-    }
-}
-```
-
-**DTO para actualizaciones**:
-
-```csharp
-public class ClienteUpdateDTO
-{
-    [Required]
-    public string Empresa { get; set; }
-
-    [Required]
-    public string Cliente { get; set; }
-
-    [Required]
-    public string Contacto { get; set; }
-
-    // Campos opcionales (solo se actualizan si vienen en el JSON)
-    public string Vendedor { get; set; }
-    public string Nombre { get; set; }
-    public string Direccion { get; set; }
-    // ... otros campos según necesidad ...
-}
-```
-
-**Ejemplo de request desde Odoo**:
-
-```http
-POST /api/clientes/actualizar HTTP/1.1
-Content-Type: application/json
-
-{
-  "Empresa": "001",
-  "Cliente": "12345",
-  "Contacto": "0",
-  "Vendedor": "002"
-}
-```
-
----
-
-## 🔄 Flujo Completo
-
-### Flujo 1: Nesto → Odoo (Creación/Actualización de Cliente)
+### Flujo 1: Nesto → Otros Sistemas (Publicación)
 
 ```
 1. Usuario crea/modifica cliente en Nesto
          ↓
 2. Trigger SQL detecta cambio
          ↓
-3. NestoAPI recibe notificación
-         ↓
-4. NestoAPI hace JOIN con tabla Vendedores
-         ↓
-5. NestoAPI construye mensaje con:
+3. NestoAPI construye mensaje con:
    - Vendedor: "001"
    - VendedorEmail: "juan@nuevavision.es"
-   - VendedorNombre: "Juan Pérez"
          ↓
-6. NestoAPI publica mensaje a PubSub
+4. NestoAPI PUBLICA mensaje a PubSub
          ↓
-7. Odoo recibe mensaje
+5. Sistemas suscritos (Odoo, Prestashop, etc.) reciben mensaje
          ↓
-8. VendedorTransformer de Odoo:
-   a) Busca usuario por email (auto-mapeo)
-   b) Si falla, busca en tabla nesto.vendedor (fallback)
-   c) Asigna user_id al cliente
-         ↓
-9. Cliente guardado en Odoo con vendedor asignado ✅
+6. Cada sistema procesa según sus reglas:
+   - Odoo: Auto-mapea por email → user_id
+   - Prestashop: Usa el código para su lógica
 ```
 
-### Flujo 2: Odoo → Nesto (Cambio de Vendedor)
+### Flujo 2: Otros Sistemas → Nesto (Suscripción)
 
 ```
-1. Usuario cambia vendedor de cliente en Odoo
+1. Usuario cambia vendedor en Odoo
          ↓
-2. BidirectionalSyncMixin detecta cambio
-         ↓
-3. Odoo publica mensaje a PubSub:
+2. Odoo PUBLICA mensaje a PubSub:
    {
      "Tabla": "Clientes",
-     "Operacion": "UPDATE",
-     "Datos": {
-       "Cliente": "12345",
-       "Contacto": "0",
-       "Vendedor": "002"
-     }
+     "Cliente": "12345",
+     "Contacto": "0",
+     "Vendedor": "002",
+     "VendedorEmail": "maria@nuevavision.es"
    }
          ↓
-4. NestoAPI recibe mensaje de PubSub
+3. NestoAPI (SUSCRITO) recibe mensaje
          ↓
-5. NestoAPI llama a endpoint /api/clientes/actualizar
+4. NestoAPI valida que vendedor "002" existe
          ↓
-6. Valida que vendedor "002" existe
+5. NestoAPI actualiza Clientes.Vendedor = "002"
          ↓
-7. Actualiza Clientes.Vendedor = "002"
-         ↓
-8. Guarda en base de datos ✅
+6. Cambio guardado en BD Nesto ✅
 ```
 
 ---
 
-## ✅ Checklist de Implementación en NestoAPI
+## ✅ Checklist de Implementación
 
-### Fase 1A: Nesto → Odoo (PRIORITARIO)
+### Publicación (Nesto → PubSub)
 
-- [ ] **Modificar DTO**: Añadir propiedades `Vendedor`, `VendedorEmail`, `VendedorNombre`
+- [ ] **Modificar DTO**: Añadir propiedades `Vendedor`, `VendedorEmail`
 - [ ] **Modificar query**: Hacer LEFT JOIN con tabla `Vendedores`
 - [ ] **Añadir validaciones**:
-  - [ ] Cliente sin vendedor
-  - [ ] Vendedor sin email
-  - [ ] Vendedor no existe en tabla
-- [ ] **Actualizar logs**: Registrar warnings cuando falten datos
+  - [ ] Cliente sin vendedor → campos null
+  - [ ] Vendedor sin email → solo código, email null
 - [ ] **Testing**:
   - [ ] Cliente con vendedor válido → Campos completos
   - [ ] Cliente sin vendedor → Campos null
-  - [ ] Vendedor sin email → Solo código, email=null
+  - [ ] Vendedor sin email → Solo código
 
-### Fase 1B: Odoo → Nesto (OPCIONAL)
+### Suscripción (PubSub → Nesto)
 
-- [ ] **Crear endpoint**: POST `/api/clientes/actualizar`
-- [ ] **Validar vendedor**: Verificar que existe en tabla `Vendedores`
-- [ ] **Actualizar cliente**: `UPDATE Clientes SET Vendedor = @vendedor WHERE ...`
-- [ ] **Logs**: Registrar actualizaciones desde Odoo
+- [ ] **Procesar campo `Vendedor`** en mensajes entrantes
+- [ ] **Validar** que vendedor existe antes de actualizar
+- [ ] **Logs** cuando vendedor no existe
 - [ ] **Testing**:
-  - [ ] Actualización con vendedor válido → OK
-  - [ ] Actualización con vendedor inexistente → BadRequest
-  - [ ] Cliente inexistente → NotFound
+  - [ ] Mensaje con vendedor válido → Actualiza
+  - [ ] Mensaje con vendedor inexistente → Log warning, no actualiza
 
 ---
 
@@ -404,7 +312,7 @@ Content-Type: application/json
 
 ### Ejemplo de Cliente CON Vendedor
 
-**Nesto → Odoo** (mensaje PubSub):
+**Mensaje PubSub** (Nesto publica):
 ```json
 {
   "Cliente": "12345",
@@ -413,58 +321,35 @@ Content-Type: application/json
   "Direccion": "Calle Mayor 1",
   "Telefono": "912345678",
   "Vendedor": "001",
-  "VendedorEmail": "juan.perez@nuevavision.es",
-  "VendedorNombre": "Juan Pérez"
+  "VendedorEmail": "juan.perez@nuevavision.es"
 }
 ```
 
-**Resultado en Odoo**:
-- Cliente: "Peluquería Ejemplo S.L."
-- Vendedor (user_id): Juan Pérez (auto-mapeado por email)
-- vendedor_externo: "001"
-
 ### Ejemplo de Cliente SIN Vendedor
 
-**Nesto → Odoo** (mensaje PubSub):
+**Mensaje PubSub**:
 ```json
 {
   "Cliente": "67890",
   "Contacto": "0",
   "Nombre": "Cliente Sin Vendedor S.L.",
-  "Direccion": "Calle Menor 2",
-  "Telefono": "912345679",
   "Vendedor": null,
-  "VendedorEmail": null,
-  "VendedorNombre": null
+  "VendedorEmail": null
 }
 ```
 
-**Resultado en Odoo**:
-- Cliente: "Cliente Sin Vendedor S.L."
-- Vendedor (user_id): (vacío)
-- vendedor_externo: (vacío)
-- Log: "Cliente sin vendedor asignado" (info, no error)
-
 ### Ejemplo de Vendedor SIN Email
 
-**Nesto → Odoo** (mensaje PubSub):
+**Mensaje PubSub**:
 ```json
 {
   "Cliente": "11111",
   "Contacto": "0",
   "Nombre": "Cliente con Vendedor Sin Email",
   "Vendedor": "099",
-  "VendedorEmail": null,
-  "VendedorNombre": "Vendedor Antiguo"
+  "VendedorEmail": null
 }
 ```
-
-**Resultado en Odoo**:
-- Cliente: "Cliente con Vendedor Sin Email"
-- Vendedor (user_id): (vacío - auto-mapeo falla)
-- vendedor_externo: "099" (se guarda para referencia)
-- Log: "⚠️ Vendedor 099 sin email. Auto-mapeo fallará"
-- **Solución**: Admin debe crear mapeo manual en Odoo
 
 ---
 
@@ -476,29 +361,15 @@ Content-Type: application/json
 
 **Solución**:
 ```csharp
-// ❌ MAL - Sin JOIN
-var cliente = dbContext.Clientes.Find(empresa, nroCliente, contacto);
-dto.Vendedor = cliente.Vendedor;  // Solo código
-dto.VendedorEmail = null;         // ❌ Falta JOIN
-
 // ✅ BIEN - Con JOIN
 var vendedor = dbContext.Vendedores
     .Where(v => v.Empresa == cliente.Empresa &&
                 v.Número == cliente.Vendedor)
     .FirstOrDefault();
-dto.VendedorEmail = vendedor?.Mail;  // ✅
+dto.VendedorEmail = vendedor?.Mail;
 ```
 
-### Problema 2: "Vendedor no se actualiza desde Odoo"
-
-**Causa**: Endpoint no implementado o URL incorrecta
-
-**Solución**:
-1. Verificar que endpoint `/api/clientes/actualizar` existe
-2. Verificar que Odoo tiene la URL correcta configurada
-3. Revisar logs de NestoAPI para ver si llegan requests
-
-### Problema 3: "Performance lento con miles de clientes"
+### Problema 2: "Performance lento con miles de clientes"
 
 **Causa**: JOIN sin índices
 
@@ -507,44 +378,22 @@ dto.VendedorEmail = vendedor?.Mail;  // ✅
 -- Crear índice en tabla Vendedores si no existe
 CREATE NONCLUSTERED INDEX IX_Vendedores_Empresa_Numero
 ON Vendedores (Empresa, Número)
-INCLUDE (Mail, Descripción);
+INCLUDE (Mail);
 ```
-
----
-
-## 📞 Contacto
-
-**Dudas sobre la implementación**:
-- Revisar: [ISSUE_SINCRONIZACION_VENDEDORES.md](ISSUE_SINCRONIZACION_VENDEDORES.md)
-- Análisis técnico: [PROPUESTA_SINCRONIZACION_VENDEDORES_v2.md](PROPUESTA_SINCRONIZACION_VENDEDORES_v2.md)
-
-**Testing coordinado**:
-- Ambiente: Desarrollo (Odoo18 + NestoAPI dev)
-- Plan: Sincronizar 10 clientes de prueba con vendedores variados
 
 ---
 
 ## ✅ Criterios de Aceptación
 
-### Para considerar Fase 1A completa:
-
-1. ✅ Mensaje de cliente incluye 3 campos nuevos: `Vendedor`, `VendedorEmail`, `VendedorNombre`
+1. ✅ Mensaje de cliente incluye 2 campos nuevos: `Vendedor`, `VendedorEmail`
 2. ✅ Si cliente tiene vendedor válido → Campos completos
 3. ✅ Si cliente sin vendedor → Campos vienen como `null`
-4. ✅ Si vendedor sin email → `VendedorEmail` es `null`, otros campos completos
-5. ✅ Logs claros cuando faltan datos
+4. ✅ Si vendedor sin email → `VendedorEmail` es `null`, `Vendedor` tiene código
+5. ✅ NestoAPI procesa campo `Vendedor` en mensajes entrantes
 6. ✅ No rompe sincronización de clientes existente
 7. ✅ Performance similar a mensajes actuales (<100ms por mensaje)
-
-### Para considerar Fase 1B completa (opcional):
-
-1. ✅ Endpoint `/api/clientes/actualizar` acepta cambio de vendedor
-2. ✅ Valida que vendedor existe antes de actualizar
-3. ✅ Actualiza base de datos correctamente
-4. ✅ Retorna error descriptivo si vendedor no existe
-5. ✅ Logs registran actualizaciones desde Odoo
 
 ---
 
 **Fecha de entrega estimada**: Próxima sesión de desarrollo
-**Prioridad**: Alta (Fase 1A) / Media (Fase 1B)
+**Prioridad**: Alta
