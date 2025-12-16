@@ -257,6 +257,8 @@ class BidirectionalSyncMixin(models.AbstractModel):
                         )
 
                         if record_to_publish:
+                            # Publicar el registro completo con todos sus campos
+                            # NestoAPI comparará y solo actualizará los que hayan cambiado
                             publisher.publish_record(record_to_publish)
 
                     except Exception as e:
@@ -276,7 +278,8 @@ class BidirectionalSyncMixin(models.AbstractModel):
         Determina qué registro publicar: el registro mismo o su padre
 
         REGLA: Si el registro tiene parent_id (es un child), publicamos el padre
-        con todos sus children. Esto asegura el formato correcto en NestoAPI.
+        con todos sus campos + PersonasContacto. NestoAPI comparará y solo
+        actualizará los campos que hayan cambiado.
 
         Args:
             record: Registro a evaluar
@@ -298,7 +301,7 @@ class BidirectionalSyncMixin(models.AbstractModel):
             # Es un registro principal (no tiene parent), publicar directamente
             return record
 
-        # Es un child → publicar el PADRE con todos sus children
+        # Es un child → publicar el PADRE con todos sus campos + children
         parent_id = parent.id
 
         # Evitar publicar el mismo padre múltiples veces en la misma operación
@@ -322,7 +325,7 @@ class BidirectionalSyncMixin(models.AbstractModel):
 
         _logger.info(
             f"Child ID {record.id} modificado -> Publicando PADRE ID {parent_id} "
-            f"con todos sus PersonasContacto"
+            f"con todos sus campos y PersonasContacto"
         )
 
         return parent

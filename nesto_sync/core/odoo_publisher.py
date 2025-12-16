@@ -63,7 +63,7 @@ class OdooPublisher:
             persona = getattr(record, 'persona_contacto_externa', None)
 
             _logger.info(
-                f"📨 Publicando {self.entity_type} desde Odoo: "
+                f"Publicando {self.entity_type} desde Odoo: "
                 f"{record._name} ID {record.id} "
                 f"(Cliente={cliente}, Contacto={contacto}, PersonaContacto={persona})"
             )
