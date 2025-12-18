@@ -125,8 +125,11 @@ class OdooPublisher:
                 # Ejemplo: {'Tamanno': 50, 'UnidadMedida': 'ml'}
                 if isinstance(transformed_value, dict):
                     # Añadir todos los campos del dict al mensaje
+                    # Algunos campos DEBEN enviarse aunque estén vacíos (ej: VendedorEmail)
+                    # para indicar "quitar vendedor" vs "no modificar vendedor"
+                    fields_always_include = ('VendedorEmail',)
                     for key, val in transformed_value.items():
-                        if val not in (None, False, '', 0):
+                        if val not in (None, False, '', 0) or key in fields_always_include:
                             message[key] = val
                     # Continuar con el siguiente campo
                     continue
@@ -387,7 +390,9 @@ class OdooPublisher:
             elif user_id and hasattr(user_id, 'email') and user_id.email:
                 return {'VendedorEmail': user_id.email}
 
-            return {'VendedorEmail': None}
+            # IMPORTANTE: Devolver string vacío (no None) para que se incluya en el mensaje
+            # Nesto interpretará VendedorEmail='' como "quitar vendedor" (asignar NV)
+            return {'VendedorEmail': ''}
 
         elif transformer_name == 'unidad_medida_y_tamanno':
             # Convertir weight/volume_ml/volume/product_length a Tamaño y UnidadMedida
