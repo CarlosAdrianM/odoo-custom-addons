@@ -19,3 +19,9 @@ from . import test_bidirectional_sync
 # Tests BOM (Bills of Materials)
 from . import test_bom_sync
 from . import test_bom_integration
+
+# Tests OdooPublisher (Odoo → Nesto)
+from . import test_odoo_publisher
+
+# Tests de regresión críticos
+from . import test_nombre_regression
