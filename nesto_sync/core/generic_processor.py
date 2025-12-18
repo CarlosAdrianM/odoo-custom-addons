@@ -210,7 +210,23 @@ class GenericEntityProcessor:
                 # Si es parent, todo viene del message
                 source = message
 
-            values[odoo_field] = self._get_nested_value(source, nesto_path)
+            value = self._get_nested_value(source, nesto_path)
+
+            # Caso especial: mensajes PLANOS con PersonaContacto en la raíz
+            # En mensajes jerárquicos, persona_contacto_externa viene de 'Id' dentro de PersonasContacto
+            # En mensajes planos, viene de 'PersonaContacto' directamente en la raíz
+            # RED DE SEGURIDAD: aunque no debería llegar este tipo de mensaje,
+            # lo manejamos para evitar que el nombre de la persona pise el nombre del cliente
+            if odoo_field == 'persona_contacto_externa' and value is None and not child_data:
+                # Buscar 'PersonaContacto' en la raíz del mensaje (formato plano)
+                value = message.get('PersonaContacto')
+                if value:
+                    _logger.debug(
+                        f"Mensaje plano detectado: usando PersonaContacto={value} "
+                        f"como persona_contacto_externa"
+                    )
+
+            values[odoo_field] = value
 
     def _process_children(self, message, parent_values):
         """
