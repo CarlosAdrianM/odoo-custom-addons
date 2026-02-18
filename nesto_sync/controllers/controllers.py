@@ -50,6 +50,9 @@ class NestoSyncController(http.Controller):
 
             # Determinar tipo de entidad
             entity_type = self._detect_entity_type(message)
+            if entity_type is None:
+                _logger.info(f"[{message_id}] Tabla ignorada, ACK sin procesar")
+                return Response(status=200, response="Tabla ignorada")
             _logger.info(f"[{message_id}] Sincronizando entidad de tipo: {entity_type}")
 
             # Extraer datos anidados si existen (ej: {"Cliente": {...}, "Origen": "..."})
@@ -174,6 +177,7 @@ class NestoSyncController(http.Controller):
 
         Returns:
             str: Tipo de entidad ('cliente', 'proveedor', 'producto', etc.)
+            None: Si la tabla es conocida pero Odoo no la procesa
 
         Raises:
             ValueError: Si no se puede determinar el tipo
@@ -190,11 +194,19 @@ class NestoSyncController(http.Controller):
             }
             if tabla in tabla_to_entity:
                 return tabla_to_entity[tabla]
-            else:
-                raise ValueError(
-                    f"Tabla '{tabla}' no está configurada. "
-                    f"Tablas disponibles: {list(tabla_to_entity.keys())}"
+
+            # Tablas conocidas que Odoo no procesa (otros consumidores las manejan)
+            tablas_ignoradas = {'PrestashopProductos'}
+            if tabla in tablas_ignoradas:
+                _logger.info(
+                    f"Tabla '{tabla}' conocida pero no procesada en Odoo, ignorando"
                 )
+                return None
+
+            raise ValueError(
+                f"Tabla '{tabla}' no está configurada. "
+                f"Tablas disponibles: {list(tabla_to_entity.keys())}"
+            )
 
         # Opción 2: Campo entity_type explícito
         if 'entity_type' in message:
