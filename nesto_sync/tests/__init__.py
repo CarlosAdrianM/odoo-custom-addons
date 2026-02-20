@@ -25,3 +25,6 @@ from . import test_odoo_publisher
 
 # Tests de regresión críticos
 from . import test_nombre_regression
+
+# Tests mensajes parciales (Issue #3)
+from . import test_partial_messages
