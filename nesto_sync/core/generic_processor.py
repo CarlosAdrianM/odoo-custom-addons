@@ -136,8 +136,12 @@ class GenericEntityProcessor:
                 values[mapping['odoo_field']] = None
             return
 
-        # Obtener valor del mensaje (parent o child)
+        # Si el campo no viene en el mensaje, no tocar el valor existente
         source_data = child_data if child_data else message
+        if not self._field_present_in_data(source_data, nesto_field):
+            return
+
+        # Obtener valor del mensaje
         nesto_value = self._get_nested_value(source_data, nesto_field)
 
         # Aplicar default si es None y hay default
@@ -358,3 +362,30 @@ class GenericEntityProcessor:
                 return None
 
         return value
+
+    def _field_present_in_data(self, data, path):
+        """
+        Comprueba si un campo existe como clave en los datos,
+        sin confundir ausencia con valor None.
+
+        Args:
+            data: Dict con datos
+            path: String con path (puede tener puntos para anidamiento)
+
+        Returns:
+            True si el campo existe en los datos
+        """
+        if not path or not isinstance(data, dict):
+            return False
+
+        if '.' not in path:
+            return path in data
+
+        keys = path.split('.')
+        current = data
+        for key in keys[:-1]:
+            if isinstance(current, dict) and key in current:
+                current = current[key]
+            else:
+                return False
+        return isinstance(current, dict) and keys[-1] in current
