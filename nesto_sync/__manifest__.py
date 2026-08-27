@@ -9,13 +9,19 @@
         - GUARDA CRÍTICA: CantidadMontable de Stocks[] NUNCA llega a los quants (Issue #6)
         - CantidadMontable es un derivado VIRTUAL (kits montables desde componentes),
           no stock físico: sumarlo duplicaría el inventario de los componentes
-        - Nuevo módulo core/stock_guard.py con dos capas de protección:
-          1) assert_config_ignores_virtual_stock: falla al construir el processor si
-             alguna entidad mapea el campo (entrante o inverso)
-          2) sanitize_message: elimina el campo del mensaje antes de mapear nada,
-             sin mutar el original (logs/DLQ intactos)
-        - El stock físico sigue viajando en Stock/CantidadDisponible
-        - Tests: 16 tests de la guarda (config, saneado y regresión con mensaje real de kit)
+        - Nuevo módulo core/stock_guard.py con ALLOWLIST de campos de Stocks[]
+          (contrato confirmado con NestoAPI el 27/08/2026) y dos capas:
+          1) assert_stock_mapping_is_safe: falla al construir el processor si alguna
+             entidad mapea un campo virtual o un campo de Stocks[] fuera de la
+             allowlist, tanto entrante como inverso
+          2) sanitize_message: deja en Stocks[] solo los campos permitidos antes de
+             mapear nada, sin mutar el original (logs/DLQ intactos)
+        - Campo documentado para quants físicos: Stock (por almacén)
+        - Documentado el centinela FechaEstimadaRecepcion = 9999-12-31 (sin compras
+          pendientes): no es una fecha real, no usar en cálculos de plazos
+        - Un campo nuevo no previsto se descarta y se avisa por log (fail-safe)
+        - Tests: 23 tests de la guarda (allowlist, config, saneado y regresión con
+          mensaje real de kit con montables > 0)
 
         Versión 2.8.0 (2025-11-20):
         - NUEVA FUNCIONALIDAD: Sincronización bidireccional de BOMs (Bills of Materials)

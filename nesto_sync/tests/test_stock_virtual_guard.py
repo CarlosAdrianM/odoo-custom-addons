@@ -1,7 +1,8 @@
 """
-Tests de la guarda de stock virtual: CantidadMontable NUNCA llega a los quants.
+Tests de la guarda de stock: CantidadMontable NUNCA llega a los quants.
 
-Issue #6 (espejo de NestoAPI#412).
+Issue #6 (espejo de NestoAPI#412). El contrato de Stocks[] usado aquí es el
+confirmado con NestoAPI el 27/08/2026.
 
 Ejecutar: python -m pytest nesto_sync/tests/test_stock_virtual_guard.py -v
 """
@@ -11,8 +12,10 @@ from unittest.mock import MagicMock, patch
 
 from nesto_sync.core.generic_processor import GenericEntityProcessor
 from nesto_sync.core.stock_guard import (
+    QUANT_SOURCE_FIELD,
+    STOCK_FIELDS_PERMITIDOS,
     VIRTUAL_STOCK_FIELDS,
-    assert_config_ignores_virtual_stock,
+    assert_stock_mapping_is_safe,
     sanitize_message,
     sanitize_stocks,
     strip_virtual_stock_fields,
@@ -20,7 +23,19 @@ from nesto_sync.core.stock_guard import (
 from nesto_sync.config.entity_configs import ENTITY_CONFIGS
 
 
-# Mensaje real de Nesto tras NestoAPI#412: kit con stock físico 3 y 7 montables
+# Entrada de stock con TODOS los campos del contrato (NestoAPI, 27/08/2026)
+STOCK_ALG_COMPLETO = {
+    'Almacen': 'ALG',
+    'Stock': 3,
+    'PendienteEntregar': 1,
+    'PendienteRecibir': 10,
+    'PendienteReposicion': 0,
+    'FechaEstimadaRecepcion': '2026-09-15T00:00:00',
+    'CantidadDisponible': 2,
+    'CantidadMontable': 7,
+}
+
+# Mensaje real de Nesto: kit con stock físico 3 y 7 montables
 MENSAJE_KIT = {
     'Tabla': 'Productos',
     'Producto': '31573',
@@ -31,17 +46,14 @@ MENSAJE_KIT = {
         {'ProductoId': '25000', 'Cantidad': 1},
     ],
     'Stocks': [
-        {
-            'Almacen': 'ALG',
-            'Stock': 3,
-            'PendienteEntregar': 1,
-            'CantidadDisponible': 2,
-            'CantidadMontable': 7,
-        },
+        dict(STOCK_ALG_COMPLETO),
         {
             'Almacen': 'REI',
             'Stock': 0,
             'PendienteEntregar': 0,
+            'PendienteRecibir': 0,
+            'PendienteReposicion': 0,
+            'FechaEstimadaRecepcion': '9999-12-31T00:00:00',
             'CantidadDisponible': 0,
             'CantidadMontable': 4,
         },
@@ -56,18 +68,50 @@ def _make_processor(config=None):
     return GenericEntityProcessor(env, config or ENTITY_CONFIGS['producto'])
 
 
-class TestSanitizacionStockVirtual(unittest.TestCase):
-    """La guarda elimina CantidadMontable y respeta el stock físico."""
+class TestAllowlistDeStock(unittest.TestCase):
+    """La allowlist deja pasar lo real y descarta lo virtual y lo desconocido."""
 
-    def test_strip_elimina_solo_campos_virtuales(self):
-        entrada = {'Almacen': 'ALG', 'Stock': 3, 'CantidadDisponible': 2, 'CantidadMontable': 7}
+    def test_strip_conserva_todos_los_campos_del_contrato(self):
+        salida = strip_virtual_stock_fields(dict(STOCK_ALG_COMPLETO))
+
+        self.assertNotIn('CantidadMontable', salida)
+        self.assertEqual(salida, {
+            'Almacen': 'ALG',
+            'Stock': 3,
+            'PendienteEntregar': 1,
+            'PendienteRecibir': 10,
+            'PendienteReposicion': 0,
+            'FechaEstimadaRecepcion': '2026-09-15T00:00:00',
+            'CantidadDisponible': 2,
+        })
+
+    def test_strip_descarta_campos_desconocidos(self):
+        """Un campo nuevo no previsto se descarta por defecto (allowlist)."""
+        entrada = {'Almacen': 'ALG', 'Stock': 3, 'CampoNuevoDeNesto': 999}
 
         salida = strip_virtual_stock_fields(entrada)
 
-        self.assertNotIn('CantidadMontable', salida)
-        self.assertEqual(salida, {'Almacen': 'ALG', 'Stock': 3, 'CantidadDisponible': 2})
+        self.assertNotIn('CampoNuevoDeNesto', salida)
+        self.assertEqual(salida, {'Almacen': 'ALG', 'Stock': 3})
 
-    def test_strip_no_copia_si_no_hay_campos_virtuales(self):
+    def test_strip_avisa_de_campos_desconocidos(self):
+        """Descartar en silencio ocultaría un cambio de contrato: se avisa."""
+        entrada = {'Almacen': 'ALG', 'Stock': 3, 'CampoNuevoDeNesto': 999}
+
+        with patch('nesto_sync.core.stock_guard._logger') as logger:
+            strip_virtual_stock_fields(entrada)
+
+        logger.warning.assert_called_once()
+        self.assertIn('CampoNuevoDeNesto', str(logger.warning.call_args))
+
+    def test_strip_no_avisa_por_los_campos_virtuales_conocidos(self):
+        """CantidadMontable es esperado: se ignora sin ruido en los logs."""
+        with patch('nesto_sync.core.stock_guard._logger') as logger:
+            strip_virtual_stock_fields(dict(STOCK_ALG_COMPLETO))
+
+        logger.warning.assert_not_called()
+
+    def test_strip_no_copia_si_no_hay_nada_que_quitar(self):
         entrada = {'Almacen': 'ALG', 'Stock': 3}
 
         self.assertIs(strip_virtual_stock_fields(entrada), entrada)
@@ -78,10 +122,23 @@ class TestSanitizacionStockVirtual(unittest.TestCase):
         for entrada in stocks:
             self.assertNotIn('CantidadMontable', entrada)
 
-        # El stock físico se conserva intacto
+        # El stock físico y los pendientes reales se conservan intactos
         self.assertEqual(stocks[0]['Stock'], 3)
         self.assertEqual(stocks[0]['CantidadDisponible'], 2)
         self.assertEqual(stocks[0]['PendienteEntregar'], 1)
+        self.assertEqual(stocks[0]['PendienteRecibir'], 10)
+        self.assertEqual(stocks[0]['PendienteReposicion'], 0)
+
+    def test_sanitize_stocks_no_copia_si_ya_esta_limpio(self):
+        stocks = [{'Almacen': 'ALG', 'Stock': 3}]
+
+        self.assertIs(sanitize_stocks(stocks), stocks)
+
+    def test_el_campo_para_quants_es_stock(self):
+        """Si algún día se mapean quants, el origen documentado es Stock."""
+        self.assertEqual(QUANT_SOURCE_FIELD, 'Stock')
+        self.assertIn(QUANT_SOURCE_FIELD, STOCK_FIELDS_PERMITIDOS)
+        self.assertNotIn(QUANT_SOURCE_FIELD, VIRTUAL_STOCK_FIELDS)
 
     def test_sanitize_message_no_muta_el_original(self):
         original = copy.deepcopy(MENSAJE_KIT)
@@ -106,12 +163,12 @@ class TestSanitizacionStockVirtual(unittest.TestCase):
 
 
 class TestGuardaDeConfiguracion(unittest.TestCase):
-    """Ninguna entidad puede cablear un campo virtual de stock."""
+    """Ninguna entidad puede cablear stock inseguro."""
 
     def test_todas_las_entidades_actuales_pasan_la_guarda(self):
         for nombre, config in ENTITY_CONFIGS.items():
             with self.subTest(entidad=nombre):
-                assert_config_ignores_virtual_stock(config)
+                assert_stock_mapping_is_safe(config)
 
     def test_mapeo_entrante_de_campo_virtual_falla(self):
         config = {
@@ -120,7 +177,7 @@ class TestGuardaDeConfiguracion(unittest.TestCase):
         }
 
         with self.assertRaises(ValueError) as ctx:
-            assert_config_ignores_virtual_stock(config)
+            assert_stock_mapping_is_safe(config)
 
         self.assertIn('CantidadMontable', str(ctx.exception))
 
@@ -131,7 +188,7 @@ class TestGuardaDeConfiguracion(unittest.TestCase):
         }
 
         with self.assertRaises(ValueError):
-            assert_config_ignores_virtual_stock(config)
+            assert_stock_mapping_is_safe(config)
 
     def test_mapeo_en_children_de_campo_virtual_falla(self):
         config = {
@@ -140,7 +197,7 @@ class TestGuardaDeConfiguracion(unittest.TestCase):
         }
 
         with self.assertRaises(ValueError):
-            assert_config_ignores_virtual_stock(config)
+            assert_stock_mapping_is_safe(config)
 
     def test_mapeo_inverso_de_campo_virtual_falla(self):
         """Odoo tampoco debe publicar CantidadMontable: lo calcula Nesto."""
@@ -150,7 +207,32 @@ class TestGuardaDeConfiguracion(unittest.TestCase):
         }
 
         with self.assertRaises(ValueError):
-            assert_config_ignores_virtual_stock(config)
+            assert_stock_mapping_is_safe(config)
+
+    def test_mapeo_de_campo_de_stock_desconocido_falla(self):
+        """Allowlist: un campo de Stocks[] no previsto tampoco se puede mapear."""
+        config = {
+            'message_type': 'producto',
+            'field_mappings': {'Stocks.CampoInventado': {'odoo_field': 'qty_available'}},
+        }
+
+        with self.assertRaises(ValueError) as ctx:
+            assert_stock_mapping_is_safe(config)
+
+        self.assertIn('allowlist', str(ctx.exception))
+
+    def test_mapeo_de_stock_fisico_esta_permitido(self):
+        """La guarda no estorba al mapeo legítimo del stock físico."""
+        config = {
+            'message_type': 'producto',
+            'field_mappings': {
+                'Stocks.Stock': {'odoo_field': 'qty_available'},
+                'Stocks.CantidadDisponible': {'odoo_field': 'free_qty'},
+                'Stocks.FechaEstimadaRecepcion': {'odoo_field': 'date_planned'},
+            },
+        }
+
+        assert_stock_mapping_is_safe(config)  # no debe lanzar
 
     def test_el_processor_valida_la_config_al_construirse(self):
         config = dict(
@@ -205,6 +287,7 @@ class TestMensajeKitNoTocaElStock(unittest.TestCase):
 
         for entrada in vistos['message']['Stocks']:
             self.assertNotIn('CantidadMontable', entrada)
+            self.assertIn('Stock', entrada)
         # El resto del mensaje llega íntegro (ComponentesKit para la futura BoM)
         self.assertEqual(len(vistos['message']['ComponentesKit']), 2)
 
