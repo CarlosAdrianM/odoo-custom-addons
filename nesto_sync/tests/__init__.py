@@ -28,3 +28,6 @@ from . import test_nombre_regression
 
 # Tests mensajes parciales (Issue #3)
 from . import test_partial_messages
+
+# Tests guarda stock virtual (Issue #6)
+from . import test_stock_virtual_guard

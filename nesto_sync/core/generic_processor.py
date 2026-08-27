@@ -11,6 +11,7 @@ from ..models.country_manager import CountryManager
 from ..transformers.field_transformers import FieldTransformerRegistry
 from ..transformers.validators import ValidatorRegistry
 from ..transformers.post_processors import PostProcessorRegistry
+from .stock_guard import assert_config_ignores_virtual_stock, sanitize_message
 
 _logger = logging.getLogger(__name__)
 
@@ -30,6 +31,10 @@ class GenericEntityProcessor:
         self.config = entity_config
         self.country_manager = CountryManager(env)
 
+        # GUARDA (Issue #6): ninguna entidad puede mapear cantidades de stock
+        # virtuales (CantidadMontable) hacia/desde Odoo
+        assert_config_ignores_virtual_stock(entity_config)
+
     def process(self, message):
         """
         Procesa un mensaje según la configuración de la entidad
@@ -45,6 +50,12 @@ class GenericEntityProcessor:
             message = json.loads(message)
 
         _logger.info(f"Procesando mensaje de tipo {self.config.get('message_type')}")
+
+        # 0. GUARDA (Issue #6): quitar cantidades de stock virtuales
+        # (CantidadMontable) antes de mapear nada. Son stock de los componentes
+        # del kit ya contabilizado en sus propios quants: sumarlo duplicaría
+        # inventario. El mensaje original no se modifica (logs/DLQ intactos).
+        message = sanitize_message(message)
 
         # 1. Validar campos requeridos
         self._validate_required_fields(message)

@@ -1,9 +1,21 @@
 {
     'name': 'Nesto Sync',
-    'version': '2.8.0',  # 2.8.0: Sincronización bidireccional de BOMs (ProductosKit)
+    'version': '2.8.1',  # 2.8.1: Guarda de stock virtual (CantidadMontable nunca toca los quants)
     'summary': 'Sincronización bidireccional de tablas entre Nesto y Odoo via Google Pub/Sub',
     'description': '''
         Módulo de sincronización bidireccional entre Nesto y Odoo
+
+        Versión 2.8.1 (2026-08-27):
+        - GUARDA CRÍTICA: CantidadMontable de Stocks[] NUNCA llega a los quants (Issue #6)
+        - CantidadMontable es un derivado VIRTUAL (kits montables desde componentes),
+          no stock físico: sumarlo duplicaría el inventario de los componentes
+        - Nuevo módulo core/stock_guard.py con dos capas de protección:
+          1) assert_config_ignores_virtual_stock: falla al construir el processor si
+             alguna entidad mapea el campo (entrante o inverso)
+          2) sanitize_message: elimina el campo del mensaje antes de mapear nada,
+             sin mutar el original (logs/DLQ intactos)
+        - El stock físico sigue viajando en Stock/CantidadDisponible
+        - Tests: 16 tests de la guarda (config, saneado y regresión con mensaje real de kit)
 
         Versión 2.8.0 (2025-11-20):
         - NUEVA FUNCIONALIDAD: Sincronización bidireccional de BOMs (Bills of Materials)
