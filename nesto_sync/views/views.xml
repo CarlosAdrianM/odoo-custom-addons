@@ -14,6 +14,11 @@
                             <field name="contacto_externo"/>
                             <field name="persona_contacto_externa"/>
                         </group>
+                        <group string="Compras en Nesto">
+                            <field name="fecha_primer_presupuesto"/>
+                            <field name="fecha_primer_pedido"/>
+                            <field name="fecha_ultimo_pedido"/>
+                        </group>
                     </page>
                 </notebook>
             </field>

@@ -12,6 +12,21 @@ class ResPartner(models.Model):
     contacto_externo = fields.Char(string="Contacto Externo", index=True)
     persona_contacto_externa = fields.Char(string="Persona de Contacto Externa", index=True)
 
+    # Fechas de compras (issue #8). Las calcula Nesto sobre LinPedidoVta y son del cliente
+    # (Nº_Cliente), así que llegan iguales en todos sus contactos. Solo entran: nunca se
+    # devuelven a Nesto (ver 'reverse': False en entity_configs.py).
+    fecha_primer_presupuesto = fields.Date(
+        string="Fecha del primer presupuesto", readonly=True, copy=False, index=True,
+        help="Primer presupuesto del cliente en Nesto (LinPedidoVta con Estado -3). "
+             "La calcula y la mantiene Nesto; en Odoo es de solo lectura.")
+    fecha_primer_pedido = fields.Date(
+        string="Fecha del primer pedido", readonly=True, copy=False, index=True,
+        help="Primer pedido real del cliente en Nesto (LinPedidoVta con Estado > -3). "
+             "Sin fecha = el cliente todavía no ha comprado nunca.")
+    fecha_ultimo_pedido = fields.Date(
+        string="Fecha del último pedido", readonly=True, copy=False, index=True,
+        help="Último pedido real del cliente en Nesto. La calcula y la mantiene Nesto.")
+
     # Nota: NO usamos vendedor_externo. El mapeo de vendedores se hace
     # exclusivamente por email (VendedorEmail). Cada sistema resuelve
     # el código de vendedor desde el email de forma independiente.

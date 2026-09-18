@@ -212,6 +212,11 @@ class OdooPublisher:
             if nesto_field.startswith('_'):
                 continue
 
+            # Campos marcados como solo de entrada: Nesto es el dueño del dato y Odoo
+            # no debe devolvérselo nunca (ej: las fechas de compras del issue #8)
+            if mapping.get('reverse') is False:
+                continue
+
             # Campos simples
             if 'odoo_field' in mapping:
                 odoo_field = mapping['odoo_field']
@@ -246,6 +251,10 @@ class OdooPublisher:
             # Saltar campos internos (que empiezan con _)
             # Estos son solo para sincronización Nesto → Odoo
             if nesto_field.startswith('_'):
+                continue
+
+            # Campos marcados como solo de entrada (ver _infer_reverse_mappings)
+            if mapping.get('reverse') is False:
                 continue
 
             # Campos simples
