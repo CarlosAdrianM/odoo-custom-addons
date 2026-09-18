@@ -16,6 +16,10 @@ class NvMailchimpWebhook(http.Controller):
         https://<odoo>/nv/mailchimp/<secreto>
     con los eventos "Unsubscribes" y "Cleaned address". El secreto es el parametro de sistema
     nv_crm_embudo.mailchimp_secreto; si esta vacio, el webhook no hace nada.
+
+    OJO: Mailchimp solo admite el secreto en la URL, asi que queda escrito en los logs de
+    acceso del proxy. Usar una cadena larga y aleatoria y rotarla cambiando el parametro y
+    la URL en Mailchimp; no reutilizarla para nada mas.
     """
 
     def _secreto_ok(self, secreto):

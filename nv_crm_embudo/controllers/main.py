@@ -35,6 +35,8 @@ class NvEmbudoBaja(http.Controller):
             '<h1>Darte de baja</h1><p>No volveremos a enviar correos comerciales a <b>%s</b>.</p>'
             '<form method="post"><button type="submit">Confirmar la baja</button></form>' % escape(lead.email_normalized))
 
+    # csrf=False porque el formulario lo ve un destinatario anonimo desde su correo:
+    # quien protege la accion es el HMAC del token, que solo conoce quien recibio el enlace.
     @http.route('/nv/baja/<int:lead_id>/<string:token>', type='http', auth='public', methods=['POST'], csrf=False, sitemap=False)
     def baja_aplicar(self, lead_id, token, **kw):
         lead = self._lead(lead_id, token)
