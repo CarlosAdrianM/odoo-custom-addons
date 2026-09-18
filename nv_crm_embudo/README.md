@@ -11,6 +11,7 @@ Personalizaciones del CRM de Nueva Visión para los embudos automáticos (Odoo 1
 | Webhook de bajas de Mailchimp (eventos `unsubscribe` y `cleaned`) | `/nv/mailchimp/<secreto>`, parámetro `nv_crm_embudo.mailchimp_secreto` | #10 |
 | Etapas «Cliente en Nesto» y «Presupuesto» | `data/crm_stage_data.xml` | #9 |
 | Enlace automático del lead con el cliente nuevo de Nesto | Tarea programada cada 10 min, `crm.lead._nv_cron_enlazar_clientes_nesto` | #9 |
+| Avance del lead con las fechas de compras de Nesto | `res.partner.write` → `crm.lead._nv_avanzar_por_fechas` | #9 |
 
 ## Enlace automático con Nesto
 
@@ -35,6 +36,34 @@ Para forzar que se vuelva a mirar un cliente, poner su `nv_lead_revisado` a `Fal
 Los emails `@nuevavision.es` se ignoran.
 
 Va separado de `nesto_sync` a propósito: un fallo aquí no afecta a los mensajes de Nesto. La ficha del cliente no se modifica, así que no se publica nada hacia Nesto (la marca `nv_lead_revisado` se escribe con `skip_sync=True`).
+
+## Avance por las fechas de compras
+
+Con las fechas que manda Nesto (`nesto_sync`, odoo-custom-addons#8) el embudo se mueve solo:
+
+```
+Nuevo → Calificado → Propuesta → Cliente en Nesto → Presupuesto → Ganado
+                                 (enlace)          (FechaPrimer  (FechaPrimer
+                                                    Presupuesto)  Pedido)
+```
+
+Cuando cambia `fecha_primer_presupuesto` o `fecha_primer_pedido` de un contacto, se revisan los leads abiertos del cliente:
+
+- con **primer pedido**, `action_set_won()`;
+- si no, con **primer presupuesto**, a la etapa «Presupuesto».
+
+Detalles:
+
+- **Nunca se retrocede de etapa.** Un lead que ya esté más avanzado se queda donde está, y un lead ganado o perdido no se toca.
+- Se mira el **estado actual** del cliente, no qué campo ha cambiado, así que da igual el orden en que lleguen los mensajes y volver a llamar no hace daño.
+- Las fechas son del cliente pero llegan en el mensaje de cada contacto, y Odoo no las propaga entre la empresa y sus contactos: se busca en **toda la familia** y se coge la más antigua.
+- Al aceptar el único presupuesto de un cliente, Nesto manda `FechaPrimerPresupuesto` a `null`. El lead **no** vuelve atrás: se queda en «Presupuesto» hasta que llega `FechaPrimerPedido`.
+- `fecha_ultimo_pedido` no mueve nada; es para segmentar clientes que llevan tiempo sin comprar.
+- Cuando el enlace automático encuentra el lead de un cliente que ya traía fechas, el lead avanza en el acto.
+
+**Ojo con la carga inicial de fechas** (NestoAPI#498, paso 3): al reenviar todos los clientes, los leads abiertos de clientes que ya han comprado pasarán a Ganado de golpe. Es lo que se busca, pero conviene avisar a las vendedoras antes.
+
+Pasar a «Ganado» a mano sigue permitido; si se quiere impedir, es una decisión aparte (#9).
 
 ## Instalación
 

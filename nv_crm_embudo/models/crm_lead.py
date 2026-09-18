@@ -138,6 +138,8 @@ class CrmLead(models.Model):
             lead, motivo = next(iter(candidatos.items()))
             etapa = self.env.ref('nv_crm_embudo.stage_cliente_nesto', raise_if_not_found=False)
             lead._nv_enlazar_con_cliente(cliente, motivo, etapa)
+            # Si el cliente ya traía fechas de compras, el lead avanza en el acto
+            self._nv_avanzar_por_fechas(cliente)
             return True
 
         # No elegimos por la vendedora: que lo decida ella
@@ -196,3 +198,71 @@ class CrmLead(models.Model):
             message_type='comment', subtype_xmlid='mail.mt_note',
         )
         _logger.info('Lead %s enlazado con el cliente %s de Nesto', self.id, cliente.cliente_externo)
+
+    # ------------------------------------- avance por las fechas de compras
+
+    @api.model
+    def _nv_avanzar_por_fechas(self, clientes):
+        """Mueve los leads abiertos de estos clientes según sus fechas de compras (#9, paso 2).
+
+        Se mira el estado actual del cliente, no qué campo ha cambiado: así da igual el orden
+        en que lleguen los mensajes de Nesto y volver a llamar no hace daño. Nunca se retrocede
+        de etapa, y un presupuesto que se acepta (FechaPrimerPresupuesto vuelve a null en Nesto)
+        no devuelve el lead a su etapa anterior.
+        """
+        etapa_presupuesto = self.env.ref('nv_crm_embudo.stage_presupuesto', raise_if_not_found=False)
+        for cliente in clientes:
+            leads = self.sudo().search([
+                ('partner_id.commercial_partner_id', '=', cliente.id),
+                ('stage_id.is_won', '=', False),
+            ])
+            if not leads:
+                continue
+            fecha_presupuesto, fecha_pedido = self._nv_fechas_cliente(cliente)
+            if fecha_pedido:
+                leads._nv_ganar_por_primer_pedido(cliente, fecha_pedido)
+            elif fecha_presupuesto and etapa_presupuesto:
+                leads._nv_pasar_a_presupuesto(cliente, fecha_presupuesto, etapa_presupuesto)
+
+    @api.model
+    def _nv_fechas_cliente(self, cliente):
+        """Las fechas de compras del cliente, miradas en toda su familia de contactos.
+
+        Son del cliente (Nº_Cliente), pero Nesto publica un mensaje por contacto y los campos
+        no son de los que Odoo propaga entre la empresa y sus contactos: la fecha se queda en
+        el contacto cuyo mensaje llegó. Vale cualquiera de la familia y, si hay varias, la más
+        antigua, que es la que de verdad marca cuándo empezó.
+        """
+        familia = cliente | cliente.with_context(active_test=False).child_ids
+        presupuestos = [p.fecha_primer_presupuesto for p in familia if p.fecha_primer_presupuesto]
+        pedidos = [p.fecha_primer_pedido for p in familia if p.fecha_primer_pedido]
+        return min(presupuestos, default=False), min(pedidos, default=False)
+
+    def _nv_ganar_por_primer_pedido(self, cliente, fecha):
+        """Ganado de verdad: el cliente ha hecho su primer pedido en Nesto."""
+        for lead in self:
+            lead.message_post(
+                body=Markup('<p>Ganado automáticamente: el cliente <b>%s</b> hizo su primer pedido '
+                            'en Nesto el <b>%s</b>.</p>')
+                % (cliente.cliente_externo or cliente.display_name, fields.Date.to_string(fecha)),
+                message_type='comment', subtype_xmlid='mail.mt_note',
+            )
+        self.action_set_won()
+        _logger.info('Leads %s ganados por el primer pedido del cliente %s de Nesto',
+                     self.ids, cliente.cliente_externo)
+
+    def _nv_pasar_a_presupuesto(self, cliente, fecha, etapa):
+        """Solo hacia delante: un lead que ya esté más avanzado se queda donde está."""
+        pendientes = self.filtered(lambda lead: lead.stage_id.sequence < etapa.sequence)
+        if not pendientes:
+            return
+        pendientes.write({'stage_id': etapa.id})
+        for lead in pendientes:
+            lead.message_post(
+                body=Markup('<p>El cliente <b>%s</b> tiene su primer presupuesto en Nesto del '
+                            '<b>%s</b>.</p>')
+                % (cliente.cliente_externo or cliente.display_name, fields.Date.to_string(fecha)),
+                message_type='comment', subtype_xmlid='mail.mt_note',
+            )
+        _logger.info('Leads %s pasados a Presupuesto por el cliente %s de Nesto',
+                     pendientes.ids, cliente.cliente_externo)
