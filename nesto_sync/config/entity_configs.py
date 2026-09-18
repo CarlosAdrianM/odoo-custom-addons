@@ -67,6 +67,26 @@ ENTITY_CONFIGS = {
                 'odoo_fields': ['is_company', 'type']
             },
 
+            # --- Fechas de compras (issue #8, NestoAPI#498) ---
+            # Las calcula Nesto y Odoo no las toca nunca: 'reverse': False las deja fuera
+            # del mapeo inverso que se infiere desde este mismo diccionario.
+            # Si el campo no viene en el mensaje no se toca; si viene null, se vacía.
+            'FechaPrimerPresupuesto': {
+                'transformer': 'fecha',
+                'odoo_field': 'fecha_primer_presupuesto',
+                'reverse': False,
+            },
+            'FechaPrimerPedido': {
+                'transformer': 'fecha',
+                'odoo_field': 'fecha_primer_pedido',
+                'reverse': False,
+            },
+            'FechaUltimoPedido': {
+                'transformer': 'fecha',
+                'odoo_field': 'fecha_ultimo_pedido',
+                'reverse': False,
+            },
+
             # --- Campo PersonaContacto (cuando viene en la raíz del mensaje) ---
             # Nesto envía mensajes planos donde PersonaContacto está directamente en la raíz
             # Este campo determina junto con Cliente y Contacto el registro único

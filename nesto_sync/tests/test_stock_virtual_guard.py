@@ -10,8 +10,8 @@ import copy
 import unittest
 from unittest.mock import MagicMock, patch
 
-from nesto_sync.core.generic_processor import GenericEntityProcessor
-from nesto_sync.core.stock_guard import (
+from odoo.addons.nesto_sync.core.generic_processor import GenericEntityProcessor
+from odoo.addons.nesto_sync.core.stock_guard import (
     QUANT_SOURCE_FIELD,
     STOCK_FIELDS_PERMITIDOS,
     VIRTUAL_STOCK_FIELDS,
@@ -20,7 +20,7 @@ from nesto_sync.core.stock_guard import (
     sanitize_stocks,
     strip_virtual_stock_fields,
 )
-from nesto_sync.config.entity_configs import ENTITY_CONFIGS
+from odoo.addons.nesto_sync.config.entity_configs import ENTITY_CONFIGS
 
 
 # Entrada de stock con TODOS los campos del contrato (NestoAPI, 27/08/2026)

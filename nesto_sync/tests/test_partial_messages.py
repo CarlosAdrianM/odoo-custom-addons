@@ -6,8 +6,8 @@ Ejecutar: python -m pytest nesto_sync/tests/test_partial_messages.py -v
 import unittest
 from unittest.mock import patch, MagicMock
 
-from nesto_sync.core.generic_processor import GenericEntityProcessor
-from nesto_sync.config.entity_configs import ENTITY_CONFIGS
+from odoo.addons.nesto_sync.core.generic_processor import GenericEntityProcessor
+from odoo.addons.nesto_sync.config.entity_configs import ENTITY_CONFIGS
 
 
 def _make_processor(config=None):

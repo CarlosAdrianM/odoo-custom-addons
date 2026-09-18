@@ -170,7 +170,11 @@ class GenericEntityProcessor:
 
         # Mapeo con transformer
         if 'transformer' in mapping:
-            self._apply_transformer(mapping['transformer'], nesto_value, values, context)
+            # Se pasa el mapeo para los transformers genéricos que necesitan saber
+            # a qué campo de Odoo van (por ejemplo 'fecha')
+            self._apply_transformer(
+                mapping['transformer'], nesto_value, values, dict(context, mapping=mapping)
+            )
 
     def _apply_transformer(self, transformer_name, value, values, context):
         """
