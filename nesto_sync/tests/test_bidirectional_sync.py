@@ -163,8 +163,8 @@ class TestAntiBucle(TransactionCase):
         6. NO bucle infinito
         """
         # Arrange
-        from nesto_sync.core.generic_service import GenericEntityService
-        from nesto_sync.config.entity_configs import get_entity_config
+        from odoo.addons.nesto_sync.core.generic_service import GenericEntityService
+        from odoo.addons.nesto_sync.config.entity_configs import get_entity_config
 
         entity_config = get_entity_config('cliente')
         service = GenericEntityService(self.env, entity_config, test_mode=True)
@@ -222,8 +222,8 @@ class TestAntiBucle(TransactionCase):
         7. NO bucle infinito
         """
         # Arrange
-        from nesto_sync.core.generic_service import GenericEntityService
-        from nesto_sync.config.entity_configs import get_entity_config
+        from odoo.addons.nesto_sync.core.generic_service import GenericEntityService
+        from odoo.addons.nesto_sync.config.entity_configs import get_entity_config
 
         entity_config = get_entity_config('cliente')
         service = GenericEntityService(self.env, entity_config, test_mode=True)
