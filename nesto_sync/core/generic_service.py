@@ -417,6 +417,16 @@ class GenericEntityService:
                         )
                         del values[id_field]
 
+            # Filtrar solo los campos que realmente cambiaron para evitar
+            # efectos secundarios (ej: notificaciones de reasignación de vendedor
+            # cuando user_id no ha cambiado pero otro campo sí)
+            values = {
+                field: value
+                for field, value in values.items()
+                if field not in record._fields
+                or self._values_are_different(field, getattr(record, field, None), value, record)
+            }
+
             # CRÍTICO: Añadir skip_sync=True para evitar bucle infinito
             # Este write viene de Nesto, NO debe volver a publicarse
             record.sudo().with_context(skip_sync=True).write(values)

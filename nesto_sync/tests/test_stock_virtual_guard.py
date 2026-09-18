@@ -98,7 +98,7 @@ class TestAllowlistDeStock(unittest.TestCase):
         """Descartar en silencio ocultaría un cambio de contrato: se avisa."""
         entrada = {'Almacen': 'ALG', 'Stock': 3, 'CampoNuevoDeNesto': 999}
 
-        with patch('nesto_sync.core.stock_guard._logger') as logger:
+        with patch('odoo.addons.nesto_sync.core.stock_guard._logger') as logger:
             strip_virtual_stock_fields(entrada)
 
         logger.warning.assert_called_once()
@@ -106,7 +106,7 @@ class TestAllowlistDeStock(unittest.TestCase):
 
     def test_strip_no_avisa_por_los_campos_virtuales_conocidos(self):
         """CantidadMontable es esperado: se ignora sin ruido en los logs."""
-        with patch('nesto_sync.core.stock_guard._logger') as logger:
+        with patch('odoo.addons.nesto_sync.core.stock_guard._logger') as logger:
             strip_virtual_stock_fields(dict(STOCK_ALG_COMPLETO))
 
         logger.warning.assert_not_called()
@@ -279,7 +279,7 @@ class TestMensajeKitNoTocaElStock(unittest.TestCase):
                 vistos['message'] = context['message']
                 return parent_values, children_values_list
 
-        with patch('nesto_sync.core.generic_processor.PostProcessorRegistry.get',
+        with patch('odoo.addons.nesto_sync.core.generic_processor.PostProcessorRegistry.get',
                    return_value=_Espia()):
             with patch.object(self.processor, '_add_external_ids'):
                 with patch.object(self.processor, '_apply_transformer'):
@@ -292,7 +292,7 @@ class TestMensajeKitNoTocaElStock(unittest.TestCase):
         self.assertEqual(len(vistos['message']['ComponentesKit']), 2)
 
     def test_no_se_accede_al_modelo_stock_quant(self):
-        with patch('nesto_sync.core.generic_processor.PostProcessorRegistry.get',
+        with patch('odoo.addons.nesto_sync.core.generic_processor.PostProcessorRegistry.get',
                    return_value=MagicMock(process=lambda p, c, ctx: (p, c))):
             with patch.object(self.processor, '_add_external_ids'):
                 with patch.object(self.processor, '_apply_transformer'):

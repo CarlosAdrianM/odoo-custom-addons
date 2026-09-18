@@ -33,7 +33,7 @@ class TestBidirectionalSync(TransactionCase):
             'type': 'invoice',
         })
 
-    @patch('nesto_sync.infrastructure.publisher_factory.PublisherFactory.create_publisher')
+    @patch('odoo.addons.nesto_sync.infrastructure.publisher_factory.PublisherFactory.create_publisher')
     def test_write_triggers_publish(self, mock_create_publisher):
         """Test: Modificar partner debe publicar a PubSub"""
         # Arrange
@@ -50,7 +50,7 @@ class TestBidirectionalSync(TransactionCase):
         # Verificar que se publicó un evento
         # (OdooPublisher.publish_record debería haberse llamado)
 
-    @patch('nesto_sync.infrastructure.publisher_factory.PublisherFactory.create_publisher')
+    @patch('odoo.addons.nesto_sync.infrastructure.publisher_factory.PublisherFactory.create_publisher')
     def test_create_triggers_publish(self, mock_create_publisher):
         """Test: Crear partner debe publicar a PubSub"""
         # Arrange
@@ -72,7 +72,7 @@ class TestBidirectionalSync(TransactionCase):
     def test_skip_sync_context_prevents_publish(self):
         """Test: Contexto skip_sync debe prevenir publicación"""
         # Act
-        with patch('nesto_sync.infrastructure.publisher_factory.PublisherFactory.create_publisher') as mock_create:
+        with patch('odoo.addons.nesto_sync.infrastructure.publisher_factory.PublisherFactory.create_publisher') as mock_create:
             mock_publisher = Mock()
             mock_create.return_value = mock_publisher
 
@@ -86,7 +86,7 @@ class TestBidirectionalSync(TransactionCase):
     def test_no_from_nesto_flag_exists(self):
         """Test: Verificar que NO usamos flag from_nesto"""
         # Act
-        with patch('nesto_sync.infrastructure.publisher_factory.PublisherFactory.create_publisher') as mock_create:
+        with patch('odoo.addons.nesto_sync.infrastructure.publisher_factory.PublisherFactory.create_publisher') as mock_create:
             mock_publisher = Mock()
             mock_create.return_value = mock_publisher
 
@@ -112,7 +112,7 @@ class TestBidirectionalSync(TransactionCase):
             partners |= partner
 
         # Act
-        with patch('nesto_sync.infrastructure.publisher_factory.PublisherFactory.create_publisher') as mock_create:
+        with patch('odoo.addons.nesto_sync.infrastructure.publisher_factory.PublisherFactory.create_publisher') as mock_create:
             mock_publisher = Mock()
             mock_create.return_value = mock_publisher
 
@@ -186,7 +186,7 @@ class TestAntiBucle(TransactionCase):
         }
 
         # Act: Paso 2 - Odoo recibe y actualiza (con mocking de publisher)
-        with patch('nesto_sync.infrastructure.publisher_factory.PublisherFactory.create_publisher') as mock_create:
+        with patch('odoo.addons.nesto_sync.infrastructure.publisher_factory.PublisherFactory.create_publisher') as mock_create:
             mock_publisher = Mock()
             mock_publisher.publish_event = Mock()
             mock_create.return_value = mock_publisher
@@ -229,7 +229,7 @@ class TestAntiBucle(TransactionCase):
         service = GenericEntityService(self.env, entity_config, test_mode=True)
 
         # Paso 1: Usuario cambia en Odoo UI
-        with patch('nesto_sync.infrastructure.publisher_factory.PublisherFactory.create_publisher') as mock_create:
+        with patch('odoo.addons.nesto_sync.infrastructure.publisher_factory.PublisherFactory.create_publisher') as mock_create:
             mock_publisher = Mock()
             mock_create.return_value = mock_publisher
 
@@ -258,7 +258,7 @@ class TestAntiBucle(TransactionCase):
         }
 
         # Act: GenericService procesa mensaje (debería detectar "sin cambios")
-        with patch('nesto_sync.infrastructure.publisher_factory.PublisherFactory.create_publisher') as mock_create:
+        with patch('odoo.addons.nesto_sync.infrastructure.publisher_factory.PublisherFactory.create_publisher') as mock_create:
             mock_publisher = Mock()
             mock_create.return_value = mock_publisher
 
@@ -278,7 +278,7 @@ class TestAntiBucle(TransactionCase):
     def test_install_mode_prevents_publish(self):
         """Test: Modo instalación debe prevenir publicación"""
         # Act
-        with patch('nesto_sync.infrastructure.publisher_factory.PublisherFactory.create_publisher') as mock_create:
+        with patch('odoo.addons.nesto_sync.infrastructure.publisher_factory.PublisherFactory.create_publisher') as mock_create:
             # Modificar con contexto de instalación
             self.partner.with_context(install_mode=True).write({'mobile': '666555555'})
 

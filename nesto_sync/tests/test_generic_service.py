@@ -356,3 +356,56 @@ class TestGenericEntityServiceBuildDomain(TransactionCase):
         self.assertIn(('cliente_externo', '=', '12345'), domain)
         self.assertIn(('contacto_externo', '=', '1'), domain)
         self.assertIn(('persona_contacto_externa', '=', 'P1'), domain)
+
+
+class TestUpdateRecordSoloCamposCambiados(TransactionCase):
+    """El write de un mensaje de Nesto solo lleva los campos que cambian de verdad.
+
+    Un mensaje de Nesto trae siempre la ficha entera. Si se escribiera tal cual, cada
+    mensaje dispararía los efectos secundarios de Odoo de todos los campos (por ejemplo
+    la notificación de reasignación de comercial cuando user_id ni siquiera ha cambiado).
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.entity_config = {
+            'odoo_model': 'res.partner',
+            'message_type': 'cliente',
+            'id_fields': ['cliente_externo'],
+        }
+        self.service = GenericEntityService(self.env, self.entity_config, test_mode=True)
+        self.vendedora = self.env['res.users'].with_context(no_reset_password=True).create({
+            'name': 'Vendedora Filtro', 'login': 'vend_filtro_test'})
+        self.partner = self.env['res.partner'].with_context(skip_sync=True).create({
+            'name': 'Cliente Filtro', 'cliente_externo': 'FILTRO001', 'contacto_externo': '0',
+            'street': 'Calle Vieja', 'user_id': self.vendedora.id})
+
+    def _vals_escritos(self, values):
+        """Los valores que llegan de verdad al write del registro."""
+        escritos = {}
+        write_real = type(self.partner).write
+
+        def espia(self_record, vals):
+            escritos.update(vals)
+            return write_real(self_record, vals)
+
+        with patch.object(type(self.partner), 'write', espia):
+            self.service._update_record(self.partner, dict(values))
+        return escritos
+
+    def test_los_campos_sin_cambios_no_se_escriben(self):
+        escritos = self._vals_escritos({
+            'name': 'Cliente Filtro',          # igual
+            'street': 'Calle Nueva',           # cambia
+            'user_id': self.vendedora.id,      # igual
+        })
+        self.assertEqual(escritos, {'street': 'Calle Nueva'})
+        self.assertEqual(self.partner.street, 'Calle Nueva')
+        self.assertEqual(self.partner.user_id, self.vendedora)
+
+    def test_un_campo_que_cambia_si_se_escribe(self):
+        otra = self.env['res.users'].with_context(no_reset_password=True).create({
+            'name': 'Otra Vendedora', 'login': 'otra_filtro_test'})
+        escritos = self._vals_escritos({'user_id': otra.id})
+        self.assertEqual(escritos, {'user_id': otra.id})
+        self.assertEqual(self.partner.user_id, otra)
