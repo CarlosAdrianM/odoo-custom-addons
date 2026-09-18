@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- t14: leads vivos (activos y sin ganar) agrupados por vendedora -->
+    <record id="view_leads_vivos_tree" model="ir.ui.view">
+        <field name="name">crm.lead.leads.vivos.tree</field>
+        <field name="model">crm.lead</field>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <tree string="Leads vivos" default_order="date_last_stage_update asc">
+                <field name="name"/>
+                <field name="partner_name" optional="show"/>
+                <field name="email_from" optional="show"/>
+                <field name="phone" optional="show"/>
+                <field name="campaign_id" optional="show"/>
+                <field name="stage_id"/>
+                <field name="create_date" string="Alta" widget="date"/>
+                <field name="date_last_stage_update" string="Sin moverse desde" widget="remaining_days"/>
+                <field name="activity_ids" widget="list_activity" optional="show"/>
+                <field name="user_id" widget="many2one_avatar_user" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_leads_vivos_pivot" model="ir.ui.view">
+        <field name="name">crm.lead.leads.vivos.pivot</field>
+        <field name="model">crm.lead</field>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <pivot string="Leads vivos por vendedora" disable_linking="0">
+                <field name="user_id" type="row"/>
+                <field name="stage_id" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_leads_vivos" model="ir.actions.act_window">
+        <field name="name">Leads vivos por vendedora</field>
+        <field name="res_model">crm.lead</field>
+        <field name="view_mode">tree,pivot,kanban,form</field>
+        <field name="domain">[('stage_id.is_won', '=', False)]</field>
+        <field name="context">{'group_by': ['user_id'], 'default_type': 'opportunity'}</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'tree', 'view_id': ref('view_leads_vivos_tree')}),
+            (0, 0, {'view_mode': 'pivot', 'view_id': ref('view_leads_vivos_pivot')})]"/>
+        <field name="help" type="html"><p class="o_view_nocontent_smiling_face">No hay leads vivos</p></field>
+    </record>
+
+    <menuitem id="menu_leads_vivos" name="Leads vivos por vendedora" parent="crm.crm_menu_sales"
+              action="action_leads_vivos" sequence="50"/>
+</odoo>

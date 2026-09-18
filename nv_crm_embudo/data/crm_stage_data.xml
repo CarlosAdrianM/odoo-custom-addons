@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Entre «Propuesta» (secuencia 3) y «Ganado» (70). Ver odoo-custom-addons#9 -->
+    <record id="stage_cliente_nesto" model="crm.stage">
+        <field name="name">Cliente en Nesto</field>
+        <field name="sequence">4</field>
+        <field name="requirements">Tiene ficha de cliente en Nesto, pero todavía no ha hecho ningún pedido.</field>
+    </record>
+    <record id="stage_presupuesto" model="crm.stage">
+        <field name="name">Presupuesto</field>
+        <field name="sequence">5</field>
+        <field name="requirements">Tiene al menos un presupuesto en Nesto y todavía ningún pedido.</field>
+    </record>
+</odoo>
