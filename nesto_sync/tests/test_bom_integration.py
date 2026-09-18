@@ -71,7 +71,7 @@ class TestBomIntegration(TransactionCase):
 
         # 2. Procesar mensaje (Nesto → Odoo)
         processed = self.processor.process(mensaje_nesto)
-        result = self.service.sync(mensaje_nesto, processed)
+        result = self.service.create_or_update_contact(processed)
 
         # Verificar que el producto se creó
         product = self.env['product.template'].search([
@@ -139,11 +139,11 @@ class TestBomIntegration(TransactionCase):
 
         # Sincronizar Kit 1
         processed1 = self.processor.process(mensaje_kit1)
-        self.service.sync(mensaje_kit1, processed1)
+        self.service.create_or_update_contact(processed1)
 
         # Sincronizar Kit 2
         processed2 = self.processor.process(mensaje_kit2)
-        self.service.sync(mensaje_kit2, processed2)
+        self.service.create_or_update_contact(processed2)
 
         # Verificar que ambos kits existen
         kit1 = self.env['product.template'].search([
@@ -195,7 +195,7 @@ class TestBomIntegration(TransactionCase):
         }
 
         processed_medio = self.processor.process(mensaje_kit_medio)
-        self.service.sync(mensaje_kit_medio, processed_medio)
+        self.service.create_or_update_contact(processed_medio)
 
         # Crear kit superior (contiene kit medio + otro componente)
         mensaje_kit_superior = {
@@ -210,7 +210,7 @@ class TestBomIntegration(TransactionCase):
 
         # Debe sincronizar sin problemas (no hay ciclos)
         processed_superior = self.processor.process(mensaje_kit_superior)
-        self.service.sync(mensaje_kit_superior, processed_superior)
+        self.service.create_or_update_contact(processed_superior)
 
         # Verificar que ambos kits existen con sus BOMs
         kit_medio = self.env['product.template'].search([
@@ -246,7 +246,7 @@ class TestBomIntegration(TransactionCase):
         }
 
         processed = self.processor.process(mensaje_inicial)
-        self.service.sync(mensaje_inicial, processed)
+        self.service.create_or_update_contact(processed)
 
         product = self.env['product.template'].search([
             ('producto_externo', '=', 'KIT_UPDATE')
@@ -270,7 +270,7 @@ class TestBomIntegration(TransactionCase):
         }
 
         processed_update = self.processor.process(mensaje_actualizado)
-        self.service.sync(mensaje_actualizado, processed_update)
+        self.service.create_or_update_contact(processed_update)
 
         # 3. Verificar actualización
         bom_actualizada = self.env['mrp.bom'].search([
@@ -313,7 +313,7 @@ class TestBomIntegration(TransactionCase):
         }
 
         processed = self.processor.process(mensaje_inicial)
-        self.service.sync(mensaje_inicial, processed)
+        self.service.create_or_update_contact(processed)
 
         product = self.env['product.template'].search([
             ('producto_externo', '=', 'KIT_DELETE')
@@ -333,7 +333,7 @@ class TestBomIntegration(TransactionCase):
         }
 
         processed_delete = self.processor.process(mensaje_sin_kit)
-        self.service.sync(mensaje_sin_kit, processed_delete)
+        self.service.create_or_update_contact(processed_delete)
 
         # 3. Verificar que la BOM se eliminó
         bom_final = self.env['mrp.bom'].search([
@@ -408,7 +408,7 @@ class TestBomIntegration(TransactionCase):
         }
 
         processed_mtp = self.processor.process(mensaje_mtp)
-        self.service.sync(mensaje_mtp, processed_mtp)
+        self.service.create_or_update_contact(processed_mtp)
 
         producto_mtp = self.env['product.template'].search([
             ('producto_externo', '=', 'MTP_001')
@@ -431,7 +431,7 @@ class TestBomIntegration(TransactionCase):
 
         # Debe sincronizar sin problemas
         processed_kit = self.processor.process(mensaje_kit)
-        self.service.sync(mensaje_kit, processed_kit)
+        self.service.create_or_update_contact(processed_kit)
 
         kit = self.env['product.template'].search([
             ('producto_externo', '=', 'KIT_CON_MTP')

@@ -5,6 +5,8 @@ Los transformers convierten valores del formato de Nesto al formato de Odoo.
 Cada transformer es una clase con un método transform().
 """
 
+from datetime import date, datetime
+
 from ..models.phone_processor import PhoneProcessor
 from ..models.country_manager import CountryManager
 
@@ -688,3 +690,44 @@ class UnidadMedidaYTamannoTransformer:
             raise ValueError("Environment no disponible en contexto")
 
         return transform_unidad_medida_y_tamanno(env, nesto_data)
+
+
+@FieldTransformerRegistry.register('fecha')
+class FechaTransformer:
+    """Transforma una fecha de Nesto (ISO) al campo Date de Odoo indicado en el mapeo
+
+    Acepta 'YYYY-MM-DD', ISO 8601 con hora ('2026-01-15T00:00:00', con o sin zona) y
+    'YYYY-MM-DD HH:MM:SS'. Un null o una cadena vacía vacían el campo (False).
+
+    El campo destino sale del propio mapeo, así que el mismo transformer vale para
+    cualquier campo de fecha nuevo sin tocar este fichero.
+    """
+
+    def transform(self, value, context):
+        mapping = context.get('mapping') or {}
+        odoo_field = mapping.get('odoo_field') or (mapping.get('odoo_fields') or [None])[0]
+        if not odoo_field:
+            raise ValueError("El transformer 'fecha' necesita odoo_field u odoo_fields en el mapeo")
+        return {odoo_field: self._a_fecha(value)}
+
+    def _a_fecha(self, value):
+        if value in (None, False, ''):
+            return False
+        if isinstance(value, datetime):
+            return value.date()
+        if isinstance(value, date):
+            return value
+        texto = str(value).strip()
+        if not texto:
+            return False
+        # 'Z' no lo entiende datetime.fromisoformat en Python < 3.11
+        if texto.endswith('Z'):
+            texto = texto[:-1] + '+00:00'
+        try:
+            return datetime.fromisoformat(texto).date()
+        except ValueError:
+            pass
+        try:
+            return date.fromisoformat(texto[:10])
+        except ValueError:
+            raise ValueError(f"Fecha de Nesto con formato no reconocido: {value!r}")

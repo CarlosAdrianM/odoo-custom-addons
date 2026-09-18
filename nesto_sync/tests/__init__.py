@@ -31,3 +31,6 @@ from . import test_partial_messages
 
 # Tests guarda stock virtual (Issue #6)
 from . import test_stock_virtual_guard
+
+# Tests fechas de compras (Issue #8)
+from . import test_fechas_compras
