@@ -41,3 +41,6 @@ from . import test_dlq_system
 
 # Tests del filtrado de CodigoBarras (Issue #21)
 from . import test_codigo_barras
+
+# Tests del NIF sin validar (Issue #18)
+from . import test_nif
