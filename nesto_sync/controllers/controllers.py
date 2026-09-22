@@ -1,4 +1,4 @@
-from odoo import http
+from odoo import fields, http
 from odoo.http import request
 from werkzeug.wrappers import Response
 import logging
@@ -338,13 +338,12 @@ class NestoSyncController(http.Controller):
                 'error_message': error_message,
                 'error_traceback': error_traceback,
                 'retry_count': retry_count,
-                'last_attempt_date': http.request.env.context.get('tz') or 'UTC',
+                'last_attempt_date': fields.Datetime.now(),
                 'state': 'failed'
             })
             _logger.info(f"[{message_id}] Registro DLQ actualizado")
         else:
             # Crear nuevo registro en DLQ
-            from odoo import fields
             FailedMessage.create({
                 'message_id': message_id,
                 'raw_data': raw_data.decode('utf-8') if isinstance(raw_data, bytes) else str(raw_data),

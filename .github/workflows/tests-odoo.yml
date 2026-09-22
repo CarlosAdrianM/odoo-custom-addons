@@ -33,7 +33,7 @@ jobs:
       - name: Comprobar resultado
         run: |
           python3 .github/scripts/comprobar_tests.py odoo-tests.log .github/tests_en_rojo_conocidos.txt \
-            nesto_sync=165 nv_crm_embudo=30
+            nesto_sync=180 nv_crm_embudo=34
       - uses: actions/upload-artifact@v4
         if: always()
         with:
