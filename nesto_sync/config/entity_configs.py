@@ -142,6 +142,11 @@ ENTITY_CONFIGS = {
             'CorreoElectronico': {
                 'odoo_field': 'email'
             },
+            # 'Telefonos', en plural, confirmado por NestoAPI el 22/09/2026: el
+            # DTO de la persona de contacto tiene Id, Nombre, CorreoElectronico,
+            # Telefonos y Cargo, y es el mismo mensaje que consume PrestaShop.
+            # En la RAÍZ del mensaje, en cambio, el cliente lleva 'Telefono' en
+            # singular. No es una errata: son dos claves distintas.
             'Telefonos': {
                 'transformer': 'phone',
                 'odoo_fields': ['mobile', 'phone']
@@ -310,8 +315,12 @@ ENTITY_CONFIGS = {
                 'transformer': 'unidad_medida_y_tamanno',
                 'odoo_fields': ['weight', 'volume', 'product_length', 'uom_id', 'uom_po_id']
             },
+            # El transformer filtra los códigos que no son códigos ("0", "1")
+            # y los que ya tiene otro producto, para que un dato malo de Nesto
+            # no tire el mensaje entero (issue #21).
             'CodigoBarras': {
-                'odoo_field': 'barcode',
+                'transformer': 'codigo_barras',
+                'odoo_fields': ['barcode'],
                 'required': False
             },
 
@@ -394,6 +403,10 @@ ENTITY_CONFIGS = {
         'reverse_field_mappings': {
             # ⚠️ IDENTIFICADOR CRÍTICO
             'producto_externo': {'nesto_field': 'Producto'},
+            # El barcode sale tal cual: el transformer 'codigo_barras' es solo
+            # de entrada y no tiene inverso. Explícito aquí para que el mapeo
+            # inferido no intente aplicárselo.
+            'barcode': {'nesto_field': 'CodigoBarras'},
             # Los demás campos se infieren automáticamente
         },
     },

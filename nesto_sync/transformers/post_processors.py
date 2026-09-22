@@ -5,6 +5,7 @@ Los post_processors ejecutan lógica después de procesar todos los campos.
 Útil para lógica que depende de múltiples campos o de relaciones.
 """
 
+import json
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -246,6 +247,42 @@ class SyncProductBom:
         processor = SyncProductBom()
         processor._sync_bom(env, product_record, productos_kit_data)
 
+    @staticmethod
+    def bom_needs_sync(env, product_record, productos_kit_data):
+        """
+        ¿El ProductosKit del mensaje cambia la BOM que ya tiene el producto?
+
+        La usa GenericService para decidir si un mensaje trae algo nuevo. El kit
+        no es un campo de product.template (viaja aparte, como
+        _productos_kit_data), así que la comparación campo a campo no lo ve: un
+        kit que cambia, o que se vacía, se quedaba en «sin cambios» y la BOM no
+        se sincronizaba nunca (issue #12).
+
+        Args:
+            env: Odoo environment
+            product_record: Registro product.template
+            productos_kit_data: ProductosKit tal cual viene de Nesto
+
+        Returns:
+            bool: True si hay que sincronizar la BOM
+        """
+        processor = SyncProductBom()
+        kit_items = processor._normalize_kit_items(productos_kit_data, product_record)
+
+        existing_bom = env['mrp.bom'].sudo().search([
+            ('product_tmpl_id', '=', product_record.id),
+            ('active', '=', True)
+        ], limit=1)
+
+        if not kit_items:
+            # Kit vacío: solo hay cambio si había BOM que borrar
+            return bool(existing_bom)
+
+        if not existing_bom:
+            return True
+
+        return processor._has_bom_changed(existing_bom, kit_items)
+
     def _sync_bom(self, env, product_record, productos_kit_data):
         """
         Sincroniza la BOM completa de un producto
@@ -253,14 +290,20 @@ class SyncProductBom:
         Args:
             env: Odoo environment
             product_record: Registro product.template
-            productos_kit_data: Lista de dicts con ProductoId y Cantidad
+            productos_kit_data: ProductosKit tal cual viene de Nesto, en
+                cualquiera de sus formatos (ver _normalize_kit_items)
 
         Raises:
             ValueError: Si algún componente no existe o hay ciclos
         """
+        # Normalizar ANTES de nada: Nesto manda ProductosKit en tres formatos
+        # (objetos, identificadores sueltos y el JSON serializado de cualquiera
+        # de los dos) y cada paso lo interpretaba a su manera.
+        kit_items = self._normalize_kit_items(productos_kit_data, product_record)
+
         _logger.info(
             f"Sincronizando BOM para producto {product_record.producto_externo} "
-            f"({len(productos_kit_data or [])} componentes)"
+            f"({len(kit_items)} componentes)"
         )
 
         # Buscar BOM existente del producto
@@ -272,7 +315,7 @@ class SyncProductBom:
         ], limit=1)
 
         # CASO 1: ProductosKit vacío o None → Eliminar BOM si existe
-        if not productos_kit_data:
+        if not kit_items:
             if existing_bom:
                 _logger.info(
                     f"Eliminando BOM existente para producto {product_record.producto_externo} "
@@ -285,7 +328,7 @@ class SyncProductBom:
 
         # Paso 1: Validar que TODOS los componentes existen
         component_products = self._validate_and_get_components(
-            env, productos_kit_data, product_record
+            env, kit_items, product_record
         )
 
         # Paso 2: Validar que no hay ciclos infinitos
@@ -294,9 +337,7 @@ class SyncProductBom:
         )
 
         # Paso 3: Comparar con BOM existente
-        bom_changed = self._has_bom_changed(
-            existing_bom, component_products, productos_kit_data
-        )
+        bom_changed = self._has_bom_changed(existing_bom, kit_items)
 
         if not bom_changed and existing_bom:
             _logger.info(
@@ -307,32 +348,36 @@ class SyncProductBom:
 
         # Paso 4: Actualizar o crear BOM
         if existing_bom:
-            self._update_bom(existing_bom, component_products, productos_kit_data)
+            self._update_bom(existing_bom, component_products, kit_items)
         else:
-            self._create_bom(env, product_record, component_products, productos_kit_data)
+            self._create_bom(env, product_record, component_products, kit_items)
 
-    def _validate_and_get_components(self, env, productos_kit_data, parent_product):
+    def _normalize_kit_items(self, productos_kit_data, parent_product):
         """
-        Valida que todos los componentes existen y los devuelve
+        Normaliza ProductosKit a una lista de tuplas (producto_id, cantidad)
+
+        Nesto manda ProductosKit en varios formatos:
+        - lista de objetos: [{'ProductoId': 'X', 'Cantidad': 2}, ...]
+        - lista de identificadores sueltos: [41224, 41225, ...] o ['X', 'Y']
+        - el JSON serializado de cualquiera de los dos, como string
+
+        Antes cada paso (validar, comparar, crear, actualizar) lo interpretaba
+        por su cuenta y no coincidían: un ProductosKit serializado se recorría
+        carácter a carácter y la BOM se creaba VACÍA sin avisar, y una lista de
+        identificadores en texto se descartaba entera al intentar leerla como
+        JSON. Normalizar una sola vez, aquí, es lo que evita las dos cosas.
 
         Args:
-            env: Odoo environment
-            productos_kit_data: Lista de dicts con ProductoId y Cantidad
-            parent_product: Producto principal (para error messages)
+            productos_kit_data: ProductosKit tal cual viene de Nesto
+            parent_product: Producto principal (para los mensajes de error)
 
         Returns:
-            Dict {producto_externo: product.product record}
+            Lista de tuplas (producto_id como str, cantidad)
 
         Raises:
-            ValueError: Si algún componente no existe
+            ValueError: Si ProductosKit es un string que no es JSON válido,
+                        o si no es una lista
         """
-        import json
-
-        product_product_model = env['product.product']
-        components = {}
-        missing_components = []
-
-        # Si productos_kit_data es un string JSON, deserializarlo
         if isinstance(productos_kit_data, str):
             try:
                 productos_kit_data = json.loads(productos_kit_data)
@@ -342,9 +387,23 @@ class SyncProductBom:
                     f"{parent_product.producto_externo}: {e}"
                 )
 
+        if productos_kit_data is None:
+            return []
+
+        if not isinstance(productos_kit_data, (list, tuple)):
+            raise ValueError(
+                f"ProductosKit debe ser una lista para producto "
+                f"{parent_product.producto_externo}, y ha llegado "
+                f"{type(productos_kit_data).__name__}"
+            )
+
+        kit_items = []
+
         for kit_item in productos_kit_data:
-            # Si kit_item es un string, deserializarlo también
-            if isinstance(kit_item, str):
+            # Un item puede venir serializado por separado. Solo se intenta
+            # deserializar si parece un objeto JSON: un identificador en texto
+            # ('COMP001') no lo es, y antes se descartaba aquí.
+            if isinstance(kit_item, str) and kit_item.strip().startswith('{'):
                 try:
                     kit_item = json.loads(kit_item)
                 except json.JSONDecodeError as e:
@@ -353,7 +412,6 @@ class SyncProductBom:
                     )
                     continue
 
-            # Si kit_item es un int o string simple, asumimos que es el ProductoId directamente
             # Formato alternativo: ProductosKit = [41224, 41225, ...]
             if isinstance(kit_item, (int, str)):
                 producto_id = str(kit_item)
@@ -371,12 +429,36 @@ class SyncProductBom:
                 _logger.warning(f"ProductosKit contiene item sin ProductoId: {kit_item}")
                 continue
 
+            kit_items.append((str(producto_id), cantidad))
+
+        return kit_items
+
+    def _validate_and_get_components(self, env, kit_items, parent_product):
+        """
+        Valida que todos los componentes existen y los devuelve
+
+        Args:
+            env: Odoo environment
+            kit_items: Lista de tuplas (producto_id, cantidad) ya normalizada
+            parent_product: Producto principal (para error messages)
+
+        Returns:
+            Dict {producto_externo: product.product record}
+
+        Raises:
+            ValueError: Si algún componente no existe
+        """
+        product_product_model = env['product.product']
+        components = {}
+        missing_components = []
+
+        for producto_id, _cantidad in kit_items:
             # Buscar producto por producto_externo
             # IMPORTANTE: Buscamos en product.product, no product.template
             # porque la BOM apunta a variantes específicas
             # Usar sudo() para bypassear permisos (el usuario del webhook puede no tener acceso)
             component = product_product_model.sudo().search([
-                ('product_tmpl_id.producto_externo', '=', str(producto_id))
+                ('product_tmpl_id.producto_externo', '=', producto_id)
             ], limit=1)
 
             if not component:
@@ -498,14 +580,13 @@ class SyncProductBom:
         path.pop()
         return False
 
-    def _has_bom_changed(self, existing_bom, component_products, productos_kit_data):
+    def _has_bom_changed(self, existing_bom, kit_items):
         """
         Compara BOM existente con la nueva para detectar cambios
 
         Args:
             existing_bom: mrp.bom record existente (o False)
-            component_products: Dict de productos componentes
-            productos_kit_data: Lista con datos de ProductosKit
+            kit_items: Lista de tuplas (producto_id, cantidad) ya normalizada
 
         Returns:
             bool: True si hay cambios
@@ -514,7 +595,7 @@ class SyncProductBom:
             return True  # No existe BOM, hay cambio
 
         # Comparar número de líneas
-        if len(existing_bom.bom_line_ids) != len(productos_kit_data):
+        if len(existing_bom.bom_line_ids) != len(kit_items):
             return True
 
         # Crear dict de componentes existentes: {producto_externo: cantidad}
@@ -524,22 +605,9 @@ class SyncProductBom:
             existing_components[producto_externo] = line.product_qty
 
         # Comparar con componentes nuevos
-        for kit_item in productos_kit_data:
-            # Manejar formato alternativo (int/string directo)
-            if isinstance(kit_item, (int, str)):
-                producto_id = str(kit_item)
-                cantidad = 1
-            elif isinstance(kit_item, dict):
-                producto_id = kit_item.get('ProductoId')
-                cantidad = kit_item.get('Cantidad', 1)
-            else:
-                continue
-
-            if not producto_id:
-                continue
-
+        for producto_id, cantidad in kit_items:
             # ¿Existe este componente en la BOM actual?
-            existing_qty = existing_components.get(str(producto_id))
+            existing_qty = existing_components.get(producto_id)
 
             if existing_qty is None:
                 # Componente nuevo
@@ -552,14 +620,14 @@ class SyncProductBom:
         # No hay cambios
         return False
 
-    def _update_bom(self, existing_bom, component_products, productos_kit_data):
+    def _update_bom(self, existing_bom, component_products, kit_items):
         """
         Actualiza BOM existente eliminando líneas viejas y creando nuevas
 
         Args:
             existing_bom: mrp.bom record
             component_products: Dict de productos componentes
-            productos_kit_data: Lista con datos de ProductosKit
+            kit_items: Lista de tuplas (producto_id, cantidad) ya normalizada
         """
         _logger.info(f"Actualizando BOM ID {existing_bom.id}")
 
@@ -567,66 +635,27 @@ class SyncProductBom:
         # (más simple que actualizar línea por línea)
         existing_bom.bom_line_ids.unlink()
 
-        # Crear nuevas líneas
-        for kit_item in productos_kit_data:
-            # Manejar formato alternativo (int/string directo)
-            if isinstance(kit_item, (int, str)):
-                producto_id = str(kit_item)
-                cantidad = 1
-            elif isinstance(kit_item, dict):
-                producto_id = kit_item.get('ProductoId')
-                cantidad = kit_item.get('Cantidad', 1)
-            else:
-                continue
-
-            if not producto_id:
-                continue
-
-            component = component_products.get(producto_id)
-            if not component:
-                continue
-
-            existing_bom.write({
-                'bom_line_ids': [(0, 0, {
-                    'product_id': component.id,
-                    'product_qty': cantidad,
-                })]
-            })
+        bom_lines = self._build_bom_lines(component_products, kit_items)
+        existing_bom.write({'bom_line_ids': bom_lines})
 
         _logger.info(
-            f"BOM actualizada: {len(productos_kit_data)} componentes"
+            f"BOM actualizada: {len(bom_lines)} componentes"
         )
 
-    def _create_bom(self, env, product_record, component_products, productos_kit_data):
+    def _build_bom_lines(self, component_products, kit_items):
         """
-        Crea nueva BOM para el producto
+        Construye los comandos (0, 0, {...}) de las líneas de la BOM
 
         Args:
-            env: Odoo environment
-            product_record: product.template record
             component_products: Dict de productos componentes
-            productos_kit_data: Lista con datos de ProductosKit
+            kit_items: Lista de tuplas (producto_id, cantidad) ya normalizada
+
+        Returns:
+            Lista de comandos de Odoo para bom_line_ids
         """
-        _logger.info(
-            f"Creando nueva BOM para producto {product_record.producto_externo}"
-        )
-
-        # Preparar líneas de BOM
         bom_lines = []
-        for kit_item in productos_kit_data:
-            # Manejar formato alternativo (int/string directo)
-            if isinstance(kit_item, (int, str)):
-                producto_id = str(kit_item)
-                cantidad = 1
-            elif isinstance(kit_item, dict):
-                producto_id = kit_item.get('ProductoId')
-                cantidad = kit_item.get('Cantidad', 1)
-            else:
-                continue
 
-            if not producto_id:
-                continue
-
+        for producto_id, cantidad in kit_items:
             component = component_products.get(producto_id)
             if not component:
                 continue
@@ -635,6 +664,24 @@ class SyncProductBom:
                 'product_id': component.id,
                 'product_qty': cantidad,
             }))
+
+        return bom_lines
+
+    def _create_bom(self, env, product_record, component_products, kit_items):
+        """
+        Crea nueva BOM para el producto
+
+        Args:
+            env: Odoo environment
+            product_record: product.template record
+            component_products: Dict de productos componentes
+            kit_items: Lista de tuplas (producto_id, cantidad) ya normalizada
+        """
+        _logger.info(
+            f"Creando nueva BOM para producto {product_record.producto_externo}"
+        )
+
+        bom_lines = self._build_bom_lines(component_products, kit_items)
 
         # Crear BOM
         # Usar sudo() para bypassear permisos

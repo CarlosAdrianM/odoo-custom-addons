@@ -224,8 +224,38 @@ class GenericEntityService:
                 _logger.info(f"Cambio en {field}: '{sanitized_current}' -> '{sanitized_new}'")
                 return True
 
+        # El kit no es un campo del modelo: viaja aparte, en
+        # _productos_kit_data, y el bucle de arriba lo salta. Sin esto, un
+        # mensaje que solo cambia (o vacía) ProductosKit se quedaba en «sin
+        # cambios» y la BOM no se sincronizaba nunca (issue #12).
+        if self._bom_has_changes(record, new_values):
+            _logger.info(f"Cambio en la BOM de {self.config['odoo_model']} (ID: {record.id})")
+            return True
+
         _logger.debug(f"No hay cambios en {self.config['odoo_model']} (ID: {record.id})")
         return False
+
+    def _bom_has_changes(self, record, new_values):
+        """
+        Detecta si el ProductosKit del mensaje cambia la BOM del producto
+
+        Args:
+            record: Recordset de Odoo
+            new_values: Dict con nuevos valores
+
+        Returns:
+            bool: True si hay que sincronizar la BOM
+        """
+        if self.config.get('odoo_model') != 'product.template':
+            return False
+
+        productos_kit_data = new_values.get('_productos_kit_data')
+        if productos_kit_data is None:
+            return False
+
+        from ..transformers.post_processors import SyncProductBom
+
+        return SyncProductBom.bom_needs_sync(self.env, record, productos_kit_data)
 
     def _normalize_html(self, html_text):
         """
@@ -324,6 +354,58 @@ class GenericEntityService:
         # Por defecto, comparación directa
         return current_value != new_value
 
+    def _contexto_de_escritura(self):
+        """
+        Contexto con el que se escribe todo lo que viene de Nesto
+
+        - skip_sync: el cambio viene de Nesto, no se republica (anti-bucle).
+        - no_vat_validation: base_vat no valida el NIF (issue #18). Nesto es la
+          fuente de verdad del NIF, así que Odoo no gana nada rechazándolo:
+          lo que hacía era perder el cliente entero (dirección, vendedor,
+          fechas de compras…) y dejar el mensaje en la DLQ. El 18/09 había 177
+          entidades atascadas por esto, la causa más frecuente de las que no se
+          arreglan solas. base_vat respeta esta clave a propósito, para
+          «API pushes from external platforms where you have no control over
+          VAT numbers».
+
+        Solo afecta a lo que entra por aquí: lo que se edite a mano en Odoo
+        sigue validándose como siempre.
+
+        Returns:
+            Dict con el contexto
+        """
+        return {'skip_sync': True, 'no_vat_validation': True}
+
+    def _avisar_si_el_nif_no_valida(self, record, values):
+        """
+        Deja en el log el NIF que no habría pasado la validación
+
+        No bloquea nada: es para poder sacar la lista y pasársela a quien
+        mantiene las fichas en Nesto (issue #18).
+
+        Args:
+            record: Registro ya creado o actualizado
+            values: Valores que se escribieron
+        """
+        if self.config.get('odoo_model') != 'res.partner' or not values.get('vat'):
+            return
+
+        # base_vat puede no estar instalado
+        if not hasattr(record, '_run_vat_test'):
+            return
+
+        try:
+            pais = record.commercial_partner_id.country_id
+            if record._run_vat_test(record.vat, pais, record.is_company) is False:
+                _logger.warning(
+                    f"NIF que no pasa la validación de base_vat y se ha guardado "
+                    f"igualmente (issue #18): cliente_externo={record.cliente_externo}, "
+                    f"contacto_externo={record.contacto_externo}, vat={record.vat}"
+                )
+        except Exception as e:
+            # Un aviso nunca puede tumbar una sincronización
+            _logger.debug(f"No se ha podido comprobar el NIF de {record.id}: {e}")
+
     def _aplicar_defaults_al_crear(self, values):
         """
         Rellena los campos requeridos que no traen valor, con su default
@@ -376,10 +458,11 @@ class GenericEntityService:
 
             # CRÍTICO: Añadir skip_sync=True para evitar bucle infinito
             # Este create viene de Nesto, NO debe publicarse
-            record = self.model.sudo().with_context(skip_sync=True).create(values)
+            record = self.model.sudo().with_context(**self._contexto_de_escritura()).create(values)
 
             if record:
                 _logger.info(f"{self.config['odoo_model']} creado con ID: {record.id}")
+                self._avisar_si_el_nif_no_valida(record, values)
 
                 # Procesar BOM si es producto y tiene _productos_kit_data
                 if productos_kit_data is not None and self.config.get('odoo_model') == 'product.template':
@@ -465,8 +548,9 @@ class GenericEntityService:
 
             # CRÍTICO: Añadir skip_sync=True para evitar bucle infinito
             # Este write viene de Nesto, NO debe volver a publicarse
-            record.sudo().with_context(skip_sync=True).write(values)
+            record.sudo().with_context(**self._contexto_de_escritura()).write(values)
             _logger.info(f"{self.config['odoo_model']} actualizado: ID {record.id}")
+            self._avisar_si_el_nif_no_valida(record, values)
 
             # Procesar BOM si es producto y tiene _productos_kit_data
             if productos_kit_data is not None and self.config.get('odoo_model') == 'product.template':

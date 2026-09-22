@@ -50,7 +50,7 @@ class TestEndToEndIntegration(TransactionCase):
                 {
                     "Id": "1",
                     "Nombre": "Juan Pérez",
-                    "Telefono": "666111222",
+                    "Telefonos": "666111222",
                     "CorreoElectronico": "juan@empresatest.com",
                     "Cargo": 5,  # Gerente
                     "Comentarios": "Contacto principal"
@@ -58,7 +58,7 @@ class TestEndToEndIntegration(TransactionCase):
                 {
                     "Id": "2",
                     "Nombre": "María García",
-                    "Telefono": "666333444",
+                    "Telefonos": "666333444",
                     "CorreoElectronico": "maria@empresatest.com",
                     "Cargo": 8,  # Administración
                     "Comentarios": "Contacto secundario"

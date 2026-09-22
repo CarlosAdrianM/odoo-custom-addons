@@ -105,7 +105,7 @@ class TestDLQSystem(TransactionCase):
         self.assertEqual(result['retry_count'], max_retries + 1)
         self.assertTrue(result['should_move_to_dlq'])
 
-    def test_04_mark_success_removes_retry_record(self):
+    def test_04_mark_success_marks_retry_record(self):
         """Test: Marcar mensaje como exitoso elimina el registro de retry"""
 
         message_id = 'test-message-004'
@@ -124,9 +124,11 @@ class TestDLQSystem(TransactionCase):
         # Marcar como exitoso
         self.MessageRetry.mark_success(message_id)
 
-        # Verificar que fue eliminado
+        # El registro NO se borra aquí: se queda en estado 'success' y lo borra
+        # cleanup_old_records pasados CLEANUP_DAYS días.
         retry_record = self.MessageRetry.search([('message_id', '=', message_id)])
-        self.assertEqual(len(retry_record), 0)
+        self.assertEqual(len(retry_record), 1)
+        self.assertEqual(retry_record.state, 'success')
 
     def test_05_mark_moved_to_dlq(self):
         """Test: Marcar mensaje como movido a DLQ actualiza el estado"""
@@ -146,7 +148,7 @@ class TestDLQSystem(TransactionCase):
         # Verificar que el registro fue marcado
         retry_record = self.MessageRetry.search([('message_id', '=', message_id)])
         self.assertEqual(len(retry_record), 1)
-        self.assertTrue(retry_record.moved_to_dlq)
+        self.assertEqual(retry_record.state, 'moved_to_dlq')
 
     def test_06_cleanup_old_records(self):
         """Test: Limpieza de registros antiguos"""
@@ -162,7 +164,10 @@ class TestDLQSystem(TransactionCase):
             'last_error': 'Old error',
             'entity_type': 'cliente',
             'create_date': old_date,
-            'last_retry_date': old_date
+            'last_retry_date': old_date,
+            # cleanup_old_records solo borra los 'success': los que siguen
+            # reintentando o los que acabaron en la DLQ se conservan.
+            'state': 'success',
         })
 
         # Crear registro reciente (2 días)
@@ -173,7 +178,18 @@ class TestDLQSystem(TransactionCase):
             'last_error': 'Recent error',
             'entity_type': 'producto',
             'create_date': recent_date,
-            'last_retry_date': recent_date
+            'last_retry_date': recent_date,
+            'state': 'success',
+        })
+
+        # Uno antiguo pero todavía reintentando: no se toca aunque haya caducado
+        antiguo_reintentando = self.MessageRetry.create({
+            'message_id': 'old-retrying',
+            'retry_count': 2,
+            'last_error': 'Sigue fallando',
+            'entity_type': 'cliente',
+            'create_date': old_date,
+            'last_retry_date': old_date,
         })
 
         # Ejecutar limpieza
@@ -182,6 +198,7 @@ class TestDLQSystem(TransactionCase):
         # Verificar que el antiguo fue eliminado y el reciente no
         self.assertFalse(self.MessageRetry.search([('message_id', '=', 'old-message')]))
         self.assertTrue(self.MessageRetry.search([('message_id', '=', 'recent-message')]))
+        self.assertTrue(self.MessageRetry.search([('message_id', '=', 'old-retrying')]))
 
     def test_07_failed_message_creation(self):
         """Test: Creación de mensaje fallido en DLQ"""
@@ -267,6 +284,11 @@ class TestDLQSystem(TransactionCase):
 
         controller = NestoSyncController()
 
+        # @http.route envuelve el método, y el wrapper lee un 'routing' que solo
+        # rellena el dispatcher: llamarlo a pelo revienta con KeyError: 'type'.
+        # original_endpoint es la función sin decorar, que es lo que queremos probar.
+        sync_nesto = NestoSyncController.sync_nesto.original_endpoint
+
         # Simular datos de PubSub
         message_data = {
             "Tabla": "Productos",
@@ -284,8 +306,17 @@ class TestDLQSystem(TransactionCase):
 
         raw_data = json.dumps(pubsub_message).encode()
 
-        # Mock del request
-        with patch('odoo.http.request') as mock_request:
+        # Mock del request. Hay que parchear la referencia del propio módulo
+        # del controller ('from odoo.http import request'), no odoo.http.request:
+        # el controller ya tiene la suya. Y con new=..., porque si mock inspecciona
+        # el LocalProxy original lo desreferencia y revienta fuera de una petición.
+        with patch(
+            'odoo.addons.nesto_sync.controllers.controllers.request',
+            new=MagicMock()
+        ) as mock_request, patch.object(self.env.cr, 'commit'):
+            # El patch del commit es porque _move_to_dlq lo hace para que el
+            # registro sobreviva al NACK: dentro de un test eso se carga el
+            # savepoint. Lo que se prueba aquí es la lógica de reintentos.
             mock_request.httprequest.data = raw_data
             mock_request.env = self.env
 
@@ -293,7 +324,7 @@ class TestDLQSystem(TransactionCase):
             with patch.object(controller, '_detect_entity_type', side_effect=ValueError("Test validation error")):
 
                 # Primer intento - debe devolver 500 (NACK)
-                response1 = controller.sync_nesto()
+                response1 = sync_nesto(controller)
                 self.assertEqual(response1.status_code, 500)
 
                 # Verificar que se creó registro de retry
@@ -302,14 +333,14 @@ class TestDLQSystem(TransactionCase):
                 self.assertEqual(retry_record.retry_count, 1)
 
                 # Segundo y tercer intento
-                response2 = controller.sync_nesto()
+                response2 = sync_nesto(controller)
                 self.assertEqual(response2.status_code, 500)
 
-                response3 = controller.sync_nesto()
+                response3 = sync_nesto(controller)
                 self.assertEqual(response3.status_code, 500)
 
                 # Cuarto intento - debe devolver 200 (ACK) y mover a DLQ
-                response4 = controller.sync_nesto()
+                response4 = sync_nesto(controller)
                 self.assertEqual(response4.status_code, 200)
 
                 # Verificar que se movió a DLQ
