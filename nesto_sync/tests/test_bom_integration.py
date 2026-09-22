@@ -43,9 +43,17 @@ class TestBomIntegration(TransactionCase):
         from ..core.generic_service import GenericEntityService
         from ..core.odoo_publisher import OdooPublisher
 
+        # OdooPublisher pide nesto_sync.google_project_id al construirse. En
+        # odoo_test estaba puesto a mano, pero en una BD limpia (la del CI) no
+        # existe y el setUp entero reventaba. El cliente de Pub/Sub es lazy, así
+        # que con el parámetro basta: no se conecta a ningún sitio.
+        self.env['ir.config_parameter'].sudo().set_param(
+            'nesto_sync.google_project_id', 'test-project'
+        )
+
         self.entity_config = get_entity_config('producto')
         self.processor = GenericEntityProcessor(self.env, self.entity_config)
-        self.service = GenericEntityService(self.env, self.entity_config)
+        self.service = GenericEntityService(self.env, self.entity_config, test_mode=True)
         self.publisher = OdooPublisher('producto', self.env)
 
     def test_flow_nesto_to_odoo_to_nesto(self):
