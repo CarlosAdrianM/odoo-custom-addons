@@ -382,8 +382,15 @@ class TestVendedorTransformer(TransactionCase):
         # Debe devolver user_id=False para QUITAR el vendedor
         self.assertEqual(result, {'user_id': False})
 
-    def test_email_null_quita_vendedor(self):
-        """Test: VendedorEmail=null → user_id=False (quita vendedor)"""
+    def test_email_null_no_modifica(self):
+        """Test: VendedorEmail=null → dict vacío (no modifica)
+
+        Issue #25: null significa «no tengo el dato», no «quita el vendedor».
+        Es la convención de NestoAPI (ClientesSyncHandler.cs:236-238), y aquí
+        era la contraria. Como NestoAPI serializa incluyendo los nulos,
+        VendedorEmail viaja SIEMPRE, y cualquier vendedor de Nesto sin Mail
+        borraba el vendedor del cliente en Odoo, en silencio.
+        """
         context = {
             'env': self.env,
             'nesto_data': {
@@ -394,15 +401,105 @@ class TestVendedorTransformer(TransactionCase):
 
         result = self.transformer.transform('NV', context)
 
-        # Debe devolver user_id=False para QUITAR el vendedor
-        self.assertEqual(result, {'user_id': False})
+        self.assertEqual(result, {})
+
+    def test_los_tres_casos_dan_tres_resultados_distintos(self):
+        """Ausente, null y '' tienen que distinguirse (issue #25, punto 3)"""
+        def transformar(nesto_data):
+            return self.transformer.transform('NV', {
+                'env': self.env, 'nesto_data': nesto_data
+            })
+
+        self.assertEqual(transformar({'Vendedor': 'NV'}), {},
+                         "Campo ausente: no modificar")
+        self.assertEqual(transformar({'VendedorEmail': None}), {},
+                         "null: no modificar")
+        self.assertEqual(transformar({'VendedorEmail': ''}), {'user_id': False},
+                         "cadena vacía: quitar el vendedor")
+
+    def test_ficha_sin_comercial_vendedor_null_y_email_vacio(self):
+        """
+        Las 133 fichas activas sin comercial de Nesto
+
+        NestoAPI (22/09/2026) pide explícitamente que se aplique la regla de ""
+        aunque `Vendedor` venga a null: esa ficha realmente no tiene comercial.
+        El código de vendedor se ignora; manda VendedorEmail.
+        """
+        context = {
+            'env': self.env,
+            'nesto_data': {'Vendedor': None, 'VendedorEmail': ''},
+        }
+
+        self.assertEqual(self.transformer.transform(None, context), {'user_id': False})
+
+    def test_vendedor_con_codigo_pero_sin_correo_no_modifica(self):
+        """
+        NestoAPI no manda la clave VendedorEmail en ese caso (ni siquiera null)
+
+        Hoy el único vendedor sin correo en Nesto es NV, así que no se da con
+        ningún vendedor real, pero la regla tiene que estar.
+        """
+        context = {
+            'env': self.env,
+            'nesto_data': {'Vendedor': '021'},
+        }
+
+        self.assertEqual(self.transformer.transform('021', context), {})
+
+    def test_solo_espacios_cuenta_como_vacio(self):
+        context = {'env': self.env, 'nesto_data': {'VendedorEmail': '   '}}
+
+        self.assertEqual(self.transformer.transform('NV', context), {'user_id': False})
+
+    def test_quitar_un_vendedor_que_habia_deja_warning(self):
+        """Quitar vendedor no manda correo a nadie: al menos que quede en el log"""
+        cliente = self.env['res.partner'].with_context(skip_sync=True).create({
+            'name': 'Cliente con vendedor',
+            'cliente_externo': '4617',
+            'contacto_externo': '0',
+            'is_company': True,
+            'type': 'invoice',
+            'user_id': self.user_juan.id,
+        })
+
+        context = {
+            'env': self.env,
+            'nesto_data': {'Cliente': '4617', 'Contacto': '0', 'VendedorEmail': ''},
+        }
+
+        with self.assertLogs('odoo.addons.nesto_sync.transformers.field_transformers', 'WARNING') as logs:
+            resultado = self.transformer.transform('NV', context)
+
+        self.assertEqual(resultado, {'user_id': False})
+        self.assertTrue(
+            any('4617' in linea and self.user_juan.login in linea for linea in logs.output),
+            f"El vendedor que se pierde tiene que quedar en el log. Log: {logs.output}"
+        )
+        self.assertTrue(cliente.user_id, "El transformer no escribe: solo devuelve valores")
+
+    def test_quitar_vendedor_cuando_no_habia_no_deja_warning(self):
+        self.env['res.partner'].with_context(skip_sync=True).create({
+            'name': 'Cliente sin vendedor',
+            'cliente_externo': '4618',
+            'contacto_externo': '0',
+            'is_company': True,
+            'type': 'invoice',
+        })
+
+        context = {
+            'env': self.env,
+            'nesto_data': {'Cliente': '4618', 'Contacto': '0', 'VendedorEmail': ''},
+        }
+
+        with self.assertNoLogs('odoo.addons.nesto_sync.transformers.field_transformers', 'WARNING'):
+            self.transformer.transform('NV', context)
 
     def test_campo_vendedor_email_ausente_no_modifica(self):
         """Test: Sin campo VendedorEmail en mensaje → dict vacío (no modifica)
 
         Diferencia importante:
-        - VendedorEmail AUSENTE → no modificar (dict vacío)
-        - VendedorEmail = '' o null → quitar vendedor (user_id=False)
+        - VendedorEmail AUSENTE o null → no modificar (dict vacío)
+        - VendedorEmail = '' → quitar vendedor (user_id=False)
         """
         context = {
             'env': self.env,
@@ -416,3 +513,89 @@ class TestVendedorTransformer(TransactionCase):
 
         # Sin el campo VendedorEmail, no modificamos nada
         self.assertEqual(result, {})
+
+
+class TestVendedorNuloMensajeCompleto(TransactionCase):
+    """
+    Issue #25, de punta a punta
+
+    Cualquier cliente cuyo vendedor de Nesto no tuviera Mail en la tabla
+    Vendedores se quedaba sin vendedor en Odoo, en silencio, en cada
+    republicación: NestoAPI serializa incluyendo los nulos, así que
+    VendedorEmail viajaba siempre y el null caía en la rama de quitar.
+    """
+
+    def setUp(self):
+        super().setUp()
+        from ..core.entity_registry import EntityRegistry
+
+        self.vendedora = self.env['res.users'].sudo().create({
+            'name': 'María Comercial',
+            'login': 'maria@nuevavision.es',
+            'email': 'maria@nuevavision.es',
+        })
+
+        registry = EntityRegistry()
+        self.processor = registry.get_processor('cliente', self.env)
+        self.service = registry.get_service('cliente', self.env, test_mode=True)
+
+        self.cliente = self.env['res.partner'].with_context(skip_sync=True).create({
+            'name': 'CLIENTE CON VENDEDORA',
+            'cliente_externo': '17806',
+            'contacto_externo': '0',
+            'is_company': True,
+            'type': 'invoice',
+            'user_id': self.vendedora.id,
+        })
+
+    def _sincronizar(self, **extra):
+        # 'Vendedor' (el código) tiene que ir: es la clave del mapeo, y sin ella
+        # el processor ni llega a llamar al transformer. El código se ignora; lo
+        # que se mira es VendedorEmail.
+        mensaje = {
+            'Cliente': '17806',
+            'Contacto': '0',
+            'ClientePrincipal': True,
+            'Nombre': 'CLIENTE CON VENDEDORA',
+            'Estado': 1,
+            'Vendedor': 'NV',
+        }
+        mensaje.update(extra)
+        self.service.create_or_update_contact(self.processor.process(mensaje))
+        self.cliente.invalidate_recordset(['user_id'])
+        return self.cliente
+
+    def test_vendedor_email_nulo_no_borra_la_vendedora(self):
+        """El caso del job de las 01:00: 151 clientes republicados cada noche"""
+        cliente = self._sincronizar(VendedorEmail=None)
+
+        self.assertEqual(cliente.user_id, self.vendedora)
+
+    def test_vendedor_email_ausente_tampoco(self):
+        """Con Vendedor pero sin VendedorEmail: la rama que antes era código muerto"""
+        cliente = self._sincronizar()
+
+        self.assertEqual(cliente.user_id, self.vendedora)
+
+    def test_vendedor_email_vacio_si_la_quita(self):
+        """El vendedor 'NV' de Nesto sí es «sin vendedor»"""
+        cliente = self._sincronizar(VendedorEmail='')
+
+        self.assertFalse(cliente.user_id)
+
+    def test_ficha_sin_comercial_vendedor_null_y_email_vacio(self):
+        """Las 133 fichas activas sin comercial: Vendedor null y VendedorEmail ''"""
+        cliente = self._sincronizar(Vendedor=None, VendedorEmail='')
+
+        self.assertFalse(cliente.user_id)
+
+    def test_un_vendedor_de_verdad_se_asigna(self):
+        otro = self.env['res.users'].sudo().create({
+            'name': 'Pedro Comercial',
+            'login': 'pedro@nuevavision.es',
+            'email': 'pedro@nuevavision.es',
+        })
+
+        cliente = self._sincronizar(VendedorEmail='pedro@nuevavision.es')
+
+        self.assertEqual(cliente.user_id, otro)

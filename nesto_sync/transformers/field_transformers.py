@@ -592,6 +592,14 @@ class VendedorTransformer:
 
     Caso especial: En Nesto, el vendedor 'NV' no tiene email y es equivalente
     a "sin vendedor". Cuando llega VendedorEmail='' debemos QUITAR el vendedor.
+
+    Convención de VendedorEmail (issue #25, NestoAPI#504). Es la misma que
+    aplica NestoAPI en la entrada (ClientesSyncHandler.cs:236-238), y hasta
+    ahora aquí era la contraria:
+
+    - campo AUSENTE  → no modificar
+    - None (null)    → no modificar
+    - '' (vacío)     → quitar el vendedor
     """
 
     def transform(self, value, context):
@@ -603,8 +611,8 @@ class VendedorTransformer:
             context: Dict con 'nesto_data' y 'env'
 
         Returns:
-            - Dict vacío {} si VendedorEmail no está en el mensaje
-            - {'user_id': False} si VendedorEmail es vacío o None (quitar vendedor)
+            - Dict vacío {} si VendedorEmail no está en el mensaje o es None
+            - {'user_id': False} si VendedorEmail es la cadena vacía (quitar vendedor)
             - {'user_id': id} si se encuentra usuario por email
         """
         import logging
@@ -614,9 +622,6 @@ class VendedorTransformer:
         nesto_data = context.get('nesto_data', {})
         env = context.get('env')
 
-        # IMPORTANTE: Distinguir entre campo AUSENTE vs campo VACÍO
-        # - Campo AUSENTE: no modificar el vendedor actual
-        # - Campo VACÍO ('', None): quitar el vendedor (caso vendedor 'NV' sin email)
         if 'VendedorEmail' not in nesto_data:
             # Campo ausente - no modificar nada
             return {}
@@ -624,16 +629,28 @@ class VendedorTransformer:
         # El campo está presente - obtener su valor
         vendedor_email = nesto_data.get('VendedorEmail')
 
-        # Limpiar el email si existe
-        if vendedor_email:
-            vendedor_email = str(vendedor_email).strip().lower()
+        # null NO es «quitar el vendedor»: es «no tengo el dato» (issue #25).
+        #
+        # Esta distinción antes no se daba nunca. NestoAPI publica con
+        # System.Text.Json.JsonSerializer.Serialize(message) sin opciones, y el
+        # serializador por defecto INCLUYE las propiedades nulas: VendedorEmail
+        # viaja siempre, y cuando NestoAPI no consigue resolver el email del
+        # vendedor viaja como null. Con la regla anterior eso caía en la rama de
+        # quitar el vendedor, así que cualquier cliente cuyo vendedor de Nesto no
+        # tuviera Mail se quedaba sin vendedor en Odoo, en silencio, en cada
+        # republicación. La rama de «campo ausente» era código muerto.
+        #
+        # Y ojo al contraste: asignar vendedor manda correo al vendedor, quitarlo
+        # no avisa a nadie. Por eso llevaba meses pasando sin que se notara.
+        if vendedor_email is None:
+            return {}
 
-        # Si el email es vacío o None, QUITAR el vendedor
+        vendedor_email = str(vendedor_email).strip().lower()
+
+        # La cadena vacía SÍ significa «vendedor eliminado»
         # Caso especial: vendedor 'NV' en Nesto = sin vendedor
         if not vendedor_email:
-            _logger.info(
-                f"VendedorEmail vacío en mensaje - quitando vendedor del cliente"
-            )
+            self._avisar_si_se_pierde_el_vendedor(env, nesto_data, _logger)
             return {'user_id': False}
 
         # Buscar usuario en Odoo por email (login)
@@ -657,6 +674,43 @@ class VendedorTransformer:
             )
 
         return {'user_id': False}
+
+    def _avisar_si_se_pierde_el_vendedor(self, env, nesto_data, _logger):
+        """
+        Deja en el log el vendedor que se va a quitar, si había alguno
+
+        Antes el info era idéntico se perdiera algo o no, y quitar vendedor no
+        manda correo a nadie: no había forma de enterarse (issue #25).
+
+        Args:
+            env: Environment de Odoo
+            nesto_data: Mensaje de Nesto
+            _logger: Logger del transformer
+        """
+        cliente = nesto_data.get('Cliente')
+        contacto = nesto_data.get('Contacto')
+
+        if not env or cliente is None:
+            _logger.info("VendedorEmail vacío en mensaje - quitando vendedor del cliente")
+            return
+
+        partner = env['res.partner'].sudo().with_context(active_test=False).search([
+            ('cliente_externo', '=', cliente),
+            ('contacto_externo', '=', contacto),
+            ('persona_contacto_externa', '=', False),
+        ], limit=1)
+
+        if partner and partner.user_id:
+            _logger.warning(
+                f"VendedorEmail vacío en mensaje: se QUITA el vendedor "
+                f"{partner.user_id.name} ({partner.user_id.login}) del cliente "
+                f"{cliente}/{contacto} (res.partner {partner.id})"
+            )
+        else:
+            _logger.info(
+                f"VendedorEmail vacío en mensaje para el cliente {cliente}/{contacto}: "
+                f"no tenía vendedor, no se pierde nada"
+            )
 
 
 @FieldTransformerRegistry.register('unidad_medida_y_tamanno')
@@ -731,3 +785,82 @@ class FechaTransformer:
             return date.fromisoformat(texto[:10])
         except ValueError:
             raise ValueError(f"Fecha de Nesto con formato no reconocido: {value!r}")
+
+
+@FieldTransformerRegistry.register('codigo_barras')
+class CodigoBarrasTransformer:
+    """
+    Filtra el CodigoBarras de Nesto antes de escribirlo en Odoo (issue #21)
+
+    La restricción de unicidad de product.product.barcode rechazaba el mensaje
+    ENTERO cuando el código ya lo tenía otro producto: el producto no se creaba
+    ni se actualizaba, y el mensaje acababa en la DLQ (108 productos el 18/09,
+    y 26 kits detrás, porque sus componentes eran de esos que no entraban).
+
+    Dos casos, que se tratan distinto a propósito:
+
+    - **Código que no es un código**: en Nesto se usan "0" y "1" como «sin
+      código de barras». Se traducen a «sin código» (barcode vacío), que es lo
+      que significan. Nesto es la fuente de verdad del campo.
+    - **Código válido pero repetido**: es un error de datos de Nesto (dos
+      productos con el mismo EAN). Aquí NO se toca el barcode que Odoo ya
+      tenga: perderíamos un código bueno por culpa de un duplicado ajeno. Se
+      deja aviso en el log y el resto del mensaje (stock, familia, precio, kit)
+      entra con normalidad.
+
+    No se comprueba el dígito de control: hay EAN internos en Nesto que no lo
+    cumplen y rechazarlos sería perder códigos buenos.
+    """
+
+    # EAN-8, UPC-A, EAN-13 y GTIN-14
+    LONGITUDES_VALIDAS = (8, 12, 13, 14)
+
+    def transform(self, value, context):
+        """
+        Args:
+            value: CodigoBarras del mensaje de Nesto
+            context: Dict con 'env' y 'nesto_data'
+
+        Returns:
+            - {'barcode': '...'} si el código es válido y está libre
+            - {'barcode': False} si no es un código de barras plausible
+            - {} (no tocar) si el código ya lo tiene otro producto
+        """
+        import logging
+        _logger = logging.getLogger(__name__)
+
+        codigo = '' if value is None else str(value).strip()
+
+        if not codigo:
+            return {'barcode': False}
+
+        if not codigo.isdigit() or len(codigo) not in self.LONGITUDES_VALIDAS:
+            _logger.warning(
+                f"CodigoBarras {codigo!r} no es un código de barras plausible "
+                f"(se esperan solo dígitos y {self.LONGITUDES_VALIDAS} de largo). "
+                f"El producto se guarda sin código de barras."
+            )
+            return {'barcode': False}
+
+        env = context.get('env')
+        if not env:
+            return {'barcode': codigo}
+
+        producto_externo = str(context.get('nesto_data', {}).get('Producto') or '')
+
+        # active_test=False: un producto archivado sigue ocupando el código, la
+        # restricción de unicidad es de la tabla y no mira el archivado.
+        dueno = env['product.product'].sudo().with_context(active_test=False).search([
+            ('barcode', '=', codigo)
+        ], limit=1)
+
+        if dueno and str(dueno.product_tmpl_id.producto_externo or '') != producto_externo:
+            _logger.warning(
+                f"CodigoBarras {codigo} del producto {producto_externo or '(nuevo)'} "
+                f"ya lo tiene el producto {dueno.product_tmpl_id.producto_externo}. "
+                f"Es un duplicado en Nesto: se deja el código que ya tuviera este "
+                f"producto en Odoo y el resto del mensaje se procesa igualmente."
+            )
+            return {}
+
+        return {'barcode': codigo}

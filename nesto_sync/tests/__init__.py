@@ -33,3 +33,14 @@ from . import test_stock_virtual_guard
 
 # Tests fechas de compras (Issue #8)
 from . import test_fechas_compras
+
+# Tests del sistema de DLQ. El fichero existe desde hace tiempo, pero no estaba
+# importado aquí, así que sus TransactionCase no se han ejecutado nunca bajo
+# Odoo: el mismo agujero que #12, solo que en silencio y sin fallar.
+from . import test_dlq_system
+
+# Tests del filtrado de CodigoBarras (Issue #21)
+from . import test_codigo_barras
+
+# Tests del NIF sin validar (Issue #18)
+from . import test_nif
