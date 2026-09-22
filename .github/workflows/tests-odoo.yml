@@ -22,7 +22,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Dependencias de Python
-        run: pip3 install --break-system-packages google-cloud-pubsub || pip3 install google-cloud-pubsub
+        # google-cloud-pubsub arrastra una cryptography moderna, y la pyOpenSSL
+        # que trae la imagen de Debian no la entiende: Odoo se queda sin cargar
+        # ni el módulo base, con «module 'lib' has no attribute 'GEN_EMAIL'».
+        # Se sube pyOpenSSL a la vez para que las dos versiones casen.
+        run: |
+          pip3 install --break-system-packages --upgrade google-cloud-pubsub pyOpenSSL \
+            || pip3 install --upgrade google-cloud-pubsub pyOpenSSL
       - name: Tests de Odoo
         run: |
           odoo --db_host db --db_user odoo --db_password odoo -d tests \
@@ -34,6 +40,13 @@ jobs:
         run: |
           python3 .github/scripts/comprobar_tests.py odoo-tests.log .github/tests_en_rojo_conocidos.txt \
             nesto_sync=165 nv_crm_embudo=30
+      # El paso de Odoo lleva '|| true' para que sea comprobar_tests.py quien
+      # decida. Eso esconde los arranques fallidos, así que si el job se pone en
+      # rojo se enseña aquí el final del log, sin tener que bajar el artefacto.
+      - name: Final del log de Odoo si algo ha ido mal
+        if: failure()
+        run: tail -n 60 odoo-tests.log || echo 'No hay odoo-tests.log: Odoo ni siquiera arrancó.'
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
