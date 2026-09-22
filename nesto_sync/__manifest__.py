@@ -1,9 +1,43 @@
 {
     'name': 'Nesto Sync',
-    'version': '2.8.2',  # 2.8.2: La BOM de los kits vuelve a sincronizarse (issue #12)
+    'version': '2.9.0',  # 2.9.0: Un dato malo de Nesto ya no tira el mensaje entero
     'summary': 'Sincronización bidireccional de tablas entre Nesto y Odoo via Google Pub/Sub',
     'description': '''
         Módulo de sincronización bidireccional entre Nesto y Odoo
+
+        Versión 2.9.0 (2026-09-22):
+        - Un dato malo de Nesto ya no tira el mensaje ENTERO. Cuatro causas que
+          entre las cuatro tenían 431 entidades atascadas en la DLQ (issue #23):
+          - NIF que no pasa base_vat (177, issue #18): se escribe con
+            no_vat_validation. Nesto es la fuente de verdad del NIF, y Odoo
+            perdía el cliente entero por rechazarlo. Lo que se edite a mano en
+            Odoo sigue validándose
+          - Nombre vacío "" (91, issue #19): un campo requerido que llega vacío
+            se trata como si no viniera, y Odoo conserva lo que tenga. El
+            default pasa a aplicarse SOLO al crear: aplicarlo al actualizar
+            renombraba productos buenos a '<Nombre producto no proporcionado>'.
+            Las personas de contacto sin nombre se resuelven con su correo o su
+            cargo, y si no hay ninguno se deja fuera esa persona y el resto del
+            mensaje sigue
+          - Cliente principal archivado (55, issue #20): la búsqueda del padre
+            va con active_test=False. Antes, cada dirección o persona de
+            contacto de ese cliente se iba a la DLQ, y para siempre, porque el
+            archivado no cambia solo. El hijo se cuelga del archivado sin
+            desarchivarlo
+          - Código de barras repetido o basura (108 productos y 26 kits, issue
+            #21): "0" y "1" se traducen a «sin código», que es lo que significan
+            en Nesto; un EAN que ya tiene otro producto deja intacto el que Odoo
+            tuviera, y el resto del mensaje entra
+        - VendedorEmail nulo ya no borra el vendedor del cliente (issue #25).
+          Se adopta la convención de NestoAPI: ausente y null son «no
+          modificar», y solo '' quita el vendedor. Como NestoAPI serializa
+          incluyendo los nulos, cualquier vendedor sin Mail dejaba al cliente
+          sin vendedor, en silencio, en cada republicación. Y quitar vendedor no
+          avisa a nadie: ahora queda warning en el log con el vendedor que se
+          pierde
+        - CI: los tests de Odoo se pasan en cada PR y salta la alarma si un
+          módulo ejecuta menos tests de los esperados o aparece un fallo nuevo
+          (issue #22)
 
         Versión 2.8.2 (2026-09-22):
         - La BOM de los kits vuelve a sincronizarse (Issue #12). Tres fallos que
