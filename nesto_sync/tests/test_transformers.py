@@ -417,6 +417,35 @@ class TestVendedorTransformer(TransactionCase):
         self.assertEqual(transformar({'VendedorEmail': ''}), {'user_id': False},
                          "cadena vacía: quitar el vendedor")
 
+    def test_ficha_sin_comercial_vendedor_null_y_email_vacio(self):
+        """
+        Las 133 fichas activas sin comercial de Nesto
+
+        NestoAPI (22/09/2026) pide explícitamente que se aplique la regla de ""
+        aunque `Vendedor` venga a null: esa ficha realmente no tiene comercial.
+        El código de vendedor se ignora; manda VendedorEmail.
+        """
+        context = {
+            'env': self.env,
+            'nesto_data': {'Vendedor': None, 'VendedorEmail': ''},
+        }
+
+        self.assertEqual(self.transformer.transform(None, context), {'user_id': False})
+
+    def test_vendedor_con_codigo_pero_sin_correo_no_modifica(self):
+        """
+        NestoAPI no manda la clave VendedorEmail en ese caso (ni siquiera null)
+
+        Hoy el único vendedor sin correo en Nesto es NV, así que no se da con
+        ningún vendedor real, pero la regla tiene que estar.
+        """
+        context = {
+            'env': self.env,
+            'nesto_data': {'Vendedor': '021'},
+        }
+
+        self.assertEqual(self.transformer.transform('021', context), {})
+
     def test_solo_espacios_cuenta_como_vacio(self):
         context = {'env': self.env, 'nesto_data': {'VendedorEmail': '   '}}
 
@@ -551,6 +580,12 @@ class TestVendedorNuloMensajeCompleto(TransactionCase):
     def test_vendedor_email_vacio_si_la_quita(self):
         """El vendedor 'NV' de Nesto sí es «sin vendedor»"""
         cliente = self._sincronizar(VendedorEmail='')
+
+        self.assertFalse(cliente.user_id)
+
+    def test_ficha_sin_comercial_vendedor_null_y_email_vacio(self):
+        """Las 133 fichas activas sin comercial: Vendedor null y VendedorEmail ''"""
+        cliente = self._sincronizar(Vendedor=None, VendedorEmail='')
 
         self.assertFalse(cliente.user_id)
 
