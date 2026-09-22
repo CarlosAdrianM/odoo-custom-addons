@@ -406,6 +406,36 @@ class GenericEntityService:
             # Un aviso nunca puede tumbar una sincronización
             _logger.debug(f"No se ha podido comprobar el NIF de {record.id}: {e}")
 
+    def _aplicar_defaults_al_crear(self, values):
+        """
+        Rellena los campos requeridos que no traen valor, con su default
+
+        El default es para CREAR. Si el registro ya existe, un campo requerido
+        que llega vacío se omite en el processor y Odoo conserva lo que tenía:
+        aplicarlo también al actualizar pisaría el nombre bueno de una ficha con
+        un '<Nombre producto no proporcionado>' (issue #19).
+
+        Por eso los defaults solo quedan donde Odoo no admite el campo vacío:
+        product.template.name es required a nivel de campo. En res.partner no
+        hay default a propósito: la restricción check_name solo exige nombre
+        cuando type='contact', así que una dirección de entrega puede quedarse
+        sin nombre y Odoo enseña el del padre.
+
+        Args:
+            values: Dict de valores, se modifica in situ
+        """
+        for mapping in self.config.get('field_mappings', {}).values():
+            odoo_field = mapping.get('odoo_field')
+            if not odoo_field or not mapping.get('required') or 'default' not in mapping:
+                continue
+
+            if not values.get(odoo_field):
+                _logger.info(
+                    f"Creando {self.config['odoo_model']} sin {odoo_field}: "
+                    f"se usa el default {mapping['default']!r}"
+                )
+                values[odoo_field] = mapping['default']
+
     def _create_record(self, values):
         """
         Crea un nuevo registro
@@ -417,8 +447,14 @@ class GenericEntityService:
             Response HTTP
         """
         try:
+            # Copiar valores para no modificar el original
+            values = values.copy()
+
             # Extraer _productos_kit_data si existe (campo especial que no se guarda)
             productos_kit_data = values.pop('_productos_kit_data', None)
+
+            # El default de un campo requerido se aplica SOLO al crear
+            self._aplicar_defaults_al_crear(values)
 
             # CRÍTICO: Añadir skip_sync=True para evitar bucle infinito
             # Este create viene de Nesto, NO debe publicarse

@@ -44,3 +44,6 @@ from . import test_codigo_barras
 
 # Tests del NIF sin validar (Issue #18)
 from . import test_nif
+
+# Tests del Nombre vacío (Issue #19)
+from . import test_nombre_vacio

@@ -159,9 +159,22 @@ class GenericEntityProcessor:
         if nesto_value is None and 'default' in mapping:
             nesto_value = mapping['default']
 
-        # Validar campo requerido
-        if mapping.get('required') and not nesto_value:
-            raise ValueError(f"Campo requerido faltante: {nesto_field}")
+        # Un campo REQUERIDO que llega vacío se trata como si no hubiera venido:
+        # se omite y Odoo se queda con lo que ya tenga. Antes se lanzaba
+        # ValueError y con él se perdía el mensaje ENTERO, por un campo que Odoo
+        # normalmente ya tiene (issue #19: 91 entidades en la DLQ, y 34 de ellas
+        # productos que ya existían y perdían stock, familia y kit por esto).
+        #
+        # El default se aplica solo al CREAR, en GenericEntityService: aplicarlo
+        # aquí pisaría el nombre bueno de una ficha que ya está en Odoo con un
+        # '<Nombre producto no proporcionado>'.
+        if mapping.get('required') and self._esta_vacio(nesto_value):
+            _logger.warning(
+                f"El campo requerido {nesto_field} llega vacío: se omite y se deja "
+                f"el valor que tenga Odoo. Si el registro es nuevo, se usará el "
+                f"default del mapeo si lo hay."
+            )
+            return
 
         # Mapeo simple (sin transformer)
         if 'odoo_field' in mapping and 'transformer' not in mapping:
@@ -377,6 +390,26 @@ class GenericEntityProcessor:
                 return None
 
         return value
+
+    @staticmethod
+    def _esta_vacio(value):
+        """
+        Un valor «vacío» a efectos de campos requeridos
+
+        Nesto manda la cadena vacía donde no hay dato, no None, así que ""
+        y "   " cuentan igual que ausente (issue #19).
+
+        Args:
+            value: Valor a comprobar
+
+        Returns:
+            True si no hay dato
+        """
+        if value is None or value is False:
+            return True
+        if isinstance(value, str) and not value.strip():
+            return True
+        return False
 
     def _field_present_in_data(self, data, path):
         """

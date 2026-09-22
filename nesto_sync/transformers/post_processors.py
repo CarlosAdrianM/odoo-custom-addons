@@ -697,3 +697,86 @@ class SyncProductBom:
         _logger.info(
             f"BOM creada (ID {bom.id}) con {len(bom_lines)} componentes"
         )
+
+
+@PostProcessorRegistry.register('nombre_de_persona_de_contacto')
+class NombreDePersonaDeContacto:
+    """
+    Resuelve las personas de contacto que llegan sin nombre (issue #19)
+
+    res.partner tiene la restricción SQL check_name: type='contact' exige
+    nombre. Nesto manda a veces PersonasContacto[].Nombre a null o a "", y
+    entonces se perdía el mensaje ENTERO, con la ficha del cliente dentro.
+
+    - Al ACTUALIZAR no hay nada que hacer: el nombre vacío ya no llega en los
+      valores (el processor lo omite) y Odoo se queda con el que tenía.
+    - Al CREAR hay que poner algo, y antes que un texto de relleno se usa lo
+      que de verdad identifica a esa persona: su correo, o su cargo.
+    - Si no hay ni correo ni cargo, se deja fuera esa persona y el resto del
+      mensaje sigue su camino. Más vale un cliente sin una de sus personas de
+      contacto que un cliente que no entra.
+    """
+
+    def process(self, parent_values, children_values_list, context):
+        """
+        Args:
+            parent_values: Valores del parent
+            children_values_list: Lista de valores de children
+            context: Dict con 'env'
+
+        Returns:
+            Tuple (parent_values, children_values_list), sin los children que
+            se dejan fuera
+        """
+        env = context.get('env')
+        if not env:
+            return parent_values, children_values_list
+
+        resueltos = []
+
+        for child_values in children_values_list:
+            if child_values.get('name'):
+                resueltos.append(child_values)
+                continue
+
+            if self._ya_existe(env, child_values):
+                # Actualización: Odoo conserva el nombre que ya tiene
+                resueltos.append(child_values)
+                continue
+
+            nombre = child_values.get('email') or child_values.get('function')
+
+            if nombre:
+                _logger.info(
+                    f"Persona de contacto {child_values.get('persona_contacto_externa')} "
+                    f"del cliente {child_values.get('cliente_externo')} sin nombre: "
+                    f"se crea como {nombre!r}"
+                )
+                child_values['name'] = nombre
+                resueltos.append(child_values)
+            else:
+                _logger.warning(
+                    f"Persona de contacto {child_values.get('persona_contacto_externa')} "
+                    f"del cliente {child_values.get('cliente_externo')} sin nombre, sin "
+                    f"correo y sin cargo: se deja fuera. El resto del mensaje se procesa."
+                )
+
+        return parent_values, resueltos
+
+    def _ya_existe(self, env, child_values):
+        """
+        ¿Esta persona de contacto ya está en Odoo?
+
+        Args:
+            env: Odoo environment
+            child_values: Valores del child
+
+        Returns:
+            bool
+        """
+        # active_test=False: una persona archivada sigue existiendo
+        return bool(env['res.partner'].sudo().with_context(active_test=False).search([
+            ('cliente_externo', '=', child_values.get('cliente_externo')),
+            ('contacto_externo', '=', child_values.get('contacto_externo')),
+            ('persona_contacto_externa', '=', child_values.get('persona_contacto_externa')),
+        ], limit=1))
