@@ -592,6 +592,14 @@ class VendedorTransformer:
 
     Caso especial: En Nesto, el vendedor 'NV' no tiene email y es equivalente
     a "sin vendedor". Cuando llega VendedorEmail='' debemos QUITAR el vendedor.
+
+    Convención de VendedorEmail (issue #25, NestoAPI#504). Es la misma que
+    aplica NestoAPI en la entrada (ClientesSyncHandler.cs:236-238), y hasta
+    ahora aquí era la contraria:
+
+    - campo AUSENTE  → no modificar
+    - None (null)    → no modificar
+    - '' (vacío)     → quitar el vendedor
     """
 
     def transform(self, value, context):
@@ -603,8 +611,8 @@ class VendedorTransformer:
             context: Dict con 'nesto_data' y 'env'
 
         Returns:
-            - Dict vacío {} si VendedorEmail no está en el mensaje
-            - {'user_id': False} si VendedorEmail es vacío o None (quitar vendedor)
+            - Dict vacío {} si VendedorEmail no está en el mensaje o es None
+            - {'user_id': False} si VendedorEmail es la cadena vacía (quitar vendedor)
             - {'user_id': id} si se encuentra usuario por email
         """
         import logging
@@ -614,9 +622,6 @@ class VendedorTransformer:
         nesto_data = context.get('nesto_data', {})
         env = context.get('env')
 
-        # IMPORTANTE: Distinguir entre campo AUSENTE vs campo VACÍO
-        # - Campo AUSENTE: no modificar el vendedor actual
-        # - Campo VACÍO ('', None): quitar el vendedor (caso vendedor 'NV' sin email)
         if 'VendedorEmail' not in nesto_data:
             # Campo ausente - no modificar nada
             return {}
@@ -624,16 +629,28 @@ class VendedorTransformer:
         # El campo está presente - obtener su valor
         vendedor_email = nesto_data.get('VendedorEmail')
 
-        # Limpiar el email si existe
-        if vendedor_email:
-            vendedor_email = str(vendedor_email).strip().lower()
+        # null NO es «quitar el vendedor»: es «no tengo el dato» (issue #25).
+        #
+        # Esta distinción antes no se daba nunca. NestoAPI publica con
+        # System.Text.Json.JsonSerializer.Serialize(message) sin opciones, y el
+        # serializador por defecto INCLUYE las propiedades nulas: VendedorEmail
+        # viaja siempre, y cuando NestoAPI no consigue resolver el email del
+        # vendedor viaja como null. Con la regla anterior eso caía en la rama de
+        # quitar el vendedor, así que cualquier cliente cuyo vendedor de Nesto no
+        # tuviera Mail se quedaba sin vendedor en Odoo, en silencio, en cada
+        # republicación. La rama de «campo ausente» era código muerto.
+        #
+        # Y ojo al contraste: asignar vendedor manda correo al vendedor, quitarlo
+        # no avisa a nadie. Por eso llevaba meses pasando sin que se notara.
+        if vendedor_email is None:
+            return {}
 
-        # Si el email es vacío o None, QUITAR el vendedor
+        vendedor_email = str(vendedor_email).strip().lower()
+
+        # La cadena vacía SÍ significa «vendedor eliminado»
         # Caso especial: vendedor 'NV' en Nesto = sin vendedor
         if not vendedor_email:
-            _logger.info(
-                f"VendedorEmail vacío en mensaje - quitando vendedor del cliente"
-            )
+            self._avisar_si_se_pierde_el_vendedor(env, nesto_data, _logger)
             return {'user_id': False}
 
         # Buscar usuario en Odoo por email (login)
@@ -657,6 +674,43 @@ class VendedorTransformer:
             )
 
         return {'user_id': False}
+
+    def _avisar_si_se_pierde_el_vendedor(self, env, nesto_data, _logger):
+        """
+        Deja en el log el vendedor que se va a quitar, si había alguno
+
+        Antes el info era idéntico se perdiera algo o no, y quitar vendedor no
+        manda correo a nadie: no había forma de enterarse (issue #25).
+
+        Args:
+            env: Environment de Odoo
+            nesto_data: Mensaje de Nesto
+            _logger: Logger del transformer
+        """
+        cliente = nesto_data.get('Cliente')
+        contacto = nesto_data.get('Contacto')
+
+        if not env or cliente is None:
+            _logger.info("VendedorEmail vacío en mensaje - quitando vendedor del cliente")
+            return
+
+        partner = env['res.partner'].sudo().with_context(active_test=False).search([
+            ('cliente_externo', '=', cliente),
+            ('contacto_externo', '=', contacto),
+            ('persona_contacto_externa', '=', False),
+        ], limit=1)
+
+        if partner and partner.user_id:
+            _logger.warning(
+                f"VendedorEmail vacío en mensaje: se QUITA el vendedor "
+                f"{partner.user_id.name} ({partner.user_id.login}) del cliente "
+                f"{cliente}/{contacto} (res.partner {partner.id})"
+            )
+        else:
+            _logger.info(
+                f"VendedorEmail vacío en mensaje para el cliente {cliente}/{contacto}: "
+                f"no tenía vendedor, no se pierde nada"
+            )
 
 
 @FieldTransformerRegistry.register('unidad_medida_y_tamanno')
