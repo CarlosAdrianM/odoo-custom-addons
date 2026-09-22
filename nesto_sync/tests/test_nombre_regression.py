@@ -498,7 +498,7 @@ class TestNombreMultiplesPersonasContacto(TransactionCase):
         # Recrear el escenario exacto del bug
         self.cliente = self.env['res.partner'].create({
             'name': 'CENTRO DE ESTÉTICA EL EDÉN, S.L.U.',  # Nombre fiscal real
-            'cliente_externo': '15191',
+            'cliente_externo': 'TEST15191',
             'contacto_externo': '0',
             'is_company': True,
             'type': 'invoice',
@@ -506,7 +506,7 @@ class TestNombreMultiplesPersonasContacto(TransactionCase):
 
         self.contacto_angela = self.env['res.partner'].create({
             'name': 'Ángela',
-            'cliente_externo': '15191',
+            'cliente_externo': 'TEST15191',
             'contacto_externo': '0',
             'persona_contacto_externa': '1',
             'type': 'contact',
@@ -515,7 +515,7 @@ class TestNombreMultiplesPersonasContacto(TransactionCase):
 
         self.contacto_carlos = self.env['res.partner'].create({
             'name': 'Carlos',
-            'cliente_externo': '15191',
+            'cliente_externo': 'TEST15191',
             'contacto_externo': '0',
             'persona_contacto_externa': '2',
             'type': 'contact',
@@ -534,7 +534,7 @@ class TestNombreMultiplesPersonasContacto(TransactionCase):
 
         # Mensaje exacto como el que causó el problema
         mensaje = {
-            "Cliente": "15191",
+            "Cliente": "TEST15191",
             "Contacto": "0",
             "ClientePrincipal": True,
             "Nombre": "CENTRO DE ESTÉTICA EL EDÉN, S.L.U.",
@@ -586,7 +586,7 @@ class TestNombreMultiplesPersonasContacto(TransactionCase):
 
         # Mensaje plano con PersonaContacto en la raíz
         mensaje = {
-            "Cliente": "15191",
+            "Cliente": "TEST15191",
             "Contacto": "0",
             "PersonaContacto": "1",  # ID de persona en la raíz
             "Nombre": "Ángela Nueva",
