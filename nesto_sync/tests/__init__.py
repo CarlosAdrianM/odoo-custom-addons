@@ -33,3 +33,6 @@ from . import test_stock_virtual_guard
 
 # Tests fechas de compras (Issue #8)
 from . import test_fechas_compras
+
+# Tests del filtrado de CodigoBarras (Issue #21)
+from . import test_codigo_barras

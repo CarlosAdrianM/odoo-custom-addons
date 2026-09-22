@@ -300,8 +300,12 @@ ENTITY_CONFIGS = {
                 'transformer': 'unidad_medida_y_tamanno',
                 'odoo_fields': ['weight', 'volume', 'product_length', 'uom_id', 'uom_po_id']
             },
+            # El transformer filtra los códigos que no son códigos ("0", "1")
+            # y los que ya tiene otro producto, para que un dato malo de Nesto
+            # no tire el mensaje entero (issue #21).
             'CodigoBarras': {
-                'odoo_field': 'barcode',
+                'transformer': 'codigo_barras',
+                'odoo_fields': ['barcode'],
                 'required': False
             },
 
@@ -384,6 +388,10 @@ ENTITY_CONFIGS = {
         'reverse_field_mappings': {
             # ⚠️ IDENTIFICADOR CRÍTICO
             'producto_externo': {'nesto_field': 'Producto'},
+            # El barcode sale tal cual: el transformer 'codigo_barras' es solo
+            # de entrada y no tiene inverso. Explícito aquí para que el mapeo
+            # inferido no intente aplicárselo.
+            'barcode': {'nesto_field': 'CodigoBarras'},
             # Los demás campos se infieren automáticamente
         },
     },
