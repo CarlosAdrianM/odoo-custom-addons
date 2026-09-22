@@ -18,9 +18,10 @@
           ProductosKit se normaliza ahora una sola vez, en _normalize_kit_items
         - DLQ: last_attempt_date recibía la cadena 'UTC' al reintentar un mensaje
           que ya estaba en la DLQ, sobre un campo Datetime
-        - Personas de contacto: se acepta 'Telefono' además de 'Telefonos' en la
-          ENTRADA (pendiente de que NestoAPI confirme cuál manda). La salida no
-          cambia: se sigue publicando 'Telefonos'
+        - Personas de contacto: el teléfono es 'Telefonos', en plural, confirmado
+          por NestoAPI el 22/09/2026. En la raíz del mensaje el cliente lleva
+          'Telefono', en singular: son dos claves distintas, no una errata.
+          El mensaje del test end-to-end usaba el singular y por eso fallaba
         - Tests: los 13 en rojo de #12 en verde, y se ejecutan los de
           test_dlq_system, que no estaban importados y no corrían nunca
 

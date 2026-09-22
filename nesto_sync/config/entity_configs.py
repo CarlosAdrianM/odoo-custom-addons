@@ -134,21 +134,11 @@ ENTITY_CONFIGS = {
             'CorreoElectronico': {
                 'odoo_field': 'email'
             },
-            # Alias SOLO de entrada: hasta 15d4f18 esta clave era 'Telefono'
-            # (singular), que es lo que sigue leyendo el procesador legacy que
-            # estuvo en producción. Se renombró a 'Telefonos' para que el mensaje
-            # SALIENTE cuadrase con NestoAPI, y de paso se dejó de leer el
-            # singular en la ENTRADA: si Nesto lo manda así, el teléfono de la
-            # persona de contacto no llega nunca. Mientras NestoAPI no confirme
-            # cuál de las dos manda, se aceptan las dos a la entrada y se sigue
-            # publicando solo 'Telefonos' ('reverse': False lo deja fuera del
-            # mapeo inverso). Va antes que el plural para que, si llegaran las
-            # dos, gane 'Telefonos'.
-            'Telefono': {
-                'transformer': 'phone',
-                'odoo_fields': ['mobile', 'phone'],
-                'reverse': False,
-            },
+            # 'Telefonos', en plural, confirmado por NestoAPI el 22/09/2026: el
+            # DTO de la persona de contacto tiene Id, Nombre, CorreoElectronico,
+            # Telefonos y Cargo, y es el mismo mensaje que consume PrestaShop.
+            # En la RAÍZ del mensaje, en cambio, el cliente lleva 'Telefono' en
+            # singular. No es una errata: son dos claves distintas.
             'Telefonos': {
                 'transformer': 'phone',
                 'odoo_fields': ['mobile', 'phone']
