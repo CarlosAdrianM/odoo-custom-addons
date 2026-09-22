@@ -1,9 +1,29 @@
 {
     'name': 'Nesto Sync',
-    'version': '2.8.1',  # 2.8.1: Guarda de stock virtual (CantidadMontable nunca toca los quants)
+    'version': '2.8.2',  # 2.8.2: La BOM de los kits vuelve a sincronizarse (issue #12)
     'summary': 'Sincronización bidireccional de tablas entre Nesto y Odoo via Google Pub/Sub',
     'description': '''
         Módulo de sincronización bidireccional entre Nesto y Odoo
+
+        Versión 2.8.2 (2026-09-22):
+        - La BOM de los kits vuelve a sincronizarse (Issue #12). Tres fallos que
+          llevaban en producción desde 2.8.0:
+          1) Si el mensaje solo cambiaba ProductosKit, GenericService lo daba por
+             «sin cambios» (el kit no es un campo del modelo) y la BOM no se
+             tocaba: ni se actualizaba, ni se borraba cuando Nesto la vaciaba
+          2) Un ProductosKit serializado como JSON se recorría carácter a carácter
+             y la BOM se creaba VACÍA, sin avisar
+          3) Un ProductosKit con identificadores en texto (['COMP001', ...]) se
+             descartaba entero al intentar leer cada item como JSON
+          ProductosKit se normaliza ahora una sola vez, en _normalize_kit_items
+        - DLQ: last_attempt_date recibía la cadena 'UTC' al reintentar un mensaje
+          que ya estaba en la DLQ, sobre un campo Datetime
+        - Personas de contacto: el teléfono es 'Telefonos', en plural, confirmado
+          por NestoAPI el 22/09/2026. En la raíz del mensaje el cliente lleva
+          'Telefono', en singular: son dos claves distintas, no una errata.
+          El mensaje del test end-to-end usaba el singular y por eso fallaba
+        - Tests: los 13 en rojo de #12 en verde, y se ejecutan los de
+          test_dlq_system, que no estaban importados y no corrían nunca
 
         Versión 2.8.1 (2026-08-27):
         - GUARDA CRÍTICA: CantidadMontable de Stocks[] NUNCA llega a los quants (Issue #6)

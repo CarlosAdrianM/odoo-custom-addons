@@ -49,7 +49,7 @@ jobs:
       - name: Comprobar resultado
         run: |
           python3 .github/scripts/comprobar_tests.py odoo-tests.log .github/tests_en_rojo_conocidos.txt \
-            nesto_sync=165 nv_crm_embudo=30
+            nesto_sync=180 nv_crm_embudo=34
       # El paso de Odoo lleva '|| true' para que sea comprobar_tests.py quien
       # decida. Eso esconde los arranques fallidos, así que si el job se pone en
       # rojo se enseña aquí el final del log, sin tener que bajar el artefacto.

@@ -324,8 +324,9 @@ class TestBomValidations(TransactionCase):
         ]
 
         # No debe lanzar excepción
+        kit_items = self.bom_processor._normalize_kit_items(productos_kit, self.product)
         components = self.bom_processor._validate_and_get_components(
-            self.env, productos_kit, self.product
+            self.env, kit_items, self.product
         )
 
         self.assertEqual(len(components), 2, "Debe encontrar 2 componentes")
@@ -339,9 +340,11 @@ class TestBomValidations(TransactionCase):
             {'ProductoId': 'MISSING2', 'Cantidad': 1},
         ]
 
+        kit_items = self.bom_processor._normalize_kit_items(productos_kit, self.product)
+
         with self.assertRaises(ValueError) as cm:
             self.bom_processor._validate_and_get_components(
-                self.env, productos_kit, self.product
+                self.env, kit_items, self.product
             )
 
         error_msg = str(cm.exception)
@@ -365,10 +368,10 @@ class TestBomValidations(TransactionCase):
 
         # Verificar cambio: cantidad diferente
         productos_kit_nueva = [{'ProductoId': 'C1', 'Cantidad': 5}]
-        component_products = {'C1': comp1.product_variant_id}
 
         changed = self.bom_processor._has_bom_changed(
-            bom, component_products, productos_kit_nueva
+            bom,
+            self.bom_processor._normalize_kit_items(productos_kit_nueva, self.product)
         )
 
         self.assertTrue(changed, "Debe detectar cambio en cantidad")
@@ -389,10 +392,9 @@ class TestBomValidations(TransactionCase):
         ])
 
         # Mismos datos
-        component_products = {'C1': comp1.product_variant_id}
-
         changed = self.bom_processor._has_bom_changed(
-            bom, component_products, productos_kit
+            bom,
+            self.bom_processor._normalize_kit_items(productos_kit, self.product)
         )
 
         self.assertFalse(changed, "No debe detectar cambios en BOM idéntica")

@@ -101,11 +101,13 @@ class TestBidirectionalSync(TransactionCase):
     def test_batch_processing_many_records(self):
         """Test: Batch processing para muchos registros"""
         # Arrange: Crear 100 partners
+        # Prefijo propio: con 'CLI' el i=1 choca con el CLI001 del setUp y salta
+        # la restricción de unicidad de cliente_externo + contacto_externo.
         partners = self.env['res.partner']
         for i in range(100):
             partner = self.env['res.partner'].create({
                 'name': f'Cliente {i}',
-                'cliente_externo': f'CLI{i:03d}',
+                'cliente_externo': f'BATCH{i:03d}',
                 'contacto_externo': '001',
                 'is_company': True,
             })
@@ -148,6 +150,10 @@ class TestAntiBucle(TransactionCase):
             'street': 'Calle Bucle 1',
             'city': 'Madrid',
             'is_company': True,
+            # Tiene que coincidir con el 'type' de los mensajes de estos tests:
+            # sin esto el partner nace como 'contact', el mensaje trae 'invoice'
+            # y lo que se mide como "sin cambios" sí es un cambio real.
+            'type': 'invoice',
         })
 
     def test_anti_bucle_scenario_nesto_to_odoo_to_nesto(self):
@@ -157,10 +163,10 @@ class TestAntiBucle(TransactionCase):
         Escenario:
         1. Nesto cambia mobile a 666222222
         2. Odoo recibe y actualiza
-        3. Odoo publica cambio a PubSub
-        4. Nesto recibe mensaje
-        5. Nesto detecta: mobile actual == mensaje → NO actualiza
-        6. NO bucle infinito
+        3. Odoo NO republica: el write de GenericService lleva skip_sync=True
+           porque el cambio viene de Nesto (generic_service._update_record)
+        4. Al no salir mensaje, Nesto no recibe nada que reenviar
+        5. NO bucle infinito
         """
         # Arrange
         from odoo.addons.nesto_sync.core.generic_service import GenericEntityService
@@ -191,22 +197,20 @@ class TestAntiBucle(TransactionCase):
             mock_publisher.publish_event = Mock()
             mock_create.return_value = mock_publisher
 
-            # GenericService actualiza (esto DEBERÍA publicar a PubSub)
+            # GenericService actualiza; el write lleva skip_sync=True
             response = service.create_or_update_contact(nesto_message_data)
 
         # Assert: Verificar que se actualizó
         self.partner.refresh()
         self.assertEqual(self.partner.mobile, '666222222')
 
-        # Assert: Verificar que se publicó (porque hubo cambios reales)
-        self.assertTrue(mock_publisher.publish_event.called)
-
-        # Paso 3: Simular que Nesto recibe el mensaje
-        # Nesto debería detectar que mobile actual (666222222) == mensaje (666222222)
-        # y NO actualizar (esto se implementará en NestoAPI)
-
-        # Paso 4: Simular que Nesto NO publica confirmación (porque no cambió nada)
-        # Por tanto, NO hay bucle
+        # Assert: Paso 3 - NO se republica hacia Nesto.
+        # Aquí es donde se corta el bucle: un cambio que llega de Nesto no se le
+        # devuelve. El test pedía justo lo contrario y por eso estaba en rojo.
+        self.assertFalse(
+            mock_publisher.publish_event.called,
+            "Un cambio recibido de Nesto no debe republicarse a Nesto"
+        )
 
     def test_anti_bucle_scenario_odoo_to_nesto_to_odoo(self):
         """
