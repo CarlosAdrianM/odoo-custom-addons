@@ -1,0 +1,41 @@
+name: tests-odoo
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    container:
+      image: odoo:16
+      options: --user root
+    services:
+      db:
+        image: postgres:15
+        env:
+          POSTGRES_USER: odoo
+          POSTGRES_PASSWORD: odoo
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependencias de Python
+        run: pip3 install --break-system-packages google-cloud-pubsub || pip3 install google-cloud-pubsub
+      - name: Tests de Odoo
+        run: |
+          odoo --db_host db --db_user odoo --db_password odoo -d tests \
+            --addons-path=/usr/lib/python3/dist-packages/odoo/addons,$GITHUB_WORKSPACE \
+            -i nesto_sync,nv_crm_embudo \
+            --test-enable --test-tags /nesto_sync,/nv_crm_embudo \
+            --stop-after-init --logfile=odoo-tests.log || true
+      - name: Comprobar resultado
+        run: |
+          python3 .github/scripts/comprobar_tests.py odoo-tests.log .github/tests_en_rojo_conocidos.txt \
+            nesto_sync=165 nv_crm_embudo=30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: odoo-tests-log
+          path: odoo-tests.log
