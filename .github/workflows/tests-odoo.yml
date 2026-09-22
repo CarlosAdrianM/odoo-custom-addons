@@ -45,7 +45,8 @@ jobs:
       # rojo se enseña aquí el final del log, sin tener que bajar el artefacto.
       - name: Final del log de Odoo si algo ha ido mal
         if: failure()
-        run: tail -n 60 odoo-tests.log || echo 'No hay odoo-tests.log: Odoo ni siquiera arrancó.'
+        run: |
+          tail -n 60 odoo-tests.log || echo 'No hay odoo-tests.log: Odoo ni siquiera arrancó.'
 
       - uses: actions/upload-artifact@v4
         if: always()
