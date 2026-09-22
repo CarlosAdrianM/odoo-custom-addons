@@ -28,10 +28,14 @@ ENTITY_CONFIGS = {
         # Mapeo de campos: Nesto -> Odoo
         'field_mappings': {
             # --- Campos simples (mapeo directo) ---
+            # Sin default a propósito (issue #19): la restricción check_name de
+            # res.partner solo exige nombre cuando type='contact', así que una
+            # dirección de entrega sin nombre se guarda vacía y Odoo enseña el
+            # del padre. Mejor eso que un '<Nombre cliente no proporcionado>'
+            # que además se quedaría congelado si el padre se renombra.
             'Nombre': {
                 'odoo_field': 'name',
                 'required': True,
-                'default': '<Nombre cliente no proporcionado>'
             },
             'Direccion': {
                 'odoo_field': 'street'
@@ -126,10 +130,14 @@ ENTITY_CONFIGS = {
 
         # Mapeo de campos para children (PersonasContacto)
         'child_field_mappings': {
+            # Sin default (issue #19): una persona de contacto es type='contact'
+            # y Odoo sí le exige nombre, pero antes que un texto de relleno se
+            # usa su correo o su cargo. Lo resuelve el post-processor
+            # nombre_de_persona_de_contacto, que es quien sabe si es alta o
+            # actualización.
             'Nombre': {
                 'odoo_field': 'name',
                 'required': True,
-                'default': '<Nombre no proporcionado>'
             },
             'CorreoElectronico': {
                 'odoo_field': 'email'
@@ -189,6 +197,8 @@ ENTITY_CONFIGS = {
         'post_processors': [
             'assign_email_from_children',  # Asigna email del primer child al parent
             'merge_comments',  # Combina _append_comment en comment final
+            # Personas de contacto sin nombre: correo, cargo, o se dejan fuera
+            'nombre_de_persona_de_contacto',
         ],
 
         # Validadores: Se ejecutan antes de crear/actualizar

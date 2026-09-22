@@ -33,3 +33,6 @@ from . import test_stock_virtual_guard
 
 # Tests fechas de compras (Issue #8)
 from . import test_fechas_compras
+
+# Tests del Nombre vacío (Issue #19)
+from . import test_nombre_vacio
