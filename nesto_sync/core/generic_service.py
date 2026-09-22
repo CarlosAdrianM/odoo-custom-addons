@@ -224,8 +224,38 @@ class GenericEntityService:
                 _logger.info(f"Cambio en {field}: '{sanitized_current}' -> '{sanitized_new}'")
                 return True
 
+        # El kit no es un campo del modelo: viaja aparte, en
+        # _productos_kit_data, y el bucle de arriba lo salta. Sin esto, un
+        # mensaje que solo cambia (o vacía) ProductosKit se quedaba en «sin
+        # cambios» y la BOM no se sincronizaba nunca (issue #12).
+        if self._bom_has_changes(record, new_values):
+            _logger.info(f"Cambio en la BOM de {self.config['odoo_model']} (ID: {record.id})")
+            return True
+
         _logger.debug(f"No hay cambios en {self.config['odoo_model']} (ID: {record.id})")
         return False
+
+    def _bom_has_changes(self, record, new_values):
+        """
+        Detecta si el ProductosKit del mensaje cambia la BOM del producto
+
+        Args:
+            record: Recordset de Odoo
+            new_values: Dict con nuevos valores
+
+        Returns:
+            bool: True si hay que sincronizar la BOM
+        """
+        if self.config.get('odoo_model') != 'product.template':
+            return False
+
+        productos_kit_data = new_values.get('_productos_kit_data')
+        if productos_kit_data is None:
+            return False
+
+        from ..transformers.post_processors import SyncProductBom
+
+        return SyncProductBom.bom_needs_sync(self.env, record, productos_kit_data)
 
     def _normalize_html(self, html_text):
         """

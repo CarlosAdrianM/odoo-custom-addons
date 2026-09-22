@@ -1,0 +1,5 @@
+# Fallos conocidos que NO bloquean el CI. Uno nuevo que no esté aquí sí lo pone
+# en rojo. Al arreglar uno, quitarlo de la lista.
+#
+# Los 13 de #12 (BOM, anti-bucle y end-to-end) están arreglados desde el
+# 22/09/2026: la lista se queda vacía a propósito.

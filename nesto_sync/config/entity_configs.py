@@ -134,6 +134,11 @@ ENTITY_CONFIGS = {
             'CorreoElectronico': {
                 'odoo_field': 'email'
             },
+            # 'Telefonos', en plural, confirmado por NestoAPI el 22/09/2026: el
+            # DTO de la persona de contacto tiene Id, Nombre, CorreoElectronico,
+            # Telefonos y Cargo, y es el mismo mensaje que consume PrestaShop.
+            # En la RAÍZ del mensaje, en cambio, el cliente lleva 'Telefono' en
+            # singular. No es una errata: son dos claves distintas.
             'Telefonos': {
                 'transformer': 'phone',
                 'odoo_fields': ['mobile', 'phone']
