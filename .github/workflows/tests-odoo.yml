@@ -22,13 +22,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Dependencias de Python
-        # google-cloud-pubsub arrastra una cryptography moderna, y la pyOpenSSL
-        # que trae la imagen de Debian no la entiende: Odoo se queda sin cargar
-        # ni el módulo base, con «module 'lib' has no attribute 'GEN_EMAIL'».
-        # Se sube pyOpenSSL a la vez para que las dos versiones casen.
+        # nesto_sync/__init__.py importa infrastructure, que hace
+        # 'from google.cloud import pubsub_v1', así que la librería tiene que
+        # estar aunque los tests no publiquen nada de verdad.
+        #
+        # El problema es que la imagen odoo:16 trae pyOpenSSL y urllib3 de
+        # Debian, atados a la cryptography 3.3.2 del sistema. Si pip la sube al
+        # resolver las dependencias de pubsub, Odoo deja de cargar el módulo
+        # base (primero «module 'lib' has no attribute 'GEN_EMAIL'», y luego
+        # «No module named cryptography.hazmat.backends.openssl.x509»).
+        #
+        # Así que se fija la cryptography y se deja que pip busque la versión de
+        # google-cloud-pubsub que encaje con ella. Cuál sea da igual: en los
+        # tests el publisher va mockeado.
         run: |
-          pip3 install --break-system-packages --upgrade google-cloud-pubsub pyOpenSSL \
-            || pip3 install --upgrade google-cloud-pubsub pyOpenSSL
+          echo 'cryptography<4' > /tmp/constraints.txt
+          pip3 install --break-system-packages --constraint /tmp/constraints.txt google-cloud-pubsub \
+            || pip3 install --constraint /tmp/constraints.txt google-cloud-pubsub
       - name: Tests de Odoo
         run: |
           odoo --db_host db --db_user odoo --db_password odoo -d tests \
