@@ -38,3 +38,6 @@ from . import test_fechas_compras
 # importado aquí, así que sus TransactionCase no se han ejecutado nunca bajo
 # Odoo: el mismo agujero que #12, solo que en silencio y sin fallar.
 from . import test_dlq_system
+
+# Tests del filtrado de CodigoBarras (Issue #21)
+from . import test_codigo_barras
