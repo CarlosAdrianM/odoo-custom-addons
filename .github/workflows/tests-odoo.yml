@@ -1,0 +1,65 @@
+name: tests-odoo
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    container:
+      image: odoo:16
+      options: --user root
+    services:
+      db:
+        image: postgres:15
+        env:
+          POSTGRES_USER: odoo
+          POSTGRES_PASSWORD: odoo
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependencias de Python
+        # nesto_sync/__init__.py importa infrastructure, que hace
+        # 'from google.cloud import pubsub_v1', así que la librería tiene que
+        # estar aunque los tests no publiquen nada de verdad.
+        #
+        # El problema es que la imagen odoo:16 trae pyOpenSSL y urllib3 de
+        # Debian, atados a la cryptography 3.3.2 del sistema. Si pip la sube al
+        # resolver las dependencias de pubsub, Odoo deja de cargar el módulo
+        # base (primero «module 'lib' has no attribute 'GEN_EMAIL'», y luego
+        # «No module named cryptography.hazmat.backends.openssl.x509»).
+        #
+        # Así que se fija la cryptography y se deja que pip busque la versión de
+        # google-cloud-pubsub que encaje con ella. Cuál sea da igual: en los
+        # tests el publisher va mockeado.
+        run: |
+          echo 'cryptography<4' > /tmp/constraints.txt
+          pip3 install --break-system-packages --constraint /tmp/constraints.txt google-cloud-pubsub \
+            || pip3 install --constraint /tmp/constraints.txt google-cloud-pubsub
+      - name: Tests de Odoo
+        run: |
+          odoo --db_host db --db_user odoo --db_password odoo -d tests \
+            --addons-path=/usr/lib/python3/dist-packages/odoo/addons,$GITHUB_WORKSPACE \
+            -i nesto_sync,nv_crm_embudo \
+            --test-enable --test-tags /nesto_sync,/nv_crm_embudo \
+            --stop-after-init --logfile=odoo-tests.log || true
+      - name: Comprobar resultado
+        run: |
+          python3 .github/scripts/comprobar_tests.py odoo-tests.log .github/tests_en_rojo_conocidos.txt \
+            nesto_sync=180 nv_crm_embudo=34
+      # El paso de Odoo lleva '|| true' para que sea comprobar_tests.py quien
+      # decida. Eso esconde los arranques fallidos, así que si el job se pone en
+      # rojo se enseña aquí el final del log, sin tener que bajar el artefacto.
+      - name: Final del log de Odoo si algo ha ido mal
+        if: failure()
+        run: |
+          tail -n 60 odoo-tests.log || echo 'No hay odoo-tests.log: Odoo ni siquiera arrancó.'
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: odoo-tests-log
+          path: odoo-tests.log
