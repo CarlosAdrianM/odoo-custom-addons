@@ -47,3 +47,6 @@ from . import test_nif
 
 # Tests del Nombre vacío (Issue #19)
 from . import test_nombre_vacio
+
+# Tests del aviso de asignación de vendedor (Issue #36)
+from . import test_aviso_asignacion

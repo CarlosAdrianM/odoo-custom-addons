@@ -1,9 +1,16 @@
 {
     'name': 'Nesto Sync',
-    'version': '2.9.0',  # 2.9.0: Un dato malo de Nesto ya no tira el mensaje entero
+    'version': '2.9.1',  # 2.9.1: Sin correo «Ha sido asignado/a» por cada vendedor que llega de Nesto
     'summary': 'Sincronización bidireccional de tablas entre Nesto y Odoo via Google Pub/Sub',
     'description': '''
         Módulo de sincronización bidireccional entre Nesto y Odoo
+
+        Versión 2.9.1 (2026-09-23):
+        - Un cambio de vendedor que llega de Nesto ya no manda el correo «Ha
+          sido asignado/a» (issue #36): el contexto de escritura lleva
+          mail_auto_subscribe_no_notify. La carga masiva del 23/09 mandó 412
+          en 23 minutos. El vendedor sigue quedando como seguidor y el cambio
+          sigue en el historial; lo asignado a mano en Odoo sigue avisando
 
         Versión 2.9.0 (2026-09-22):
         - Un dato malo de Nesto ya no tira el mensaje ENTERO. Cuatro causas que

@@ -368,13 +368,23 @@ class GenericEntityService:
           «API pushes from external platforms where you have no control over
           VAT numbers».
 
+        - mail_auto_subscribe_no_notify: al cambiar el vendedor, Odoo no le manda
+          el correo «Ha sido asignado/a» (issue #36). La asignación ya se hizo en
+          Nesto, así que el aviso no aporta nada y llenaba bandejas: 412 correos
+          en la carga masiva del 23/09. El vendedor sigue quedando como
+          seguidor, y el cambio sigue en el historial del contacto.
+
         Solo afecta a lo que entra por aquí: lo que se edite a mano en Odoo
-        sigue validándose como siempre.
+        sigue validándose (y avisando) como siempre.
 
         Returns:
             Dict con el contexto
         """
-        return {'skip_sync': True, 'no_vat_validation': True}
+        return {
+            'skip_sync': True,
+            'no_vat_validation': True,
+            'mail_auto_subscribe_no_notify': True,
+        }
 
     def _avisar_si_el_nif_no_valida(self, record, values):
         """
