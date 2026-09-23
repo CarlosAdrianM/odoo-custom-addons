@@ -147,9 +147,18 @@ class GenericEntityProcessor:
                 values[mapping['odoo_field']] = None
             return
 
-        # Si el campo no viene en el mensaje, no tocar el valor existente
+        # Si el campo no viene en el mensaje, no tocar el valor existente.
+        #
+        # Salvo los mapeos SINTÉTICOS (clave que empieza por '_'): esos no son
+        # campos de Nesto, los resuelve Odoo por su cuenta, así que la clave no
+        # está NUNCA en el mensaje. Desde aa8c65b (issue #3, mensajes parciales)
+        # '_country' caía aquí y country_id no se escribía jamás: 2.541 clientes
+        # creados sin país, con provincia española puesta (issue #30). '_company'
+        # y '_type' se salvaron de casualidad, porque salen por las ramas de
+        # arriba antes de llegar a esta comprobación.
         source_data = child_data if child_data else message
-        if not self._field_present_in_data(source_data, nesto_field):
+        if (not self._es_mapeo_sintetico(nesto_field)
+                and not self._field_present_in_data(source_data, nesto_field)):
             return
 
         # Obtener valor del mensaje
@@ -410,6 +419,22 @@ class GenericEntityProcessor:
         if isinstance(value, str) and not value.strip():
             return True
         return False
+
+    def _es_mapeo_sintetico(self, nesto_field):
+        """
+        Un mapeo sintético no es un campo de Nesto: es un valor que pone Odoo
+
+        Se distinguen por la clave, que empieza por '_' ('_country', '_company',
+        '_type'). No vienen nunca en el mensaje, así que preguntar si están
+        presentes no tiene sentido: la respuesta siempre es que no.
+
+        Args:
+            nesto_field: Clave del mapeo
+
+        Returns:
+            True si el mapeo es sintético
+        """
+        return nesto_field.startswith('_')
 
     def _field_present_in_data(self, data, path):
         """

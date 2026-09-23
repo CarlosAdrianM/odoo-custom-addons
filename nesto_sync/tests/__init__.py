@@ -50,3 +50,6 @@ from . import test_nombre_vacio
 
 # Tests del aviso de asignación de vendedor (Issue #36)
 from . import test_aviso_asignacion
+
+# Tests del país de los clientes (Issue #30)
+from . import test_pais

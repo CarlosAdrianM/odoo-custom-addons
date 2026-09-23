@@ -1,9 +1,18 @@
 {
     'name': 'Nesto Sync',
-    'version': '2.9.1',  # 2.9.1: Sin correo «Ha sido asignado/a» por cada vendedor que llega de Nesto
+    'version': '2.9.2',  # 2.9.2: Los clientes nuevos vuelven a entrar con país
     'summary': 'Sincronización bidireccional de tablas entre Nesto y Odoo via Google Pub/Sub',
     'description': '''
         Módulo de sincronización bidireccional entre Nesto y Odoo
+
+        Versión 2.9.2 (2026-09-23):
+        - Los clientes nuevos vuelven a entrar con país (issue #30). Los mapeos
+          sintéticos (clave que empieza por '_') ya no pasan por la comprobación
+          de presencia que trajo el arreglo de mensajes parciales: no vienen
+          nunca en el mensaje, así que '_country' salía siempre antes de escribir
+          y country_id no se ponía jamás. 2.541 clientes creados sin país desde
+          febrero, con provincia española puesta. Los que ya están se arreglan
+          solos cuando Nesto los republique, o con el write puntual del PR
 
         Versión 2.9.1 (2026-09-23):
         - Un cambio de vendedor que llega de Nesto ya no manda el correo «Ha
