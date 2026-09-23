@@ -28,14 +28,18 @@ NIF_BUENO = 'B12345674'
 class TestContextoDeEscritura(TransactionCase):
     """El contexto con el que se escribe todo lo que viene de Nesto"""
 
-    def test_lleva_skip_sync_y_no_vat_validation(self):
+    def test_lleva_skip_sync_no_vat_validation_y_sin_aviso(self):
         service = GenericEntityService(
             self.env, get_entity_config('cliente'), test_mode=True
         )
 
         self.assertEqual(
             service._contexto_de_escritura(),
-            {'skip_sync': True, 'no_vat_validation': True}
+            {
+                'skip_sync': True,
+                'no_vat_validation': True,
+                'mail_auto_subscribe_no_notify': True,
+            }
         )
 
     def test_tambien_para_productos(self):
