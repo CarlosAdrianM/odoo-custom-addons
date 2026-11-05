@@ -52,6 +52,9 @@ class TestPlantillasEmbudo(TransactionCase):
         for resto in ('[NOMBRE', 'assets/', 'FINAL A', 'FINAL B'):
             self.assertNotIn(resto, cuerpo)
         self.assertLess(len(cuerpo.encode('utf-8')), 100 * 1024)
+        self.assertIn('PD:', cuerpo, 'Posdata de la app')
+        self.assertIn('href="https://www.productosdeesteticaypeluqueriaprofesional.com/app"', cuerpo)
+        self.assertLess(cuerpo.index('PD:'), cuerpo.index('/nv/baja/'), 'La posdata va antes del pie legal')
 
     # ------------------------------------------------------------- FINAL A
 
@@ -114,7 +117,72 @@ class TestPlantillasEmbudo(TransactionCase):
         self.assertIn('<marketing@nuevavision.es>', remitente)
         self.env['ir.config_parameter'].sudo().set_param('nv_crm_embudo.email_from_embudo', 'otra@nuevavision.es')
         self.assertIn('<otra@nuevavision.es>', lead.nv_email_from_embudo())
-        self.assertEqual(plantilla._render_field('reply_to', lead.ids)[lead.id], 'ana.vendedora@nuevavision.es')
+        self.assertFalse(plantilla.reply_to, 'Sin reply_to: responde al alias del equipo y entra en el lead')
         self.assertEqual(plantilla._render_field('email_to', lead.ids)[lead.id], 'maria@ejemplo.test')
         self.assertEqual(plantilla._render_field('subject', lead.ids)[lead.id],
                          'Antes de tratar el acné, hay algo que conviene mirar')
+
+    def test_enlace_de_la_app_configurable(self):
+        lead = self._lead_sin_cliente()
+        self.env['ir.config_parameter'].sudo().set_param('nv_crm_embudo.url_app', 'https://app.ejemplo.test/descarga')
+        self.assertIn('href="https://app.ejemplo.test/descarga"', self._cuerpo(PLANTILLAS[1][0], lead))
+
+
+@tagged('post_install', '-at_install', 'nv_crm_embudo')
+class TestAvisoRespuesta(TransactionCase):
+    """Aviso a la vendedora, con copia a Dirección y al jefe de equipo, cuando el lead contesta."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        Users = cls.env['res.users'].with_context(skip_sync=True, no_reset_password=True)
+        cls.vendedora = Users.create({'name': 'Ana Vendedora', 'login': 'ana_aviso_nv', 'email': 'ana@nuevavision.es'})
+        cls.otra = Users.create({'name': 'Eva Vendedora', 'login': 'eva_aviso_nv', 'email': 'eva@nuevavision.es'})
+        cls.equipo_jefe = cls.env['crm.team'].create({'name': 'Equipo Jefe Test', 'member_ids': [(6, 0, cls.vendedora.ids)]})
+        parametros = cls.env['ir.config_parameter'].sudo()
+        parametros.set_param('nv_crm_embudo.cc_direccion', 'direccion@nuevavision.es')
+        parametros.set_param('nv_crm_embudo.cc_jefe_equipo', 'jefe@nuevavision.es')
+        parametros.set_param('nv_crm_embudo.equipo_jefe_equipo', str(cls.equipo_jefe.id))
+
+    def _lead(self, vendedora):
+        return self.env['crm.lead'].create({
+            'name': 'Lead aviso', 'type': 'opportunity', 'contact_name': 'Lucía',
+            'email_from': 'lucia@ejemplo.test', 'user_id': vendedora.id, 'team_id': False})
+
+    def test_vendedora_del_equipo_del_jefe_lleva_copia_al_jefe(self):
+        lead = self._lead(self.vendedora)
+        self.assertEqual(lead.nv_cc_aviso_respuesta(), 'direccion@nuevavision.es, jefe@nuevavision.es')
+
+    def test_otra_vendedora_solo_copia_a_direccion(self):
+        lead = self._lead(self.otra)
+        self.assertEqual(lead.nv_cc_aviso_respuesta(), 'direccion@nuevavision.es')
+
+    def test_equipo_por_nombre_y_por_equipo_del_lead(self):
+        self.env['ir.config_parameter'].sudo().set_param('nv_crm_embudo.equipo_jefe_equipo', 'equipo jefe test')
+        lead = self._lead(self.otra)
+        lead.team_id = self.equipo_jefe
+        self.assertIn('jefe@nuevavision.es', lead.nv_cc_aviso_respuesta())
+
+    def test_no_se_copia_a_si_misma(self):
+        self.env['ir.config_parameter'].sudo().set_param('nv_crm_embudo.cc_direccion', 'ANA@nuevavision.es, direccion@nuevavision.es')
+        self.assertEqual(self._lead(self.otra.browse()).nv_cc_aviso_respuesta(), 'ANA@nuevavision.es, direccion@nuevavision.es')
+        self.assertEqual(self._lead(self.vendedora).nv_cc_aviso_respuesta(), 'direccion@nuevavision.es, jefe@nuevavision.es')
+
+    def test_avisar_respuesta_manda_el_correo(self):
+        lead = self._lead(self.vendedora)
+        lead.message_post(body='Me interesa, llámame', message_type='email', author_id=False,
+                          email_from='lucia@ejemplo.test')
+        antes = self.env['mail.mail'].sudo().search([])
+        lead.nv_avisar_respuesta()
+        correo = self.env['mail.mail'].sudo().search([]) - antes
+        self.assertEqual(len(correo), 1)
+        self.assertEqual(correo.email_to, 'ana@nuevavision.es')
+        self.assertEqual(correo.email_cc, 'direccion@nuevavision.es, jefe@nuevavision.es')
+        self.assertIn('Me interesa', correo.body_html)
+        self.assertIn('Lucía', correo.subject)
+
+    def test_sin_email_de_vendedora_no_manda_nada(self):
+        lead = self._lead(self.otra.browse())
+        antes = self.env['mail.mail'].sudo().search_count([])
+        lead.nv_avisar_respuesta()
+        self.assertEqual(self.env['mail.mail'].sudo().search_count([]), antes)

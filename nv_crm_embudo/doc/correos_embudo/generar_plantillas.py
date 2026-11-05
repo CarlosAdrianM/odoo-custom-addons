@@ -13,7 +13,11 @@ Lo que hace con cada HTML:
 - [NOMBRE] y [NOMBRE DE LA VENDEDORA] a expresiones QWeb;
 - las imágenes de assets/ a URL absoluta del servidor (/nv_crm_embudo/static/src/img/);
 - de los dos cierres (FINAL A / FINAL B) deja uno solo con t-if / t-else, a todo el ancho;
+- tras la firma, la posdata de la app (POSDATA_APP, igual en todos los correos);
 - el aviso del pie se sustituye por el pie legal con el enlace de baja.
+
+Además deja la plantilla interna embudo_aviso_respuesta (aviso a la vendedora con copias
+cuando el lead contesta), que no sale de ningún HTML de Marketing.
 """
 import html
 import pathlib
@@ -39,7 +43,15 @@ CABECERA_QWEB = (
     '<t t-set="nv_img" t-value="object.get_base_url() + \'%s\'"/>'
     '<t t-set="nv_nombre" t-value="object.nv_nombre_saludo()"/>'
     '<t t-set="nv_ya_compra" t-value="object.nv_ya_compra()"/>'
+    '<t t-set="nv_url_app" t-value="object.nv_url_app()"/>'
 ) % RUTA_IMG
+
+# Posdata de la app (decisión de Carlos 05/11/26). De tú, como el cuerpo de Marketing.
+# Va tras la firma, con el mismo separador que «Responde a este correo…».
+POSDATA_APP = '''<p style="margin:22px 0 0; padding-top:18px; border-top:1px solid #dddddd; font-size:14px; line-height:22px; color:#555555;"><strong style="color:#222222;">PD:</strong> Tienes los protocolos en vídeo de nuestras marcas en la app de Nueva Visión, gratis para clientes. Tu usuario es tu correo. Descárgala aquí: <a t-att-href="nv_url_app" target="_blank" style="color:#BD052B; font-weight:600; text-decoration:underline;"><t t-out="nv_url_app"/></a></p>'''
+
+FIRMA_FIN = '<span style="color:#777777;">Nueva Visión</span></p>'
+SALTO_PD = '\n' + ' ' * 14
 
 # Mismo estilo que el aviso que sustituye (fondo #eeeeee, 11 px, centrado)
 PIE_LEGAL = '''<td style="padding:20px 32px; background-color:#eeeeee; border-bottom:4px solid #BD052B;">
@@ -94,6 +106,8 @@ def convertir(origen, preencabezado):
         + TD_FINAL % ('t-else=""', finales.group('b'))
     ) + cuerpo[finales.end():]
 
+    cuerpo = una_vez(re.escape(FIRMA_FIN), lambda m: FIRMA_FIN + SALTO_PD + POSDATA_APP,
+                     cuerpo, '%s: fin de la firma' % origen.name)
     cuerpo = una_vez(AVISO_PIE.pattern, lambda m: PIE_LEGAL, cuerpo, '%s: aviso del pie' % origen.name)
     cuerpo = re.sub(r'<!--.*?-->\s*', '', cuerpo, flags=re.S)
 
@@ -127,7 +141,8 @@ def registro(xml_id, nombre, asunto, cuerpo):
         <field name="model_id" ref="crm.model_crm_lead"/>
         <field name="subject">{asunto}</field>
         <field name="email_from">{{{{ object.nv_email_from_embudo() }}}}</field>
-        <field name="reply_to">{{{{ object.user_id.email }}}}</field>
+        <!-- Sin reply_to: Odoo pone el alias del equipo del lead y la respuesta entra en el lead
+             (ruta probada en #10/#26), que es lo que necesita la rama «ha contestado». -->
         <field name="email_to">{{{{ object.email_from }}}}</field>
         <field name="use_default_to" eval="False"/>
         <field name="auto_delete" eval="False"/>
@@ -139,6 +154,33 @@ def registro(xml_id, nombre, asunto, cuerpo):
     </record>
 '''.format(xml_id=xml_id, nombre=html.escape(nombre, quote=False), asunto=html.escape(asunto, quote=False),
            cuerpo=cuerpo)
+
+
+AVISO_RESPUESTA = '''
+    <!-- Aviso interno: el lead ha contestado a un correo del embudo. Lo manda
+         crm.lead.nv_avisar_respuesta(), que llama el paso de acción de servidor de la
+         rama «ha contestado» de automation_oca. Ver README. -->
+    <record id="embudo_aviso_respuesta" model="mail.template">
+        <field name="name">Embudo leads · Aviso a la vendedora: el lead ha contestado</field>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="subject">Ha contestado {{ object.contact_name or object.partner_name or object.email_from or object.name }} (embudo de leads)</field>
+        <field name="email_from">{{ object.nv_email_from_embudo() }}</field>
+        <field name="email_to">{{ object.user_id.email }}</field>
+        <field name="email_cc">{{ object.nv_cc_aviso_respuesta() }}</field>
+        <field name="use_default_to" eval="False"/>
+        <field name="auto_delete" eval="True"/>
+        <field name="description">Aviso interno a la vendedora (con copia a Dirección y, si es del equipo del jefe de equipo, a él) cuando un lead contesta a un correo del embudo.</field>
+        <field name="body_html" type="html">
+<div style="margin:0; padding:0; font-family:Arial, Helvetica, sans-serif; font-size:14px; line-height:22px; color:#333333;">
+    <p style="margin:0 0 12px;">Hola<t t-if="object.user_id"> <t t-out="object.user_id.name"/></t>,</p>
+    <p style="margin:0 0 12px;"><strong><t t-out="object.contact_name or object.partner_name or object.email_from or object.name"/></strong> ha contestado a un correo del embudo de leads. Tienes una tarea en el lead para atenderle.</p>
+    <t t-set="nv_respuesta" t-value="object.nv_ultima_respuesta()"/>
+    <div t-if="nv_respuesta" style="margin:0 0 12px; padding:0 0 0 14px; border-left:3px solid #BD052B; color:#555555;"><t t-out="nv_respuesta.body"/></div>
+    <p style="margin:0;"><a t-att-href="object.get_base_url() + '/web#model=crm.lead&amp;view_type=form&amp;id=%s' % object.id" target="_blank" style="color:#BD052B; font-weight:600;">Abrir el lead en Odoo</a></p>
+</div>
+        </field>
+    </record>
+'''
 
 
 def main():
@@ -156,8 +198,8 @@ def main():
     o editar aquí y copiar el cambio al HTML. Lo que se cambie en la pantalla de Odoo se pierde
     al actualizar el módulo (noupdate="0").
 -->
-<odoo noupdate="0">%s</odoo>
-''' % ''.join(registros)
+<odoo noupdate="0">%s%s</odoo>
+''' % (''.join(registros), AVISO_RESPUESTA)
     xml.dom.minidom.parseString(contenido.encode('utf-8'))  # falla si no es XML bien formado
     SALIDA.write_text(contenido, encoding='utf-8', newline='\n')
     print('Escrito %s (%s bytes)' % (SALIDA, len(contenido.encode('utf-8'))))

@@ -13,6 +13,7 @@ Personalizaciones del CRM de Nueva Visión para los embudos automáticos (Odoo 1
 | Enlace automático del lead con el cliente nuevo de Nesto | Tarea programada cada 10 min, `crm.lead._nv_cron_enlazar_clientes_nesto` | #9 |
 | Avance del lead con las fechas de compras de Nesto | `res.partner.write` → `crm.lead._nv_avanzar_por_fechas` | #9 |
 | Plantillas de los correos 01-03 del embudo de leads (Marketing) | `data/mail_template_embudo_data.xml` | #10 |
+| Aviso a la vendedora (con copias) cuando el lead contesta | plantilla `embudo_aviso_respuesta`, `crm.lead.nv_avisar_respuesta()` | #10 |
 
 ## Enlace automático con Nesto
 
@@ -86,6 +87,7 @@ En Odoo: Ajustes › Técnico › Correo electrónico › Plantillas, buscando �
 | `[NOMBRE DE LA VENDEDORA]` | `object.user_id.name` (sin vendedora: «El equipo de Nueva Visión») |
 | FINAL A / FINAL B | Uno solo, a todo el ancho: FINAL B si `object.nv_ya_compra()`, FINAL A si no |
 | `assets/...` | `https://<web.base.url>/nv_crm_embudo/static/src/img/...` (las imágenes van en el módulo) |
+| (nuevo, tras la firma) | Posdata de la app: «PD: Tienes los protocolos en vídeo… Descárgala aquí: <enlace>», con el enlace del parámetro `nv_crm_embudo.url_app`. La frase está en `POSDATA_APP` del generador, así que sale igual en los correos siguientes |
 | Aviso del pie | Pie legal y enlace de baja firmado (`object.nv_url_baja()`) |
 | Preencabezado | Ya venía en el HTML como `div` oculto al principio del cuerpo; se deja tal cual |
 
@@ -93,9 +95,42 @@ En Odoo: Ajustes › Técnico › Correo electrónico › Plantillas, buscando �
 
 **Remitente:** `Nueva Visión | <vendedora>` con la dirección del parámetro del sistema **`nv_crm_embudo.email_from_embudo`** (Ajustes › Técnico › Parámetros del sistema; hay que crearlo). Si no existe se usa `marketing@nuevavision.es`. Ojo: el servidor SMTP tiene `from_filter` (#26) y cualquier dirección que no encaje la reescribe Odoo a `mail.default.from`; se mantiene el nombre visible, pero la dirección que ve el cliente será la de `mail.default.from` hasta que se resuelva #26.
 
-**Responder a:** el email de la vendedora (`object.user_id.email`). **Para:** `object.email_from` del lead. `auto_delete` desactivado para que quede el correo enviado.
+**Responder a:** las plantillas no llevan `reply_to`, así que Odoo pone el alias del equipo del lead (p. ej. `ventatelefonica@`). La respuesta entra en el lead por el fetchmail y de ahí sale la rama «ha contestado» de `automation_oca` (ruta probada en #10 y #26). No poner el correo de la vendedora: la respuesta no entraría en Odoo. **Para:** `object.email_from` del lead. `auto_delete` desactivado para que quede el correo enviado.
 
 Las imágenes salen del servidor de Odoo (`web.base.url`), igual que el enlace de baja: tiene que ser una dirección `https://` pública y conviene tener `web.base.url.freeze` a `True` para que no la cambie un acceso interno.
+
+### Aviso «el lead ha contestado»
+
+Cuando el cliente responde, la rama «ha contestado» de `automation_oca` (disparador «respuesta al correo») hace dos cosas:
+
+1. **Tarea a la vendedora** (paso de tipo actividad, el que ya existe en la configuración de #10). Odoo manda el correo «Se le ha asignado…» solo si la vendedora tiene en sus preferencias **Notificación = «Gestionar por correo»** (`res.users.notification_type = 'email'`). Con «Gestionar en Odoo» (`inbox`) solo le sale en el Inbox de Odoo. **Hay que ponérselo en «Correo» a todas las vendedoras del embudo.**
+2. **Aviso con copias** (paso nuevo, de tipo acción de servidor): una acción de servidor sobre `crm.lead` con el código
+
+   ```
+   records.nv_avisar_respuesta()
+   ```
+
+   Manda la plantilla `embudo_aviso_respuesta` («Embudo leads · Aviso a la vendedora…») a la vendedora, con copia a Dirección y, si la vendedora es del equipo del jefe de equipo (Alberto Sancho), también a él. Lleva el texto de la respuesta y el enlace al lead. Si la vendedora no tiene email no se manda nada (queda en el log).
+
+   Se hace con un método y no con un paso de correo porque un paso de correo de `automation_oca` es un envío masivo: respeta la lista negra del lead y lo cuenta como correo del embudo. El aviso es interno y tiene que salir siempre.
+
+**«Del equipo del jefe»** = el equipo de ventas (`crm.team`) del lead o cualquiera de los equipos de los que es miembro la vendedora es el del parámetro `nv_crm_embudo.equipo_jefe_equipo` (su id o su nombre exacto, sin distinguir mayúsculas).
+
+En la configuración de Automation: en la rama del paso «Ha contestado» (disparador respuesta al correo, el mismo padre que la tarea), añadir un paso de tipo **acción de servidor** con esa acción. Va junto a la tarea, sin espera.
+
+### Parámetros del sistema
+
+Ajustes › Técnico › Parámetros del sistema. Hay que crearlos; los que tienen valor por defecto funcionan sin crearlos.
+
+| Clave | Para qué | Por defecto |
+| --- | --- | --- |
+| `nv_crm_embudo.email_from_embudo` | Dirección de envío de los correos del embudo | `marketing@nuevavision.es` |
+| `nv_crm_embudo.url_app` | Enlace de la posdata de la app | `https://www.productosdeesteticaypeluqueriaprofesional.com/app` (a confirmar) |
+| `nv_crm_embudo.cc_direccion` | Copia del aviso de respuesta a Dirección (varias, separadas por comas) | (vacío: sin copia) |
+| `nv_crm_embudo.cc_jefe_equipo` | Copia del aviso al jefe de equipo (Alberto Sancho) | (vacío: sin copia) |
+| `nv_crm_embudo.equipo_jefe_equipo` | Id o nombre del `crm.team` del jefe de equipo | (vacío: nadie es de su equipo) |
+
+Si una copia coincide con el correo de la vendedora, no se repite.
 
 ### Dónde cambiar los textos
 
@@ -109,10 +144,11 @@ Para un cambio de texto: cambiar el HTML (o `asuntos-y-preencabezados.md` para e
 
 ### Cómo probarlas
 
-1. Actualizar el módulo y crear el parámetro `nv_crm_embudo.email_from_embudo`.
+1. Actualizar el módulo y crear los parámetros del sistema (tabla de arriba).
 2. Crear un lead de pruebas con el email de una vendedora como `email_from`, un nombre de contacto y una vendedora asignada.
 3. En el lead, «Enviar mensaje» › icono de plantilla › «Embudo leads 01». Revisar nombre, firma, imágenes y que solo sale un cierre (FINAL A).
 4. Ponerle al lead un cliente con `fecha_primer_pedido` y repetir: tiene que salir el FINAL B.
+5. Aviso: responder desde la cuenta del lead de pruebas a uno de esos correos y, cuando entre en el lead, ejecutar la acción de servidor a mano sobre él (o dejar que la lance la rama «ha contestado»). Tiene que llegar el aviso a la vendedora con las copias.
 
 Al enviar desde el chatter, Odoo pasa el cuerpo por el sanitizador y lo envuelve en su maqueta de notificación; el correo que manda `automation_oca` (envío masivo) sale tal cual. Lo que cuenta es lo que llega por el embudo.
 
@@ -123,6 +159,8 @@ Son tres pasos de tipo correo, uno tras otro, con 30 días entre ellos. Se añad
 1. Paso «Correo 01»: tipo correo, plantilla «Embudo leads 01», al empezar (o tras el paso de entrada que corresponda).
 2. Paso «Correo 02»: tipo correo, plantilla «Embudo leads 02», hijo del paso 01, 30 días después.
 3. Paso «Correo 03»: tipo correo, plantilla «Embudo leads 03», hijo del paso 02, 30 días después.
+
+Y en la rama «ha contestado», junto a la tarea, el paso de acción de servidor del aviso (ver arriba).
 
 Antes de activar la configuración, exportarla de nuevo para guardar la versión con los tres pasos.
 
