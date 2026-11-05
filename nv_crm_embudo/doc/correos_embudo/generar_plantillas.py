@@ -46,9 +46,10 @@ CABECERA_QWEB = (
     '<t t-set="nv_url_app" t-value="object.nv_url_app()"/>'
 ) % RUTA_IMG
 
-# Posdata de la app (decisión de Carlos 05/11/26). De tú, como el cuerpo de Marketing.
+# Posdata de la app (decisión de Carlos 05/11/26). De tú, como el cuerpo de Marketing. Va en los dos
+# finales: todos los leads tienen ficha de cliente en la app. Solo Android: no hay enlace de iOS.
 # Va tras la firma, con el mismo separador que «Responde a este correo…».
-POSDATA_APP = '''<p style="margin:22px 0 0; padding-top:18px; border-top:1px solid #dddddd; font-size:14px; line-height:22px; color:#555555;"><strong style="color:#222222;">PD:</strong> Tienes los protocolos en vídeo de nuestras marcas en la app de Nueva Visión, gratis para clientes. Tu usuario es tu correo. Descárgala aquí: <a t-att-href="nv_url_app" target="_blank" style="color:#BD052B; font-weight:600; text-decoration:underline;"><t t-out="nv_url_app"/></a></p>'''
+POSDATA_APP = '''<p style="margin:22px 0 0; padding-top:18px; border-top:1px solid #dddddd; font-size:14px; line-height:22px; color:#555555;"><strong style="color:#222222;">PD:</strong> Tienes los protocolos en vídeo de nuestras marcas en la app de Nueva Visión. Entra con tu correo (si no tienes contraseña, pulsa «He olvidado mi contraseña»). Descárgala aquí: <a t-att-href="nv_url_app" target="_blank" style="color:#BD052B; font-weight:600; text-decoration:underline;">Android</a></p>'''
 
 FIRMA_FIN = '<span style="color:#777777;">Nueva Visión</span></p>'
 SALTO_PD = '\n' + ' ' * 14

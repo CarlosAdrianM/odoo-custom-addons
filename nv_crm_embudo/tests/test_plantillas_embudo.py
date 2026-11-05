@@ -53,7 +53,8 @@ class TestPlantillasEmbudo(TransactionCase):
             self.assertNotIn(resto, cuerpo)
         self.assertLess(len(cuerpo.encode('utf-8')), 100 * 1024)
         self.assertIn('PD:', cuerpo, 'Posdata de la app')
-        self.assertIn('href="https://www.productosdeesteticaypeluqueriaprofesional.com/app"', cuerpo)
+        self.assertIn('https://play.google.com/store/apps/details?id=com.nuevavision.nestotiendas', cuerpo)
+        self.assertIn('He olvidado mi contraseña', cuerpo)
         self.assertLess(cuerpo.index('PD:'), cuerpo.index('/nv/baja/'), 'La posdata va antes del pie legal')
 
     # ------------------------------------------------------------- FINAL A

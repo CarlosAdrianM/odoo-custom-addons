@@ -24,9 +24,10 @@ DIAS_VENTANA = 30
 # Dirección de envío de los correos del embudo. El nombre visible es «Nueva Visión | vendedora».
 PARAM_EMAIL_FROM_EMBUDO = 'nv_crm_embudo.email_from_embudo'
 EMAIL_FROM_EMBUDO_POR_DEFECTO = 'marketing@nuevavision.es'
-# Enlace de la posdata de la app (a confirmar)
+# Enlace de la posdata de la app (Google Play, con el referrer de campaña como en NestoAPI)
 PARAM_URL_APP = 'nv_crm_embudo.url_app'
-URL_APP_POR_DEFECTO = 'https://www.productosdeesteticaypeluqueriaprofesional.com/app'
+URL_APP_POR_DEFECTO = ('https://play.google.com/store/apps/details?id=com.nuevavision.nestotiendas'
+                       '&referrer=utm_source%3Dembudo%26utm_medium%3Dcorreo%26utm_campaign%3Dembudo_leads')
 # Copias del aviso «el lead ha contestado» (direcciones separadas por comas)
 PARAM_CC_DIRECCION = 'nv_crm_embudo.cc_direccion'
 PARAM_CC_JEFE_EQUIPO = 'nv_crm_embudo.cc_jefe_equipo'

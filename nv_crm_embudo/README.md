@@ -87,7 +87,7 @@ En Odoo: Ajustes › Técnico › Correo electrónico › Plantillas, buscando �
 | `[NOMBRE DE LA VENDEDORA]` | `object.user_id.name` (sin vendedora: «El equipo de Nueva Visión») |
 | FINAL A / FINAL B | Uno solo, a todo el ancho: FINAL B si `object.nv_ya_compra()`, FINAL A si no |
 | `assets/...` | `https://<web.base.url>/nv_crm_embudo/static/src/img/...` (las imágenes van en el módulo) |
-| (nuevo, tras la firma) | Posdata de la app: «PD: Tienes los protocolos en vídeo… Descárgala aquí: <enlace>», con el enlace del parámetro `nv_crm_embudo.url_app`. La frase está en `POSDATA_APP` del generador, así que sale igual en los correos siguientes |
+| (nuevo, tras la firma) | Posdata de la app (en los dos finales): «PD: Tienes los protocolos en vídeo de nuestras marcas en la app de Nueva Visión. Entra con tu correo (si no tienes contraseña, pulsa «He olvidado mi contraseña»). Descárgala aquí: Android», con enlace a Google Play, con el enlace del parámetro `nv_crm_embudo.url_app`. La frase está en `POSDATA_APP` del generador, así que sale igual en los correos siguientes |
 | Aviso del pie | Pie legal y enlace de baja firmado (`object.nv_url_baja()`) |
 | Preencabezado | Ya venía en el HTML como `div` oculto al principio del cuerpo; se deja tal cual |
 
@@ -125,7 +125,7 @@ Ajustes › Técnico › Parámetros del sistema. Hay que crearlos; los que tien
 | Clave | Para qué | Por defecto |
 | --- | --- | --- |
 | `nv_crm_embudo.email_from_embudo` | Dirección de envío de los correos del embudo | `marketing@nuevavision.es` |
-| `nv_crm_embudo.url_app` | Enlace de la posdata de la app | `https://www.productosdeesteticaypeluqueriaprofesional.com/app` (a confirmar) |
+| `nv_crm_embudo.url_app` | Enlace de la posdata de la app (Google Play; no hay enlace de iOS en los repos, así que solo va Android) | `https://play.google.com/store/apps/details?id=com.nuevavision.nestotiendas&referrer=utm_source%3Dembudo%26utm_medium%3Dcorreo%26utm_campaign%3Dembudo_leads` |
 | `nv_crm_embudo.cc_direccion` | Copia del aviso de respuesta a Dirección (varias, separadas por comas) | (vacío: sin copia) |
 | `nv_crm_embudo.cc_jefe_equipo` | Copia del aviso al jefe de equipo (Alberto Sancho) | (vacío: sin copia) |
 | `nv_crm_embudo.equipo_jefe_equipo` | Id o nombre del `crm.team` del jefe de equipo | (vacío: nadie es de su equipo) |
