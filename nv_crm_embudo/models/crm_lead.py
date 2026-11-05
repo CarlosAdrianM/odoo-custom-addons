@@ -21,6 +21,19 @@ HORAS_REINTENTO = 24
 # (con HORAS_REINTENTO todos acaban marcados, esto es solo una red por si hubo una parada larga)
 DIAS_VENTANA = 30
 
+# Dirección de envío de los correos del embudo. El nombre visible es «Nueva Visión | vendedora».
+PARAM_EMAIL_FROM_EMBUDO = 'nv_crm_embudo.email_from_embudo'
+EMAIL_FROM_EMBUDO_POR_DEFECTO = 'marketing@nuevavision.es'
+# Enlace de la posdata de la app (Google Play, con el referrer de campaña como en NestoAPI)
+PARAM_URL_APP = 'nv_crm_embudo.url_app'
+URL_APP_POR_DEFECTO = ('https://play.google.com/store/apps/details?id=com.nuevavision.nestotiendas'
+                       '&referrer=utm_source%3Dembudo%26utm_medium%3Dcorreo%26utm_campaign%3Dembudo_leads')
+# Copias del aviso «el lead ha contestado» (direcciones separadas por comas)
+PARAM_CC_DIRECCION = 'nv_crm_embudo.cc_direccion'
+PARAM_CC_JEFE_EQUIPO = 'nv_crm_embudo.cc_jefe_equipo'
+# Equipo de ventas (crm.team) del jefe de equipo: su id o su nombre exacto
+PARAM_EQUIPO_JEFE = 'nv_crm_embudo.equipo_jefe_equipo'
+
 
 def _ultimos9(numero):
     digitos = re.sub(r'\D', '', numero or '')
@@ -40,6 +53,111 @@ class CrmLead(models.Model):
         """URL de baja para usar en las plantillas de correo del embudo."""
         self.ensure_one()
         return werkzeug.urls.url_join(self.get_base_url(), '/nv/baja/%s/%s' % (self.id, self._nv_baja_token()))
+
+    # --------------------------------------------- plantillas del embudo
+
+    def nv_nombre_saludo(self):
+        """Nombre para el «Hola …» de los correos del embudo (vacío si no hay nada fiable).
+
+        De una persona se coge solo el nombre de pila (la primera palabra, y si viene todo en
+        mayúsculas, como suele llegar de Nesto, con la primera en mayúscula). Si solo hay
+        empresa, va el nombre de la empresa entero: «Hola Peluquería» quedaría peor.
+        """
+        self.ensure_one()
+        persona = self.contact_name
+        if not persona and self.partner_id and not self.partner_id.is_company:
+            persona = self.partner_id.name
+        if persona and persona.strip():
+            nombre = persona.split()[0]
+            return nombre.capitalize() if nombre.isupper() else nombre
+        empresa = self.partner_name or (self.partner_id.name if self.partner_id else '')
+        return (empresa or '').strip()
+
+    def nv_ya_compra(self):
+        """True si el cliente del lead ya ha hecho algún pedido en Nesto (FINAL B del correo).
+
+        Mismo criterio que el avance a Ganado (#9): fecha_primer_pedido en cualquier contacto
+        de la familia del cliente principal.
+        """
+        self.ensure_one()
+        if not self.partner_id:
+            return False
+        _presupuesto, pedido = self._nv_fechas_cliente(self.partner_id.sudo().commercial_partner_id)
+        return bool(pedido)
+
+    def nv_email_from_embudo(self):
+        """Remitente de los correos del embudo: «Nueva Visión | Vendedora» <dirección estable>.
+
+        La dirección sale del parámetro del sistema nv_crm_embudo.email_from_embudo y, si no
+        existe, de EMAIL_FROM_EMBUDO_POR_DEFECTO.
+        """
+        self.ensure_one()
+        direccion = (self.env['ir.config_parameter'].sudo().get_param(PARAM_EMAIL_FROM_EMBUDO)
+                     or EMAIL_FROM_EMBUDO_POR_DEFECTO).strip()
+        nombre = 'Nueva Visión | %s' % self.user_id.name if self.user_id else 'Nueva Visión'
+        return tools.formataddr((nombre, direccion))
+
+    def nv_url_app(self):
+        """Enlace de la posdata de la app (parámetro nv_crm_embudo.url_app)."""
+        return (self.env['ir.config_parameter'].sudo().get_param(PARAM_URL_APP) or URL_APP_POR_DEFECTO).strip()
+
+    # ------------------------------------------- aviso «el lead ha contestado»
+
+    def _nv_param(self, clave):
+        return (self.env['ir.config_parameter'].sudo().get_param(clave) or '').strip()
+
+    def _nv_es_equipo_jefe(self):
+        """True si el lead o su vendedora son del equipo del jefe de equipo.
+
+        El equipo se configura en nv_crm_embudo.equipo_jefe_equipo (id o nombre del crm.team).
+        Cuenta el equipo del lead y los equipos de los que es miembro la vendedora.
+        """
+        self.ensure_one()
+        valor = self._nv_param(PARAM_EQUIPO_JEFE)
+        if not valor:
+            return False
+        equipos = self.team_id | self.user_id.sudo().crm_team_ids
+        if valor.isdigit():
+            return int(valor) in equipos.ids
+        return valor.casefold() in {nombre.casefold() for nombre in equipos.mapped('name') if nombre}
+
+    def nv_cc_aviso_respuesta(self):
+        """Copias del aviso: Dirección y, si es de su equipo, el jefe de equipo. Sin repetir a la vendedora."""
+        self.ensure_one()
+        direcciones = self._nv_param(PARAM_CC_DIRECCION).split(',')
+        if self._nv_es_equipo_jefe():
+            direcciones += self._nv_param(PARAM_CC_JEFE_EQUIPO).split(',')
+        propia = tools.email_normalize(self.user_id.email or '')
+        vistas, copias = set(), []
+        for direccion in (d.strip() for d in direcciones):
+            normalizada = tools.email_normalize(direccion)
+            if normalizada and normalizada != propia and normalizada not in vistas:
+                vistas.add(normalizada)
+                copias.append(direccion)
+        return ', '.join(copias)
+
+    def nv_ultima_respuesta(self):
+        """Último correo que ha entrado en el lead (la respuesta del cliente), o vacío."""
+        self.ensure_one()
+        return self.env['mail.message'].sudo().search([
+            ('model', '=', self._name), ('res_id', '=', self.id), ('message_type', '=', 'email'),
+            ('author_id', '!=', self.user_id.partner_id.id or False),
+        ], order='id desc', limit=1)
+
+    def nv_avisar_respuesta(self):
+        """Correo a la vendedora con copias cuando el lead contesta a un correo del embudo.
+
+        Lo llama la acción de servidor del paso de la rama «ha contestado» de automation_oca
+        (código: records.nv_avisar_respuesta()). La tarea la crea otro paso; esto es solo el aviso.
+        Un lead sin vendedora con email no manda nada (queda en el log).
+        """
+        plantilla = self.env.ref('nv_crm_embudo.embudo_aviso_respuesta')
+        for lead in self:
+            if not lead.user_id.email:
+                _logger.warning('Lead %s ha contestado al embudo pero su vendedora no tiene email: sin aviso', lead.id)
+                continue
+            plantilla.sudo().send_mail(lead.id, force_send=False)
+        return True
 
     # ------------------------------------------- enlace con clientes de Nesto
 
