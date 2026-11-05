@@ -21,6 +21,10 @@ HORAS_REINTENTO = 24
 # (con HORAS_REINTENTO todos acaban marcados, esto es solo una red por si hubo una parada larga)
 DIAS_VENTANA = 30
 
+# Dirección de envío de los correos del embudo. El nombre visible es «Nueva Visión | vendedora».
+PARAM_EMAIL_FROM_EMBUDO = 'nv_crm_embudo.email_from_embudo'
+EMAIL_FROM_EMBUDO_POR_DEFECTO = 'marketing@nuevavision.es'
+
 
 def _ultimos9(numero):
     digitos = re.sub(r'\D', '', numero or '')
@@ -40,6 +44,49 @@ class CrmLead(models.Model):
         """URL de baja para usar en las plantillas de correo del embudo."""
         self.ensure_one()
         return werkzeug.urls.url_join(self.get_base_url(), '/nv/baja/%s/%s' % (self.id, self._nv_baja_token()))
+
+    # --------------------------------------------- plantillas del embudo
+
+    def nv_nombre_saludo(self):
+        """Nombre para el «Hola …» de los correos del embudo (vacío si no hay nada fiable).
+
+        De una persona se coge solo el nombre de pila (la primera palabra, y si viene todo en
+        mayúsculas, como suele llegar de Nesto, con la primera en mayúscula). Si solo hay
+        empresa, va el nombre de la empresa entero: «Hola Peluquería» quedaría peor.
+        """
+        self.ensure_one()
+        persona = self.contact_name
+        if not persona and self.partner_id and not self.partner_id.is_company:
+            persona = self.partner_id.name
+        if persona and persona.strip():
+            nombre = persona.split()[0]
+            return nombre.capitalize() if nombre.isupper() else nombre
+        empresa = self.partner_name or (self.partner_id.name if self.partner_id else '')
+        return (empresa or '').strip()
+
+    def nv_ya_compra(self):
+        """True si el cliente del lead ya ha hecho algún pedido en Nesto (FINAL B del correo).
+
+        Mismo criterio que el avance a Ganado (#9): fecha_primer_pedido en cualquier contacto
+        de la familia del cliente principal.
+        """
+        self.ensure_one()
+        if not self.partner_id:
+            return False
+        _presupuesto, pedido = self._nv_fechas_cliente(self.partner_id.sudo().commercial_partner_id)
+        return bool(pedido)
+
+    def nv_email_from_embudo(self):
+        """Remitente de los correos del embudo: «Nueva Visión | Vendedora» <dirección estable>.
+
+        La dirección sale del parámetro del sistema nv_crm_embudo.email_from_embudo y, si no
+        existe, de EMAIL_FROM_EMBUDO_POR_DEFECTO.
+        """
+        self.ensure_one()
+        direccion = (self.env['ir.config_parameter'].sudo().get_param(PARAM_EMAIL_FROM_EMBUDO)
+                     or EMAIL_FROM_EMBUDO_POR_DEFECTO).strip()
+        nombre = 'Nueva Visión | %s' % self.user_id.name if self.user_id else 'Nueva Visión'
+        return tools.formataddr((nombre, direccion))
 
     # ------------------------------------------- enlace con clientes de Nesto
 

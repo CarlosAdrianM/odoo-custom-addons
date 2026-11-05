@@ -12,6 +12,7 @@ Personalizaciones del CRM de Nueva Visión para los embudos automáticos (Odoo 1
 | Etapas «Cliente en Nesto» y «Presupuesto» | `data/crm_stage_data.xml` | #9 |
 | Enlace automático del lead con el cliente nuevo de Nesto | Tarea programada cada 10 min, `crm.lead._nv_cron_enlazar_clientes_nesto` | #9 |
 | Avance del lead con las fechas de compras de Nesto | `res.partner.write` → `crm.lead._nv_avanzar_por_fechas` | #9 |
+| Plantillas de los correos 01-03 del embudo de leads (Marketing) | `data/mail_template_embudo_data.xml` | #10 |
 
 ## Enlace automático con Nesto
 
@@ -65,6 +66,66 @@ Detalles:
 
 Pasar a «Ganado» a mano sigue permitido; si se quiere impedir, es una decisión aparte (#9).
 
+## Correos del embudo de leads
+
+Tres plantillas `mail.template` sobre `crm.lead`, hechas con los HTML de Marketing (Laura Villacieros, 05/11/26):
+
+| xml_id | Asunto | Guía que enlaza |
+| --- | --- | --- |
+| `nv_crm_embudo.embudo_correo_01` | Antes de tratar el acné, hay algo que conviene mirar | Acné en cabina |
+| `nv_crm_embudo.embudo_correo_02` | NAD, PDRN y exosomas: no hacen lo mismo | NAD, PDRN y exosomas |
+| `nv_crm_embudo.embudo_correo_03` | Microdermoabrasión: la potencia no se elige por costumbre | Microdermoabrasión con punta de diamante |
+
+En Odoo: Ajustes › Técnico › Correo electrónico › Plantillas, buscando «Embudo leads».
+
+### Qué rellena Odoo
+
+| En el HTML de Marketing | En la plantilla |
+| --- | --- |
+| `[NOMBRE]` | `object.nv_nombre_saludo()`: la primera palabra del contacto del lead (o de su cliente, si es una persona); si viene en mayúsculas, «MARÍA» → «María». Si solo hay empresa, el nombre de la empresa entero; si no hay nada, «Hola,». |
+| `[NOMBRE DE LA VENDEDORA]` | `object.user_id.name` (sin vendedora: «El equipo de Nueva Visión») |
+| FINAL A / FINAL B | Uno solo, a todo el ancho: FINAL B si `object.nv_ya_compra()`, FINAL A si no |
+| `assets/...` | `https://<web.base.url>/nv_crm_embudo/static/src/img/...` (las imágenes van en el módulo) |
+| Aviso del pie | Pie legal y enlace de baja firmado (`object.nv_url_baja()`) |
+| Preencabezado | Ya venía en el HTML como `div` oculto al principio del cuerpo; se deja tal cual |
+
+**FINAL B («ya compra»)** = el lead tiene cliente y en la familia de ese cliente (`commercial_partner_id` y sus contactos) hay `fecha_primer_pedido`. Es el mismo criterio que pasa el lead a Ganado (`_nv_fechas_cliente`). Un presupuesto no cuenta. Sin cliente, FINAL A.
+
+**Remitente:** `Nueva Visión | <vendedora>` con la dirección del parámetro del sistema **`nv_crm_embudo.email_from_embudo`** (Ajustes › Técnico › Parámetros del sistema; hay que crearlo). Si no existe se usa `marketing@nuevavision.es`. Ojo: el servidor SMTP tiene `from_filter` (#26) y cualquier dirección que no encaje la reescribe Odoo a `mail.default.from`; se mantiene el nombre visible, pero la dirección que ve el cliente será la de `mail.default.from` hasta que se resuelva #26.
+
+**Responder a:** el email de la vendedora (`object.user_id.email`). **Para:** `object.email_from` del lead. `auto_delete` desactivado para que quede el correo enviado.
+
+Las imágenes salen del servidor de Odoo (`web.base.url`), igual que el enlace de baja: tiene que ser una dirección `https://` pública y conviene tener `web.base.url.freeze` a `True` para que no la cambie un acceso interno.
+
+### Dónde cambiar los textos
+
+Los HTML originales y los asuntos están en `doc/correos_embudo/`. El XML se genera con:
+
+```
+python nv_crm_embudo/doc/correos_embudo/generar_plantillas.py
+```
+
+Para un cambio de texto: cambiar el HTML (o `asuntos-y-preencabezados.md` para el asunto), volver a generar y actualizar el módulo. Las plantillas van con `noupdate="0"`: **lo que se cambie en la pantalla de Odoo se pierde al actualizar el módulo**. Para probar un asunto alternativo (A/B) desde la pantalla, mejor duplicar la plantilla.
+
+### Cómo probarlas
+
+1. Actualizar el módulo y crear el parámetro `nv_crm_embudo.email_from_embudo`.
+2. Crear un lead de pruebas con el email de una vendedora como `email_from`, un nombre de contacto y una vendedora asignada.
+3. En el lead, «Enviar mensaje» › icono de plantilla › «Embudo leads 01». Revisar nombre, firma, imágenes y que solo sale un cierre (FINAL A).
+4. Ponerle al lead un cliente con `fecha_primer_pedido` y repetir: tiene que salir el FINAL B.
+
+Al enviar desde el chatter, Odoo pasa el cuerpo por el sanitizador y lo envuelve en su maqueta de notificación; el correo que manda `automation_oca` (envío masivo) sale tal cual. Lo que cuenta es lo que llega por el embudo.
+
+### En la secuencia de `automation_oca`
+
+Son tres pasos de tipo correo, uno tras otro, con 30 días entre ellos. Se añaden en la configuración de Automation (la del embudo exportada en #10 se importa desde la vista kanban de Automation y queda en borrador):
+
+1. Paso «Correo 01»: tipo correo, plantilla «Embudo leads 01», al empezar (o tras el paso de entrada que corresponda).
+2. Paso «Correo 02»: tipo correo, plantilla «Embudo leads 02», hijo del paso 01, 30 días después.
+3. Paso «Correo 03»: tipo correo, plantilla «Embudo leads 03», hijo del paso 02, 30 días después.
+
+Antes de activar la configuración, exportarla de nuevo para guardar la versión con los tres pasos.
+
 ## Instalación
 
 Depende de `crm`, `mail` y `nesto_sync`. Los embudos usan `automation_oca` (OCA/automation 16.0), pero este módulo no lo necesita.
@@ -76,3 +137,5 @@ Instalar desde una carpeta que el usuario `odoo` pueda leer. Desde `/root` falla
 ```
 odoo -c <conf> -d <bd> -u nv_crm_embudo --test-enable --test-tags /nv_crm_embudo --stop-after-init
 ```
+
+Las plantillas del embudo se prueban en `tests/test_plantillas_embudo.py` (un solo cierre, nombre, firma, baja, remitente).

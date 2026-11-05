@@ -1,0 +1,395 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    GENERADO por doc/correos_embudo/generar_plantillas.py a partir de los HTML de Marketing
+    (Laura Villacieros, 05/11/26). Para cambiar un texto: cambiar el HTML y volver a generar,
+    o editar aquí y copiar el cambio al HTML. Lo que se cambie en la pantalla de Odoo se pierde
+    al actualizar el módulo (noupdate="0").
+-->
+<odoo noupdate="0">
+    <record id="embudo_correo_01" model="mail.template">
+        <field name="name">Embudo leads 01 · Acné en cabina</field>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="subject">Antes de tratar el acné, hay algo que conviene mirar</field>
+        <field name="email_from">{{ object.nv_email_from_embudo() }}</field>
+        <field name="reply_to">{{ object.user_id.email }}</field>
+        <field name="email_to">{{ object.email_from }}</field>
+        <field name="use_default_to" eval="False"/>
+        <field name="auto_delete" eval="False"/>
+        <field name="lang">{{ object.lang_id.code or object.partner_id.lang }}</field>
+        <field name="description">Correo del embudo de leads (Marketing). Un solo cierre: FINAL A si el lead no compra todavía, FINAL B si ya compra.</field>
+        <field name="body_html" type="html">
+<div style="margin:0; padding:0; background-color:#f4f4f4; color:#171717; font-family:Poppins, Arial, Helvetica, sans-serif;"><t t-set="nv_img" t-value="object.get_base_url() + '/nv_crm_embudo/static/src/img/'"/><t t-set="nv_nombre" t-value="object.nv_nombre_saludo()"/><t t-set="nv_ya_compra" t-value="object.nv_ya_compra()"/><div style="display:none; max-height:0; overflow:hidden; opacity:0; color:transparent; mso-hide:all;">
+    Una guía práctica para valorar la piel y decidir qué trabajar en cabina.&#847;&#8204;&#160;&#847;&#8204;&#160;&#847;&#8204;&#160;&#847;&#8204;&#160;
+  </div>
+
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; background-color:#f4f4f4;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; max-width:600px; background-color:#ffffff; border-collapse:collapse;">
+          <tr>
+            <td align="center" t-attf-background="{{ nv_img }}fondo-geometrico-nv.png" t-attf-style="padding:24px 30px 20px; background-color:#ffffff; background-image:url('{{ nv_img }}fondo-geometrico-nv.png'); background-position:center; background-size:cover;">
+              <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/" target="_blank" style="text-decoration:none;">
+                <img t-attf-src="{{ nv_img }}logo-nueva-vision.png" width="180" alt="Nueva Visión" style="display:block; width:180px; max-width:100%; height:auto; margin:0 auto; border:0;"/>
+              </a>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:34px 44px 24px;">
+              <p style="margin:0 0 12px; font-size:12px; line-height:18px; font-weight:600; letter-spacing:1.5px; color:#BD052B;">CRITERIO PROFESIONAL · ACNÉ EN CABINA</p>
+              <h1 style="margin:0 0 14px; font-family:INTRO, 'Arial Black', Arial, sans-serif; font-size:32px; line-height:38px; font-weight:800; color:#111111;">El acné no se trabaja siempre de la misma manera</h1>
+              <p style="margin:0; font-size:18px; line-height:27px; color:#666666;">El tipo de lesión y el estado de la piel orientan cada decisión en cabina.</p>
+            </td>
+          </tr>
+
+          <tr>
+            <td>
+              <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/content/151-acne-en-cabina-diagnostico-protocolo-yolanda-perez" target="_blank" style="text-decoration:none;">
+                <img src="https://productosdeesteticaypeluqueriaprofesional.com/img/cms/Blog/acne-evaluacion-profesional.jpg" width="600" alt="Profesional de estética valorando una piel con tendencia acneica" style="display:block; width:100%; max-width:600px; height:auto; border:0;"/>
+              </a>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:32px 44px 16px;">
+              <p style="margin:0 0 18px; font-size:16px; line-height:26px; color:#333333;">Hola<t t-if="nv_nombre"> <t t-out="nv_nombre"/></t>,</p>
+
+              <p style="margin:0 0 22px; padding:0 0 0 17px; border-left:3px solid #BD052B; font-size:15px; line-height:24px; color:#555555;"><strong style="color:#222222;">Somos Nueva Visión</strong>, distribuidora de cosmética, aparatología y formación para profesionales de la estética desde hace más de cuatro décadas. Queremos compartir contigo contenidos que te ayuden a tomar mejores decisiones en cabina, estés o no buscando algo concreto ahora mismo.</p>
+
+              <p style="margin:0 0 17px; font-size:16px; line-height:26px; color:#333333;">Y empezamos por una situación habitual: las pieles con tendencia acneica.</p>
+
+              <p style="margin:0 0 17px; font-size:16px; line-height:26px; color:#333333;">Un comedón, una lesión inflamada y una piel grasa pero deshidratada no piden la misma intervención. Forzar una extracción o intensificar la exfoliación puede alejarnos del objetivo.</p>
+
+              <p style="margin:0 0 22px; font-size:16px; line-height:26px; color:#333333;">La decisión importante llega antes de elegir un producto: <strong>observar qué lesión predomina y cómo se encuentra la piel</strong>.</p>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; border-collapse:collapse; background-color:#f7f7f7;">
+                <tr>
+                  <td style="padding:22px 22px 20px;">
+                    <p style="margin:0 0 12px; font-size:15px; line-height:23px; font-weight:600; color:#111111;">En la guía encontrarás una hoja de ruta para:</p>
+                    <p style="margin:0 0 8px; font-size:15px; line-height:23px; color:#555555;"><span style="color:#BD052B; font-weight:700;">01</span>&#160;&#160;Distinguir los principales tipos de lesión.</p>
+                    <p style="margin:0 0 8px; font-size:15px; line-height:23px; color:#555555;"><span style="color:#BD052B; font-weight:700;">02</span>&#160;&#160;Preparar una primera consulta con mejores preguntas.</p>
+                    <p style="margin:0 0 8px; font-size:15px; line-height:23px; color:#555555;"><span style="color:#BD052B; font-weight:700;">03</span>&#160;&#160;Ordenar el trabajo en cabina y el cuidado en casa.</p>
+                    <p style="margin:0; font-size:15px; line-height:23px; color:#555555;"><span style="color:#BD052B; font-weight:700;">04</span>&#160;&#160;Evitar los errores que pueden aumentar la irritación.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td align="center" style="padding:18px 44px 14px;">
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="border-collapse:separate;">
+                <tr>
+                  <td align="center" bgcolor="#BD052B" style="border-radius:3px;">
+                    <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/content/151-acne-en-cabina-diagnostico-protocolo-yolanda-perez" target="_blank" style="display:inline-block; padding:15px 25px; font-size:15px; line-height:20px; font-weight:600; color:#ffffff; text-decoration:none; border:1px solid #BD052B; border-radius:3px;">Leer la guía sobre acné en cabina</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:7px 44px 33px;">
+              <p style="margin:0; font-size:12px; line-height:20px; color:#777777; text-align:center;">Contenido elaborado a partir de la formación de Yolanda Pérez Mayoral, directora técnica de Nueva Visión.</p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:0; background-color:#ffffff;">
+              <img t-attf-src="{{ nv_img }}banner-por-que-elegir-nueva-vision.png" width="600" alt="Asesoramiento personalizado, soporte técnico en aparatología, envíos rápidos y seguros, y formación continua" style="display:block; width:100%; max-width:600px; height:auto; border:0;"/>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:28px 44px 30px; background-color:#f7f7f7; border-top:1px solid #e5e5e5;">
+              <p style="margin:0 0 18px; font-size:12px; line-height:18px; font-weight:600; letter-spacing:1.3px; color:#BD052B;">¿EN QUÉ PODEMOS AYUDARTE?</p>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; border-collapse:collapse;">
+                <tr>
+                  <td t-if="not nv_ya_compra" width="100%" valign="top" style="width:100%; padding:0;">
+                    <p style="margin:0 0 8px; font-size:16px; line-height:22px; font-weight:600; color:#111111;">Ordenar un caso</p>
+                    <p style="margin:0; font-size:14px; line-height:22px; color:#555555;">Cuéntame qué estás viendo y te ayudaré a localizar formación, cosmética o aparatología que pueda encajar.</p>
+                  </td>
+                  <td t-else="" width="100%" valign="top" style="width:100%; padding:0;">
+                    <p style="margin:0 0 8px; font-size:16px; line-height:22px; font-weight:600; color:#111111;">Revisar opciones</p>
+                    <p style="margin:0; font-size:14px; line-height:22px; color:#555555;">Podemos revisar cómo completar tus protocolos o sacar más partido a los recursos que ya utilizas.</p>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:22px 0 18px; padding-top:20px; border-top:1px solid #dddddd; font-size:15px; line-height:24px; color:#333333;">Responde a este correo y cuéntame qué necesitas.</p>
+              <p style="margin:0; font-size:15px; line-height:23px; color:#333333;">Un saludo,<br/><strong><t t-out="object.user_id.name or 'El equipo de Nueva Visión'"/></strong><br/><span style="color:#777777;">Nueva Visión</span></p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:20px 32px; background-color:#eeeeee; border-bottom:4px solid #BD052B;">
+              <p style="margin:0 0 8px; font-size:11px; line-height:17px; color:#777777; text-align:center;">Recibe este correo porque dejó sus datos a Nueva Visión para recibir información profesional. Si no quiere recibir más, puede <a t-att-href="object.nv_url_baja()" target="_blank" style="color:#777777; text-decoration:underline;">darse de baja</a>.</p>
+              <p style="margin:0; font-size:11px; line-height:17px; color:#777777; text-align:center;">Responsable: Nueva Visión, S.A. · CIF A78368255 · C/ Río Tiétar, 11, Polígono Industrial Los Nogales, 28119 Algete (Madrid). Puede ejercer sus derechos de acceso, rectificación, supresión y oposición respondiendo a este correo.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table></div>
+        </field>
+    </record>
+
+    <record id="embudo_correo_02" model="mail.template">
+        <field name="name">Embudo leads 02 · NAD, PDRN y exosomas</field>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="subject">NAD, PDRN y exosomas: no hacen lo mismo</field>
+        <field name="email_from">{{ object.nv_email_from_embudo() }}</field>
+        <field name="reply_to">{{ object.user_id.email }}</field>
+        <field name="email_to">{{ object.email_from }}</field>
+        <field name="use_default_to" eval="False"/>
+        <field name="auto_delete" eval="False"/>
+        <field name="lang">{{ object.lang_id.code or object.partner_id.lang }}</field>
+        <field name="description">Correo del embudo de leads (Marketing). Un solo cierre: FINAL A si el lead no compra todavía, FINAL B si ya compra.</field>
+        <field name="body_html" type="html">
+<div style="margin:0; padding:0; background-color:#f4f4f4; color:#171717; font-family:Poppins, Arial, Helvetica, sans-serif;"><t t-set="nv_img" t-value="object.get_base_url() + '/nv_crm_embudo/static/src/img/'"/><t t-set="nv_nombre" t-value="object.nv_nombre_saludo()"/><t t-set="nv_ya_compra" t-value="object.nv_ya_compra()"/><div style="display:none; max-height:0; overflow:hidden; opacity:0; color:transparent; mso-hide:all;">
+    Tres activos de actualidad, tres funciones distintas y una clave: elegir según la piel.&#847;&#8204;&#160;&#847;&#8204;&#160;&#847;&#8204;&#160;&#847;&#8204;&#160;
+  </div>
+
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; background-color:#f4f4f4;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; max-width:600px; background-color:#ffffff; border-collapse:collapse;">
+          <tr>
+            <td align="center" t-attf-background="{{ nv_img }}fondo-geometrico-nv.png" t-attf-style="padding:24px 30px 20px; background-color:#ffffff; background-image:url('{{ nv_img }}fondo-geometrico-nv.png'); background-position:center; background-size:cover;">
+              <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/" target="_blank" style="text-decoration:none;">
+                <img t-attf-src="{{ nv_img }}logo-nueva-vision.png" width="180" alt="Nueva Visión" style="display:block; width:180px; max-width:100%; height:auto; margin:0 auto; border:0;"/>
+              </a>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:34px 44px 24px;">
+              <p style="margin:0 0 12px; font-size:12px; line-height:18px; font-weight:600; letter-spacing:1.5px; color:#BD052B;">COSMETOLOGÍA · CRITERIO PROFESIONAL</p>
+              <h1 style="margin:0 0 14px; font-family:INTRO, 'Arial Black', Arial, sans-serif; font-size:32px; line-height:38px; font-weight:800; color:#111111;">NAD, PDRN y exosomas: no hacen lo mismo</h1>
+              <p style="margin:0; font-size:18px; line-height:27px; color:#666666;">Tres funciones diferentes. El criterio está en saber cuándo utilizar cada activo.</p>
+            </td>
+          </tr>
+
+          <tr>
+            <td>
+              <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/content/150-nad-pdrn-exosomas-estetica-profesional" target="_blank" style="text-decoration:none;">
+                <img src="https://productosdeesteticaypeluqueriaprofesional.com/img/cms/Blog/regeneradoras%20nad%20poli.png" width="600" alt="NAD, PDRN y exosomas en estética profesional" style="display:block; width:100%; max-width:600px; height:auto; border:0;"/>
+              </a>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:32px 44px 16px;">
+              <p style="margin:0 0 18px; font-size:16px; line-height:26px; color:#333333;">Hola<t t-if="nv_nombre"> <t t-out="nv_nombre"/></t>,</p>
+
+              <p style="margin:0 0 22px; padding:0 0 0 17px; border-left:3px solid #BD052B; font-size:15px; line-height:24px; color:#555555;"><strong style="color:#222222;">En Nueva Visión creemos que conocer un activo</strong> no consiste solo en memorizar sus beneficios, sino en entender cuándo tiene sentido incorporarlo y cuándo conviene reservarlo para otra sesión.</p>
+
+              <p style="margin:0 0 17px; font-size:16px; line-height:26px; color:#333333;">NAD, PDRN y exosomas están despertando mucho interés en estética profesional. Es fácil agruparlos bajo una misma idea de renovación, pero <strong>no son intercambiables</strong>.</p>
+
+              <p style="margin:0 0 17px; font-size:16px; line-height:26px; color:#333333;">Yolanda Pérez Mayoral los explica desde tres funciones distintas: la energía que necesita la célula, el medio en el que trabaja y la comunicación entre unas células y otras.</p>
+
+              <p style="margin:0 0 22px; font-size:16px; line-height:26px; color:#333333;">La clave no está en utilizarlos todos ni en repetir el activo de moda durante varias sesiones, sino en <strong>elegir según el diagnóstico, el objetivo y el momento del tratamiento</strong>.</p>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; border-collapse:collapse; background-color:#f7f7f7;">
+                <tr>
+                  <td style="padding:22px 22px 20px;">
+                    <p style="margin:0 0 12px; font-size:15px; line-height:23px; font-weight:600; color:#111111;">Lo esencial, en cuatro ideas:</p>
+                    <p style="margin:0 0 8px; font-size:15px; line-height:23px; color:#555555;"><span style="color:#BD052B; font-weight:700;">01</span>&#160;&#160;<strong>NAD:</strong> energía celular.</p>
+                    <p style="margin:0 0 8px; font-size:15px; line-height:23px; color:#555555;"><span style="color:#BD052B; font-weight:700;">02</span>&#160;&#160;<strong>PDRN:</strong> medio intercelular.</p>
+                    <p style="margin:0 0 8px; font-size:15px; line-height:23px; color:#555555;"><span style="color:#BD052B; font-weight:700;">03</span>&#160;&#160;<strong>Exosomas:</strong> comunicación entre células.</p>
+                    <p style="margin:0; font-size:15px; line-height:23px; color:#555555;"><span style="color:#BD052B; font-weight:700;">04</span>&#160;&#160;<strong>Elección:</strong> depende de lo que necesita cada piel.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td align="center" style="padding:18px 44px 14px;">
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="border-collapse:separate;">
+                <tr>
+                  <td align="center" bgcolor="#BD052B" style="border-radius:3px;">
+                    <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/content/150-nad-pdrn-exosomas-estetica-profesional" target="_blank" style="display:inline-block; padding:15px 25px; font-size:15px; line-height:20px; font-weight:600; color:#ffffff; text-decoration:none; border:1px solid #BD052B; border-radius:3px;">Entender qué aporta cada activo</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:7px 44px 33px;">
+              <p style="margin:0; font-size:12px; line-height:20px; color:#777777; text-align:center;">Contenido elaborado a partir de la formación de Yolanda Pérez Mayoral, directora técnica de Nueva Visión.</p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:0; background-color:#ffffff;">
+              <img t-attf-src="{{ nv_img }}banner-por-que-elegir-nueva-vision.png" width="600" alt="Asesoramiento personalizado, soporte técnico en aparatología, envíos rápidos y seguros, y formación continua" style="display:block; width:100%; max-width:600px; height:auto; border:0;"/>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:28px 44px 30px; background-color:#f7f7f7; border-top:1px solid #e5e5e5;">
+              <p style="margin:0 0 18px; font-size:12px; line-height:18px; font-weight:600; letter-spacing:1.3px; color:#BD052B;">¿EN QUÉ PODEMOS AYUDARTE?</p>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; border-collapse:collapse;">
+                <tr>
+                  <td t-if="not nv_ya_compra" width="100%" valign="top" style="width:100%; padding:0;">
+                    <p style="margin:0 0 8px; font-size:16px; line-height:22px; font-weight:600; color:#111111;">Elegir un activo</p>
+                    <p style="margin:0; font-size:14px; line-height:22px; color:#555555;">Cuéntame qué objetivo quieres trabajar y te ayudaré a localizar formación o activos profesionales que puedan encajar.</p>
+                  </td>
+                  <td t-else="" width="100%" valign="top" style="width:100%; padding:0;">
+                    <p style="margin:0 0 8px; font-size:16px; line-height:22px; font-weight:600; color:#111111;">Revisar protocolos</p>
+                    <p style="margin:0; font-size:14px; line-height:22px; color:#555555;">Podemos revisar cómo integrar estos activos con los protocolos y equipos que ya utilizas en cabina.</p>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:22px 0 18px; padding-top:20px; border-top:1px solid #dddddd; font-size:15px; line-height:24px; color:#333333;">Responde a este correo y cuéntame qué necesitas.</p>
+              <p style="margin:0; font-size:15px; line-height:23px; color:#333333;">Un saludo,<br/><strong><t t-out="object.user_id.name or 'El equipo de Nueva Visión'"/></strong><br/><span style="color:#777777;">Nueva Visión</span></p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:20px 32px; background-color:#eeeeee; border-bottom:4px solid #BD052B;">
+              <p style="margin:0 0 8px; font-size:11px; line-height:17px; color:#777777; text-align:center;">Recibe este correo porque dejó sus datos a Nueva Visión para recibir información profesional. Si no quiere recibir más, puede <a t-att-href="object.nv_url_baja()" target="_blank" style="color:#777777; text-decoration:underline;">darse de baja</a>.</p>
+              <p style="margin:0; font-size:11px; line-height:17px; color:#777777; text-align:center;">Responsable: Nueva Visión, S.A. · CIF A78368255 · C/ Río Tiétar, 11, Polígono Industrial Los Nogales, 28119 Algete (Madrid). Puede ejercer sus derechos de acceso, rectificación, supresión y oposición respondiendo a este correo.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table></div>
+        </field>
+    </record>
+
+    <record id="embudo_correo_03" model="mail.template">
+        <field name="name">Embudo leads 03 · Microdermoabrasión con punta de diamante</field>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="subject">Microdermoabrasión: la potencia no se elige por costumbre</field>
+        <field name="email_from">{{ object.nv_email_from_embudo() }}</field>
+        <field name="reply_to">{{ object.user_id.email }}</field>
+        <field name="email_to">{{ object.email_from }}</field>
+        <field name="use_default_to" eval="False"/>
+        <field name="auto_delete" eval="False"/>
+        <field name="lang">{{ object.lang_id.code or object.partner_id.lang }}</field>
+        <field name="description">Correo del embudo de leads (Marketing). Un solo cierre: FINAL A si el lead no compra todavía, FINAL B si ya compra.</field>
+        <field name="body_html" type="html">
+<div style="margin:0; padding:0; background-color:#f4f4f4; color:#171717; font-family:Poppins, Arial, Helvetica, sans-serif;"><t t-set="nv_img" t-value="object.get_base_url() + '/nv_crm_embudo/static/src/img/'"/><t t-set="nv_nombre" t-value="object.nv_nombre_saludo()"/><t t-set="nv_ya_compra" t-value="object.nv_ya_compra()"/><div style="display:none; max-height:0; overflow:hidden; opacity:0; color:transparent; mso-hide:all;">
+    Cómo adaptar la punta, la succión y las maniobras a cada zona y a cada piel.&#847;&#8204;&#160;&#847;&#8204;&#160;&#847;&#8204;&#160;&#847;&#8204;&#160;
+  </div>
+
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; background-color:#f4f4f4;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; max-width:600px; background-color:#ffffff; border-collapse:collapse;">
+          <tr>
+            <td align="center" t-attf-background="{{ nv_img }}fondo-geometrico-nv.png" t-attf-style="padding:24px 30px 20px; background-color:#ffffff; background-image:url('{{ nv_img }}fondo-geometrico-nv.png'); background-position:center; background-size:cover;">
+              <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/" target="_blank" style="text-decoration:none;">
+                <img t-attf-src="{{ nv_img }}logo-nueva-vision.png" width="180" alt="Nueva Visión" style="display:block; width:180px; max-width:100%; height:auto; margin:0 auto; border:0;"/>
+              </a>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:34px 44px 24px;">
+              <p style="margin:0 0 12px; font-size:12px; line-height:18px; font-weight:600; letter-spacing:1.5px; color:#BD052B;">APARATOLOGÍA · CRITERIO PROFESIONAL</p>
+              <h1 style="margin:0 0 14px; font-family:INTRO, 'Arial Black', Arial, sans-serif; font-size:32px; line-height:38px; font-weight:800; color:#111111;">Microdermoabrasión: la potencia no se elige por costumbre</h1>
+              <p style="margin:0; font-size:18px; line-height:27px; color:#666666;">Punta, vacío y maniobra deben adaptarse a la piel, la zona y el objetivo.</p>
+            </td>
+          </tr>
+
+          <tr>
+            <td>
+              <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/content/153-microdermoabrasion-punta-diamante-guia-profesional" target="_blank" style="text-decoration:none;">
+                <img src="https://productosdeesteticaypeluqueriaprofesional.com/img/cms/Blog/microdermoabrasion-cabina.webp" width="600" alt="Profesional realizando una microdermoabrasión con punta de diamante en cabina" style="display:block; width:100%; max-width:600px; height:auto; border:0;"/>
+              </a>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:32px 44px 16px;">
+              <p style="margin:0 0 18px; font-size:16px; line-height:26px; color:#333333;">Hola<t t-if="nv_nombre"> <t t-out="nv_nombre"/></t>,</p>
+
+              <p style="margin:0 0 22px; padding:0 0 0 17px; border-left:3px solid #BD052B; font-size:15px; line-height:24px; color:#555555;"><strong style="color:#222222;">En Nueva Visión entendemos la aparatología como una herramienta de personalización.</strong> El valor no está solo en disponer de un equipo, sino en saber adaptar cada parámetro a la piel que tenemos delante.</p>
+
+              <p style="margin:0 0 17px; font-size:16px; line-height:26px; color:#333333;">La microdermoabrasión combina dos acciones que no siempre deben trabajarse con la misma intensidad: la exfoliación mecánica de la punta y la dermosucción generada por el vacío.</p>
+
+              <p style="margin:0 0 17px; font-size:16px; line-height:26px; color:#333333;">Pasar el mismo cabezal con la misma potencia por todo el rostro impide aprovechar esa precisión. El grosor, la tensión y la movilidad del tejido cambian entre unas zonas y otras.</p>
+
+              <p style="margin:0 0 22px; font-size:16px; line-height:26px; color:#333333;">La guía de Yolanda Pérez Mayoral ayuda a <strong>elegir la punta, regular la succión y modificar la maniobra</strong> según la respuesta visible de la piel y el objetivo del tratamiento.</p>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; border-collapse:collapse; background-color:#f7f7f7;">
+                <tr>
+                  <td style="padding:22px 22px 20px;">
+                    <p style="margin:0 0 12px; font-size:15px; line-height:23px; font-weight:600; color:#111111;">Lo esencial, en cuatro ideas:</p>
+                    <p style="margin:0 0 8px; font-size:15px; line-height:23px; color:#555555;"><span style="color:#BD052B; font-weight:700;">01</span>&#160;&#160;<strong>Punta:</strong> determina la capacidad de exfoliación.</p>
+                    <p style="margin:0 0 8px; font-size:15px; line-height:23px; color:#555555;"><span style="color:#BD052B; font-weight:700;">02</span>&#160;&#160;<strong>Vacío:</strong> regula la movilización del tejido.</p>
+                    <p style="margin:0 0 8px; font-size:15px; line-height:23px; color:#555555;"><span style="color:#BD052B; font-weight:700;">03</span>&#160;&#160;<strong>Zona:</strong> cambia el grosor, la tensión y la técnica.</p>
+                    <p style="margin:0; font-size:15px; line-height:23px; color:#555555;"><span style="color:#BD052B; font-weight:700;">04</span>&#160;&#160;<strong>Respuesta:</strong> indica si continuar, reducir o cambiar.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td align="center" style="padding:18px 44px 14px;">
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="border-collapse:separate;">
+                <tr>
+                  <td align="center" bgcolor="#BD052B" style="border-radius:3px;">
+                    <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/content/153-microdermoabrasion-punta-diamante-guia-profesional" target="_blank" style="display:inline-block; padding:15px 25px; font-size:15px; line-height:20px; font-weight:600; color:#ffffff; text-decoration:none; border:1px solid #BD052B; border-radius:3px;">Ver la guía de punta de diamante</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:7px 44px 33px;">
+              <p style="margin:0; font-size:12px; line-height:20px; color:#777777; text-align:center;">Contenido elaborado a partir de la formación de Yolanda Pérez Mayoral, directora técnica de Nueva Visión.</p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:0; background-color:#ffffff;">
+              <img t-attf-src="{{ nv_img }}banner-por-que-elegir-nueva-vision.png" width="600" alt="Asesoramiento personalizado, soporte técnico en aparatología, envíos rápidos y seguros, y formación continua" style="display:block; width:100%; max-width:600px; height:auto; border:0;"/>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:28px 44px 30px; background-color:#f7f7f7; border-top:1px solid #e5e5e5;">
+              <p style="margin:0 0 18px; font-size:12px; line-height:18px; font-weight:600; letter-spacing:1.3px; color:#BD052B;">¿EN QUÉ PODEMOS AYUDARTE?</p>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; border-collapse:collapse;">
+                <tr>
+                  <td t-if="not nv_ya_compra" width="100%" valign="top" style="width:100%; padding:0;">
+                    <p style="margin:0 0 8px; font-size:16px; line-height:22px; font-weight:600; color:#111111;">Elegir aparatología</p>
+                    <p style="margin:0; font-size:14px; line-height:22px; color:#555555;">Cuéntame qué tratamientos quieres ofrecer y te ayudaré a valorar qué equipo puede encajar en tu cabina.</p>
+                  </td>
+                  <td t-else="" width="100%" valign="top" style="width:100%; padding:0;">
+                    <p style="margin:0 0 8px; font-size:16px; line-height:22px; font-weight:600; color:#111111;">Aprovechar el equipo</p>
+                    <p style="margin:0; font-size:14px; line-height:22px; color:#555555;">Podemos revisar puntas, parámetros y combinaciones para sacar más partido a la aparatología que ya utilizas.</p>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:22px 0 18px; padding-top:20px; border-top:1px solid #dddddd; font-size:15px; line-height:24px; color:#333333;">Responde a este correo y cuéntame qué necesitas.</p>
+              <p style="margin:0; font-size:15px; line-height:23px; color:#333333;">Un saludo,<br/><strong><t t-out="object.user_id.name or 'El equipo de Nueva Visión'"/></strong><br/><span style="color:#777777;">Nueva Visión</span></p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:20px 32px; background-color:#eeeeee; border-bottom:4px solid #BD052B;">
+              <p style="margin:0 0 8px; font-size:11px; line-height:17px; color:#777777; text-align:center;">Recibe este correo porque dejó sus datos a Nueva Visión para recibir información profesional. Si no quiere recibir más, puede <a t-att-href="object.nv_url_baja()" target="_blank" style="color:#777777; text-decoration:underline;">darse de baja</a>.</p>
+              <p style="margin:0; font-size:11px; line-height:17px; color:#777777; text-align:center;">Responsable: Nueva Visión, S.A. · CIF A78368255 · C/ Río Tiétar, 11, Polígono Industrial Los Nogales, 28119 Algete (Madrid). Puede ejercer sus derechos de acceso, rectificación, supresión y oposición respondiendo a este correo.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table></div>
+        </field>
+    </record>
+</odoo>
