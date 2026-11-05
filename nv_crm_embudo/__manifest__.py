@@ -1,6 +1,6 @@
 {
     'name': 'NV CRM Embudo',
-    'version': '16.0.1.4.0',
+    'version': '16.0.1.4.1',
     'summary': 'Personalizaciones del CRM de Nueva Vision para los embudos: enlace de baja, leads vivos por vendedora, plantillas de correo del embudo y avance automatico de los leads con los clientes y las compras de Nesto',
     'author': 'Nueva Visión',
     'depends': ['crm', 'mail', 'nesto_sync'],

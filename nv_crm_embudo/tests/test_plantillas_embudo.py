@@ -187,3 +187,45 @@ class TestAvisoRespuesta(TransactionCase):
         antes = self.env['mail.mail'].sudo().search_count([])
         lead.nv_avisar_respuesta()
         self.assertEqual(self.env['mail.mail'].sudo().search_count([]), antes)
+
+
+@tagged('post_install', '-at_install', 'nv_crm_embudo')
+class TestEnvioMasivoSinContactos(TransactionCase):
+    """El envío masivo (el que hace automation_oca) no debe crear un contacto por cada lead.
+
+    Odoo, en modo masivo, convierte el «Para» en res.partner con find_or_create. En el ensayo del
+    05/11/26 en la copia salieron 67 contactos basura (uno por email de lead) y nesto_sync intentó
+    publicarlos. Las plantillas del embudo llevan nv_sin_contactos para evitarlo.
+    """
+
+    def _enviar_en_masa(self, plantilla, lead):
+        composer = self.env['mail.compose.message'].with_context(active_ids=lead.ids).create({
+            'composition_mode': 'mass_mail', 'model': 'crm.lead', 'template_id': plantilla.id,
+        })
+        composer.write(composer._onchange_template_id(plantilla.id, 'mass_mail', 'crm.lead', lead.id)['value'])
+        composer.with_context(active_ids=lead.ids)._action_send_mail()
+        return self.env['mail.mail'].search([('model', '=', 'crm.lead'), ('res_id', '=', lead.id)], order='id desc', limit=1)
+
+    def test_las_plantillas_del_embudo_llevan_la_marca(self):
+        for xml_id, _a, _b in PLANTILLAS:
+            self.assertTrue(self.env.ref(xml_id).nv_sin_contactos, xml_id)
+
+    def test_el_envio_masivo_no_crea_contactos(self):
+        email = 'lead.sin.contacto@ejemplo.test'
+        Partner = self.env['res.partner']
+        self.assertFalse(Partner.search([('email', '=', email)]))
+        lead = self.env['crm.lead'].create({'name': 'Lead masivo', 'type': 'opportunity', 'email_from': email})
+        correo = self._enviar_en_masa(self.env.ref('nv_crm_embudo.embudo_correo_01'), lead)
+        self.assertFalse(Partner.search([('email', '=', email)]), 'El envío masivo no debe crear el contacto')
+        self.assertIn(email, correo.email_to or '', 'El correo sale a la dirección del lead')
+        self.assertFalse(correo.recipient_ids)
+        self.assertNotEqual(correo.state, 'cancel')
+
+    def test_sin_la_marca_odoo_si_crea_el_contacto(self):
+        """Documenta el comportamiento estándar, para que se note si Odoo lo cambia."""
+        email = 'lead.con.contacto@ejemplo.test'
+        plantilla = self.env.ref('nv_crm_embudo.embudo_correo_01').copy({'nv_sin_contactos': False})
+        lead = self.env['crm.lead'].create({'name': 'Lead masivo', 'type': 'opportunity', 'email_from': email})
+        correo = self._enviar_en_masa(plantilla, lead)
+        self.assertTrue(self.env['res.partner'].search([('email', '=', email)]))
+        self.assertEqual(correo.recipient_ids.mapped('email'), [email])

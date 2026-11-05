@@ -15,6 +15,7 @@
              (ruta probada en #10/#26), que es lo que necesita la rama «ha contestado». -->
         <field name="email_to">{{ object.email_from }}</field>
         <field name="use_default_to" eval="False"/>
+        <field name="nv_sin_contactos" eval="True"/>
         <field name="auto_delete" eval="False"/>
         <field name="lang">{{ object.lang_id.code or object.partner_id.lang }}</field>
         <field name="description">Correo del embudo de leads (Marketing). Un solo cierre: FINAL A si el lead no compra todavía, FINAL B si ya compra.</field>
@@ -146,6 +147,7 @@
              (ruta probada en #10/#26), que es lo que necesita la rama «ha contestado». -->
         <field name="email_to">{{ object.email_from }}</field>
         <field name="use_default_to" eval="False"/>
+        <field name="nv_sin_contactos" eval="True"/>
         <field name="auto_delete" eval="False"/>
         <field name="lang">{{ object.lang_id.code or object.partner_id.lang }}</field>
         <field name="description">Correo del embudo de leads (Marketing). Un solo cierre: FINAL A si el lead no compra todavía, FINAL B si ya compra.</field>
@@ -277,6 +279,7 @@
              (ruta probada en #10/#26), que es lo que necesita la rama «ha contestado». -->
         <field name="email_to">{{ object.email_from }}</field>
         <field name="use_default_to" eval="False"/>
+        <field name="nv_sin_contactos" eval="True"/>
         <field name="auto_delete" eval="False"/>
         <field name="lang">{{ object.lang_id.code or object.partner_id.lang }}</field>
         <field name="description">Correo del embudo de leads (Marketing). Un solo cierre: FINAL A si el lead no compra todavía, FINAL B si ya compra.</field>

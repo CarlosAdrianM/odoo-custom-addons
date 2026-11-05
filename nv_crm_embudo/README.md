@@ -95,6 +95,8 @@ En Odoo: Ajustes › Técnico › Correo electrónico › Plantillas, buscando �
 
 **Remitente:** `Nueva Visión | <vendedora>` con la dirección del parámetro del sistema **`nv_crm_embudo.email_from_embudo`** (Ajustes › Técnico › Parámetros del sistema; hay que crearlo). Si no existe se usa `marketing@nuevavision.es`. Ojo: el servidor SMTP tiene `from_filter` (#26) y cualquier dirección que no encaje la reescribe Odoo a `mail.default.from`; se mantiene el nombre visible, pero la dirección que ve el cliente será la de `mail.default.from` hasta que se resuelva #26.
 
+**Sin contactos basura:** las tres plantillas llevan la marca «No crear contactos al enviar en masa» (`nv_sin_contactos`). Sin ella, el envío masivo de Odoo (el que hace `automation_oca`) convierte el «Para» de cada lead en un `res.partner` con `find_or_create`: en el ensayo del 05/11/26 salieron 67 contactos nuevos, uno por email, y `nesto_sync` intentó publicarlos (no llegan a Nesto porque no tienen `cliente_externo`, pero se quedan en Odoo). Con la marca el correo sale a la dirección tal cual.
+
 **Responder a:** las plantillas no llevan `reply_to`, así que Odoo pone el alias del equipo del lead (p. ej. `ventatelefonica@`). La respuesta entra en el lead por el fetchmail y de ahí sale la rama «ha contestado» de `automation_oca` (ruta probada en #10 y #26). No poner el correo de la vendedora: la respuesta no entraría en Odoo. **Para:** `object.email_from` del lead. `auto_delete` desactivado para que quede el correo enviado.
 
 Las imágenes salen del servidor de Odoo (`web.base.url`), igual que el enlace de baja: tiene que ser una dirección `https://` pública y conviene tener `web.base.url.freeze` a `True` para que no la cambie un acceso interno.
