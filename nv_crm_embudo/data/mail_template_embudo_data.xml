@@ -121,7 +121,7 @@
 
               <p style="margin:22px 0 18px; padding-top:20px; border-top:1px solid #dddddd; font-size:15px; line-height:24px; color:#333333;">Responde a este correo y cuéntame qué necesitas.</p>
               <p style="margin:0; font-size:15px; line-height:23px; color:#333333;">Un saludo,<br/><strong><t t-out="object.user_id.name or 'El equipo de Nueva Visión'"/></strong><br/><span style="color:#777777;">Nueva Visión</span></p>
-              <p style="margin:22px 0 0; padding-top:18px; border-top:1px solid #dddddd; font-size:14px; line-height:22px; color:#555555;"><strong style="color:#222222;">PD:</strong> Tienes los protocolos en vídeo de nuestras marcas en la app de Nueva Visión. Entra con tu correo (si no tienes contraseña, pulsa «He olvidado mi contraseña»). Descárgala aquí: <a t-att-href="nv_url_app" target="_blank" style="color:#BD052B; font-weight:600; text-decoration:underline;">Android</a></p>
+              <p style="margin:22px 0 0; padding-top:18px; border-top:1px solid #dddddd; font-size:14px; line-height:22px; color:#555555;"><strong style="color:#222222;">PD:</strong> Tienes los protocolos en vídeo de nuestras marcas en la app de Nueva Visión. Entra con tu correo y tu NIF, sin contraseña. Descárgala aquí: <a t-att-href="nv_url_app" target="_blank" style="color:#BD052B; font-weight:600; text-decoration:underline;">Android</a></p>
             </td>
           </tr>
 
@@ -253,7 +253,7 @@
 
               <p style="margin:22px 0 18px; padding-top:20px; border-top:1px solid #dddddd; font-size:15px; line-height:24px; color:#333333;">Responde a este correo y cuéntame qué necesitas.</p>
               <p style="margin:0; font-size:15px; line-height:23px; color:#333333;">Un saludo,<br/><strong><t t-out="object.user_id.name or 'El equipo de Nueva Visión'"/></strong><br/><span style="color:#777777;">Nueva Visión</span></p>
-              <p style="margin:22px 0 0; padding-top:18px; border-top:1px solid #dddddd; font-size:14px; line-height:22px; color:#555555;"><strong style="color:#222222;">PD:</strong> Tienes los protocolos en vídeo de nuestras marcas en la app de Nueva Visión. Entra con tu correo (si no tienes contraseña, pulsa «He olvidado mi contraseña»). Descárgala aquí: <a t-att-href="nv_url_app" target="_blank" style="color:#BD052B; font-weight:600; text-decoration:underline;">Android</a></p>
+              <p style="margin:22px 0 0; padding-top:18px; border-top:1px solid #dddddd; font-size:14px; line-height:22px; color:#555555;"><strong style="color:#222222;">PD:</strong> Tienes los protocolos en vídeo de nuestras marcas en la app de Nueva Visión. Entra con tu correo y tu NIF, sin contraseña. Descárgala aquí: <a t-att-href="nv_url_app" target="_blank" style="color:#BD052B; font-weight:600; text-decoration:underline;">Android</a></p>
             </td>
           </tr>
 
@@ -385,7 +385,7 @@
 
               <p style="margin:22px 0 18px; padding-top:20px; border-top:1px solid #dddddd; font-size:15px; line-height:24px; color:#333333;">Responde a este correo y cuéntame qué necesitas.</p>
               <p style="margin:0; font-size:15px; line-height:23px; color:#333333;">Un saludo,<br/><strong><t t-out="object.user_id.name or 'El equipo de Nueva Visión'"/></strong><br/><span style="color:#777777;">Nueva Visión</span></p>
-              <p style="margin:22px 0 0; padding-top:18px; border-top:1px solid #dddddd; font-size:14px; line-height:22px; color:#555555;"><strong style="color:#222222;">PD:</strong> Tienes los protocolos en vídeo de nuestras marcas en la app de Nueva Visión. Entra con tu correo (si no tienes contraseña, pulsa «He olvidado mi contraseña»). Descárgala aquí: <a t-att-href="nv_url_app" target="_blank" style="color:#BD052B; font-weight:600; text-decoration:underline;">Android</a></p>
+              <p style="margin:22px 0 0; padding-top:18px; border-top:1px solid #dddddd; font-size:14px; line-height:22px; color:#555555;"><strong style="color:#222222;">PD:</strong> Tienes los protocolos en vídeo de nuestras marcas en la app de Nueva Visión. Entra con tu correo y tu NIF, sin contraseña. Descárgala aquí: <a t-att-href="nv_url_app" target="_blank" style="color:#BD052B; font-weight:600; text-decoration:underline;">Android</a></p>
             </td>
           </tr>
 

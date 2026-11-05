@@ -54,7 +54,7 @@ class TestPlantillasEmbudo(TransactionCase):
         self.assertLess(len(cuerpo.encode('utf-8')), 100 * 1024)
         self.assertIn('PD:', cuerpo, 'Posdata de la app')
         self.assertIn('https://play.google.com/store/apps/details?id=com.nuevavision.nestotiendas', cuerpo)
-        self.assertIn('He olvidado mi contraseña', cuerpo)
+        self.assertIn('Entra con tu correo y tu NIF, sin contraseña.', cuerpo, 'La app no usa contraseña')
         self.assertLess(cuerpo.index('PD:'), cuerpo.index('/nv/baja/'), 'La posdata va antes del pie legal')
 
     # ------------------------------------------------------------- FINAL A

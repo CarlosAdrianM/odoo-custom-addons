@@ -87,7 +87,7 @@ En Odoo: Ajustes › Técnico › Correo electrónico › Plantillas, buscando �
 | `[NOMBRE DE LA VENDEDORA]` | `object.user_id.name` (sin vendedora: «El equipo de Nueva Visión») |
 | FINAL A / FINAL B | Uno solo, a todo el ancho: FINAL B si `object.nv_ya_compra()`, FINAL A si no |
 | `assets/...` | `https://<web.base.url>/nv_crm_embudo/static/src/img/...` (las imágenes van en el módulo) |
-| (nuevo, tras la firma) | Posdata de la app (en los dos finales): «PD: Tienes los protocolos en vídeo de nuestras marcas en la app de Nueva Visión. Entra con tu correo (si no tienes contraseña, pulsa «He olvidado mi contraseña»). Descárgala aquí: Android», con enlace a Google Play, con el enlace del parámetro `nv_crm_embudo.url_app`. La frase está en `POSDATA_APP` del generador, así que sale igual en los correos siguientes |
+| (nuevo, tras la firma) | Posdata de la app (en los dos finales): «PD: Tienes los protocolos en vídeo de nuestras marcas en la app de Nueva Visión. Entra con tu correo y tu NIF, sin contraseña. Descárgala aquí: Android», con enlace a Google Play, con el enlace del parámetro `nv_crm_embudo.url_app`. La frase está en `POSDATA_APP` del generador, así que sale igual en los correos siguientes |
 | Aviso del pie | Pie legal y enlace de baja firmado (`object.nv_url_baja()`) |
 | Preencabezado | Ya venía en el HTML como `div` oculto al principio del cuerpo; se deja tal cual |
 
