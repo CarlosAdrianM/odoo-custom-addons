@@ -119,7 +119,14 @@
                 </tr>
               </table>
 
-              <p style="margin:22px 0 18px; padding-top:20px; border-top:1px solid #dddddd; font-size:15px; line-height:24px; color:#333333;">Responde a este correo y cuéntame qué necesitas.</p>
+              <p style="margin:22px 0 14px; padding-top:20px; border-top:1px solid #dddddd; font-size:15px; line-height:24px; color:#333333;">Responde a este correo y cuéntame qué necesitas, o escríbenos desde la web:</p>
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="border-collapse:separate; margin:0 0 24px;">
+                <tr>
+                  <td align="center" bgcolor="#BD052B" style="border-radius:3px;">
+                    <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/content/136-contacta-con-nueva-vision-distribuidor-de-estetica-y-peluqueria-profesional-en-madrid" target="_blank" style="display:inline-block; padding:13px 24px; font-size:15px; line-height:20px; font-weight:600; color:#ffffff; text-decoration:none; border:1px solid #BD052B; border-radius:3px;">Contacta con nosotros</a>
+                  </td>
+                </tr>
+              </table>
               <p style="margin:0; font-size:15px; line-height:23px; color:#333333;">Un saludo,<br/><strong><t t-out="object.user_id.name or 'El equipo de Nueva Visión'"/></strong><br/><span style="color:#777777;">Nueva Visión</span></p>
               <p style="margin:22px 0 0; padding-top:18px; border-top:1px solid #dddddd; font-size:14px; line-height:22px; color:#555555;"><strong style="color:#222222;">PD:</strong> Tienes los protocolos en vídeo de nuestras marcas en la app de Nueva Visión. Entra con tu correo y tu NIF, sin contraseña. Descárgala aquí: <a t-att-href="nv_url_app" target="_blank" style="color:#BD052B; font-weight:600; text-decoration:underline;">Android</a></p>
             </td>
@@ -251,7 +258,14 @@
                 </tr>
               </table>
 
-              <p style="margin:22px 0 18px; padding-top:20px; border-top:1px solid #dddddd; font-size:15px; line-height:24px; color:#333333;">Responde a este correo y cuéntame qué necesitas.</p>
+              <p style="margin:22px 0 14px; padding-top:20px; border-top:1px solid #dddddd; font-size:15px; line-height:24px; color:#333333;">Responde a este correo y cuéntame qué necesitas, o escríbenos desde la web:</p>
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="border-collapse:separate; margin:0 0 24px;">
+                <tr>
+                  <td align="center" bgcolor="#BD052B" style="border-radius:3px;">
+                    <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/content/136-contacta-con-nueva-vision-distribuidor-de-estetica-y-peluqueria-profesional-en-madrid" target="_blank" style="display:inline-block; padding:13px 24px; font-size:15px; line-height:20px; font-weight:600; color:#ffffff; text-decoration:none; border:1px solid #BD052B; border-radius:3px;">Contacta con nosotros</a>
+                  </td>
+                </tr>
+              </table>
               <p style="margin:0; font-size:15px; line-height:23px; color:#333333;">Un saludo,<br/><strong><t t-out="object.user_id.name or 'El equipo de Nueva Visión'"/></strong><br/><span style="color:#777777;">Nueva Visión</span></p>
               <p style="margin:22px 0 0; padding-top:18px; border-top:1px solid #dddddd; font-size:14px; line-height:22px; color:#555555;"><strong style="color:#222222;">PD:</strong> Tienes los protocolos en vídeo de nuestras marcas en la app de Nueva Visión. Entra con tu correo y tu NIF, sin contraseña. Descárgala aquí: <a t-att-href="nv_url_app" target="_blank" style="color:#BD052B; font-weight:600; text-decoration:underline;">Android</a></p>
             </td>
@@ -383,7 +397,14 @@
                 </tr>
               </table>
 
-              <p style="margin:22px 0 18px; padding-top:20px; border-top:1px solid #dddddd; font-size:15px; line-height:24px; color:#333333;">Responde a este correo y cuéntame qué necesitas.</p>
+              <p style="margin:22px 0 14px; padding-top:20px; border-top:1px solid #dddddd; font-size:15px; line-height:24px; color:#333333;">Responde a este correo y cuéntame qué necesitas, o escríbenos desde la web:</p>
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="border-collapse:separate; margin:0 0 24px;">
+                <tr>
+                  <td align="center" bgcolor="#BD052B" style="border-radius:3px;">
+                    <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/content/136-contacta-con-nueva-vision-distribuidor-de-estetica-y-peluqueria-profesional-en-madrid" target="_blank" style="display:inline-block; padding:13px 24px; font-size:15px; line-height:20px; font-weight:600; color:#ffffff; text-decoration:none; border:1px solid #BD052B; border-radius:3px;">Contacta con nosotros</a>
+                  </td>
+                </tr>
+              </table>
               <p style="margin:0; font-size:15px; line-height:23px; color:#333333;">Un saludo,<br/><strong><t t-out="object.user_id.name or 'El equipo de Nueva Visión'"/></strong><br/><span style="color:#777777;">Nueva Visión</span></p>
               <p style="margin:22px 0 0; padding-top:18px; border-top:1px solid #dddddd; font-size:14px; line-height:22px; color:#555555;"><strong style="color:#222222;">PD:</strong> Tienes los protocolos en vídeo de nuestras marcas en la app de Nueva Visión. Entra con tu correo y tu NIF, sin contraseña. Descárgala aquí: <a t-att-href="nv_url_app" target="_blank" style="color:#BD052B; font-weight:600; text-decoration:underline;">Android</a></p>
             </td>
