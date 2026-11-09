@@ -1,9 +1,17 @@
 {
     'name': 'Nesto Sync',
-    'version': '2.9.2',  # 2.9.2: Los clientes nuevos vuelven a entrar con país
+    'version': '2.10.0',  # 2.10.0: Origen del cliente y consentimiento de comunicaciones (#43)
     'summary': 'Sincronización bidireccional de tablas entre Nesto y Odoo via Google Pub/Sub',
     'description': '''
         Módulo de sincronización bidireccional entre Nesto y Odoo
+
+        Versión 2.10.0 (2026-11-09):
+        - Origen del cliente y consentimiento de comunicaciones (issue #43,
+          NestoAPI#623). Campos nuevos del mensaje de cliente: Origen,
+          FechaOrigen (hora de Madrid, se guarda en UTC) y AceptaComunicaciones
+          (selección si/no: vacío = Nesto no lo ha mandado). Solo los manda el
+          importador de leads, una vez, así que un null no vacía nada. Solo
+          entran: no se devuelven a Nesto
 
         Versión 2.9.2 (2026-09-23):
         - Los clientes nuevos vuelven a entrar con país (issue #30). Los mapeos
