@@ -174,6 +174,9 @@ class CrmLead(models.Model):
         todavía puede tenerlos dentro de un rato y hay que volver a mirarlo. Los clientes que
         ya existían al instalar el módulo quedan marcados por el post_init_hook.
         """
+        # Antes del enlace: los clientes de Meta (#43) tienen su propia oportunidad
+        self._nv_crear_oportunidades_origen()
+
         ahora = fields.Datetime.now()
         clientes = self.env['res.partner'].sudo().with_context(active_test=False).search([
             ('cliente_externo', '!=', False),

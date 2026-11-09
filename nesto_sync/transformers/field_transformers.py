@@ -5,7 +5,8 @@ Los transformers convierten valores del formato de Nesto al formato de Odoo.
 Cada transformer es una clase con un método transform().
 """
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
+from zoneinfo import ZoneInfo
 
 from ..models.phone_processor import PhoneProcessor
 from ..models.country_manager import CountryManager
@@ -785,6 +786,84 @@ class FechaTransformer:
             return date.fromisoformat(texto[:10])
         except ValueError:
             raise ValueError(f"Fecha de Nesto con formato no reconocido: {value!r}")
+
+
+def _destino(context, nombre):
+    mapping = context.get('mapping') or {}
+    odoo_field = mapping.get('odoo_field') or (mapping.get('odoo_fields') or [None])[0]
+    if not odoo_field:
+        raise ValueError(f"El transformer '{nombre}' necesita odoo_field u odoo_fields en el mapeo")
+    return odoo_field
+
+
+@FieldTransformerRegistry.register('sin_vaciar')
+class SinVaciarTransformer:
+    """Copia el valor tal cual, pero un null o una cadena vacía NO vacían el campo (#43)
+
+    Para datos que Nesto manda una sola vez y que no se pueden perder, como el origen
+    del cliente: si algún mensaje normal acabara trayendo la clave con null
+    (System.Text.Json serializa los nulos, lo que provocó #25), la ficha conserva su valor.
+    """
+
+    def transform(self, value, context):
+        odoo_field = _destino(context, 'sin_vaciar')
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return {}
+        return {odoo_field: value.strip() if isinstance(value, str) else value}
+
+
+@FieldTransformerRegistry.register('fecha_hora_madrid')
+class FechaHoraMadridTransformer:
+    """Fecha y hora de Nesto a un Datetime de Odoo, que se guarda en UTC (#43)
+
+    Nesto manda la hora de España sin zona ('2026-11-05T21:48:00'). Si viene con zona
+    ('Z', '+01:00') se respeta. Un null o una cadena vacía no tocan el campo.
+    """
+
+    ZONA = ZoneInfo('Europe/Madrid')
+
+    def transform(self, value, context):
+        odoo_field = _destino(context, 'fecha_hora_madrid')
+        if value in (None, False) or (isinstance(value, str) and not value.strip()):
+            return {}
+        if isinstance(value, datetime):
+            momento = value
+        else:
+            texto = str(value).strip()
+            if texto.endswith('Z'):
+                texto = texto[:-1] + '+00:00'
+            try:
+                momento = datetime.fromisoformat(texto)
+            except ValueError:
+                raise ValueError(f"Fecha y hora de Nesto con formato no reconocido: {value!r}")
+        if momento.tzinfo is None:
+            momento = momento.replace(tzinfo=self.ZONA)
+        return {odoo_field: momento.astimezone(timezone.utc).replace(tzinfo=None, microsecond=0)}
+
+
+@FieldTransformerRegistry.register('acepta_comunicaciones')
+class AceptaComunicacionesTransformer:
+    """AceptaComunicaciones (bool) a la selección 'si'/'no' de Odoo (#43)
+
+    Hacen falta tres estados: «acepta», «no acepta» y «no lo sabemos» (los clientes de
+    siempre, que nunca lo han mandado). Un Boolean de Odoo confunde False con vacío, y
+    para el embudo la diferencia importa: solo «no» saca al cliente de los correos.
+    Un null no toca el campo.
+    """
+
+    def transform(self, value, context):
+        odoo_field = _destino(context, 'acepta_comunicaciones')
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return {}
+        if isinstance(value, str):
+            texto = value.strip().lower()
+            if texto in ('true', '1', 'si', 'sí'):
+                value = True
+            elif texto in ('false', '0', 'no'):
+                value = False
+            else:
+                raise ValueError(f"AceptaComunicaciones con valor no reconocido: {value!r}")
+        return {odoo_field: 'si' if value else 'no'}
 
 
 @FieldTransformerRegistry.register('codigo_barras')

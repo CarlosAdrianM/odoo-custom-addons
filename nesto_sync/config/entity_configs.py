@@ -91,6 +91,26 @@ ENTITY_CONFIGS = {
                 'reverse': False,
             },
 
+            # --- Origen del cliente y consentimiento (issue #43, NestoAPI#623) ---
+            # Solo los manda el importador de leads de Nesto (al crear el cliente o al
+            # ponerle el origen), una vez. Por eso un null NO vacía nada: si se perdieran,
+            # no volverían a llegar. Solo entran: nunca se devuelven a Nesto.
+            'Origen': {
+                'transformer': 'sin_vaciar',
+                'odoo_field': 'origen_cliente',
+                'reverse': False,
+            },
+            'FechaOrigen': {
+                'transformer': 'fecha_hora_madrid',
+                'odoo_field': 'fecha_origen',
+                'reverse': False,
+            },
+            'AceptaComunicaciones': {
+                'transformer': 'acepta_comunicaciones',
+                'odoo_field': 'acepta_comunicaciones',
+                'reverse': False,
+            },
+
             # --- Campo PersonaContacto (cuando viene en la raíz del mensaje) ---
             # Nesto envía mensajes planos donde PersonaContacto está directamente en la raíz
             # Este campo determina junto con Cliente y Contacto el registro único
