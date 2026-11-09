@@ -53,3 +53,6 @@ from . import test_aviso_asignacion
 
 # Tests del país de los clientes (Issue #30)
 from . import test_pais
+
+# Tests del origen del cliente y el consentimiento (Issue #43)
+from . import test_origen_cliente

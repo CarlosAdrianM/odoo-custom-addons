@@ -27,6 +27,22 @@ class ResPartner(models.Model):
         string="Fecha del último pedido", readonly=True, copy=False, index=True,
         help="Último pedido real del cliente en Nesto. La calcula y la mantiene Nesto.")
 
+    # Origen y consentimiento (issue #43). Los manda el importador de leads de Nesto
+    # (ClientesOrigen) en el contacto principal. Solo entran: nunca se devuelven a Nesto.
+    origen_cliente = fields.Char(
+        string="Origen del cliente", readonly=True, copy=False, index=True,
+        help="Por dónde entró el cliente en Nesto (tabla ClientesOrigen), p. ej. "
+             "META-HARMONIA-0926. Nesto no lo cambia nunca una vez puesto.")
+    fecha_origen = fields.Datetime(
+        string="Fecha de origen", readonly=True, copy=False,
+        help="Cuándo entró el cliente por ese origen (para Meta, la fecha del lead).")
+    acepta_comunicaciones = fields.Selection(
+        [('si', 'Acepta'), ('no', 'No acepta')],
+        string="Acepta comunicaciones comerciales", readonly=True, copy=False, index=True,
+        help="Consentimiento de correos comerciales que guarda Nesto. Vacío = Nesto no lo "
+             "ha mandado (clientes anteriores al importador de leads). Con «No acepta» el "
+             "cliente no entra en ningún embudo de correos.")
+
     # Nota: NO usamos vendedor_externo. El mapeo de vendedores se hace
     # exclusivamente por email (VendedorEmail). Cada sistema resuelve
     # el código de vendedor desde el email de forma independiente.
