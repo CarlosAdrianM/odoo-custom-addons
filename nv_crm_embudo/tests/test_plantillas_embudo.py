@@ -56,6 +56,9 @@ class TestPlantillasEmbudo(TransactionCase):
         self.assertIn('https://play.google.com/store/apps/details?id=com.nuevavision.nestotiendas', cuerpo)
         self.assertIn('Entra con tu correo y tu NIF, sin contraseña.', cuerpo, 'La app no usa contraseña')
         self.assertLess(cuerpo.index('PD:'), cuerpo.index('/nv/baja/'), 'La posdata va antes del pie legal')
+        self.assertIn('>Contacta con nosotros</a>', cuerpo, 'Botón de contacto (Laura, 06/11)')
+        self.assertIn('/content/136-contacta-con-nueva-vision-', cuerpo)
+        self.assertLess(cuerpo.index('Contacta con nosotros'), cuerpo.index('Un saludo,'), 'El botón va antes de la firma')
 
     # ------------------------------------------------------------- FINAL A
 

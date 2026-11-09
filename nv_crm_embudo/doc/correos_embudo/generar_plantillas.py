@@ -68,6 +68,23 @@ FINALES = re.compile(
     r'<!-- FINAL B[^>]*-->\s*<td[^>]*>(?P<b>.*?)</td>\s*<!-- FIN FINAL B -->',
     re.S)
 
+# Botón «Contacta con nosotros» (Laura, 06/11/26) bajo la invitación a responder
+RESPONDE = ('<p style="margin:22px 0 18px; padding-top:20px; border-top:1px solid #dddddd; font-size:15px; '
+            'line-height:24px; color:#333333;">Responde a este correo y cuéntame qué necesitas.</p>')
+URL_CONTACTO = ('https://www.productosdeesteticaypeluqueriaprofesional.com/content/'
+                '136-contacta-con-nueva-vision-distribuidor-de-estetica-y-peluqueria-profesional-en-madrid')
+RESPONDE_CON_BOTON = (
+    '<p style="margin:22px 0 14px; padding-top:20px; border-top:1px solid #dddddd; font-size:15px; '
+    'line-height:24px; color:#333333;">Responde a este correo y cuéntame qué necesitas, o escríbenos desde la web:</p>\n'
+    '              <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="border-collapse:separate; margin:0 0 24px;">\n'
+    '                <tr>\n'
+    '                  <td align="center" bgcolor="#BD052B" style="border-radius:3px;">\n'
+    '                    <a href="%s" target="_blank" style="display:inline-block; padding:13px 24px; font-size:15px; '
+    'line-height:20px; font-weight:600; color:#ffffff; text-decoration:none; border:1px solid #BD052B; '
+    'border-radius:3px;">Contacta con nosotros</a>\n'
+    '                  </td>\n'
+    '                </tr>\n'
+    '              </table>' % URL_CONTACTO)
 TD_FINAL = '<td %s width="100%%" valign="top" style="width:100%%; padding:0;">%s</td>'
 
 
@@ -109,6 +126,8 @@ def convertir(origen, preencabezado):
 
     cuerpo = una_vez(re.escape(FIRMA_FIN), lambda m: FIRMA_FIN + SALTO_PD + POSDATA_APP,
                      cuerpo, '%s: fin de la firma' % origen.name)
+    cuerpo = una_vez(re.escape(RESPONDE), lambda m: RESPONDE_CON_BOTON, cuerpo,
+                     '%s: invitación a responder' % origen.name)
     cuerpo = una_vez(AVISO_PIE.pattern, lambda m: PIE_LEGAL, cuerpo, '%s: aviso del pie' % origen.name)
     cuerpo = re.sub(r'<!--.*?-->\s*', '', cuerpo, flags=re.S)
 
