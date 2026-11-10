@@ -43,9 +43,42 @@ class ResPartner(models.Model):
              "ha mandado (clientes anteriores al importador de leads). Con «No acepta» el "
              "cliente no entra en ningún embudo de correos.")
 
-    # Nota: NO usamos vendedor_externo. El mapeo de vendedores se hace
-    # exclusivamente por email (VendedorEmail). Cada sistema resuelve
-    # el código de vendedor desde el email de forma independiente.
+    # El usuario vendedor (user_id) se resuelve SOLO por email (VendedorEmail): cada sistema
+    # resuelve el código desde el email por su cuenta. Los códigos de aquí abajo son
+    # informativos y para segmentar (p. ej. «NV» = sin vendedor real, que llega con
+    # VendedorEmail a null y no se distingue de otro modo). Solo entran: nunca vuelven a Nesto.
+    vendedor_nesto = fields.Char(
+        string="Vendedor en Nesto", readonly=True, copy=False, index=True,
+        help="Código del vendedor principal del contacto en Nesto (Clientes.Vendedor). "
+             "«NV» es el genérico: el cliente no es cartera de nadie.")
+    vendedor_peluqueria_nesto = fields.Char(
+        string="Vendedor de peluquería en Nesto", readonly=True, copy=False, index=True,
+        help="Código del vendedor del grupo de peluquería en Nesto "
+             "(VendedoresClienteGrupoProducto). Vacío = Nesto no lo ha mandado.")
+    estado_nesto = fields.Char(
+        string="Estado en Nesto", readonly=True, copy=False, index=True,
+        help="Clientes.Estado de Nesto tal cual (0 visita de comercial, 9 equipo telefónico, "
+             "8 particular web, 93/11/22 sin compra...). Es texto para distinguir el estado 0 "
+             "de «Nesto no lo ha mandado» (vacío). Los negativos son fichas anuladas.")
+
+    # Bloques del embudo de reactivación. Solo los traen los mensajes que salen del
+    # endpoint de republicación por bloques de NestoAPI; un mensaje normal no los borra.
+    bloque_embudo = fields.Char(
+        string="Bloque del embudo", readonly=True, copy=False, index=True,
+        help="Identificador del bloque con el que Nesto mandó este cliente para el embudo "
+             "(p. ej. NV-2026-11-01). Vacío = no ha llegado por ningún bloque.")
+    responsable_embudo_email = fields.Char(
+        string="Responsable del embudo (correo)", readonly=True, copy=False,
+        help="A quién se avisa si este contacto responde al embudo o hace un pedido. Lo "
+             "calcula Nesto con el código postal del contacto al encolar el bloque.")
+    responsable_embudo_tipo = fields.Char(
+        string="Responsable del embudo (tipo)", readonly=True, copy=False,
+        help="EquipoAlberto, Vendedor o TiendaOnline, según el vendedor del código postal.")
+    enviar_boletin = fields.Selection(
+        [('si', 'Sí'), ('no', 'No (baja)')],
+        string="Enviar boletín", readonly=True, copy=False, index=True,
+        help="PersonasContactoCliente.EnviarBoletin de Nesto, por persona de contacto. «No» es "
+             "una baja expresa: a esa persona no se le escribe. Vacío = Nesto no lo ha mandado.")
 
     @api.constrains('cliente_externo', 'contacto_externo', 'persona_contacto_externa')
     def _check_unique_combinations(self):

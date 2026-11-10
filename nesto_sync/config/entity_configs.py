@@ -111,6 +111,33 @@ ENTITY_CONFIGS = {
                 'reverse': False,
             },
 
+            # --- Bloques del embudo de reactivación (NestoAPI: api/Clientes/Sync/Republicar) ---
+            # VendedorPeluqueria viaja en todos los mensajes; los otros tres, solo en los
+            # que salen del endpoint de republicación por bloques. Un mensaje normal
+            # posterior no los trae (o los trae a null) y NO debe borrarlos: 'sin_vaciar'.
+            # Los códigos de Vendedor y Estado los guarda el post-processor
+            # 'codigos_de_nesto', porque esas dos claves ya tienen su mapeo (user_id, active).
+            'VendedorPeluqueria': {
+                'transformer': 'sin_vaciar',
+                'odoo_field': 'vendedor_peluqueria_nesto',
+                'reverse': False,
+            },
+            'BloqueEmbudo': {
+                'transformer': 'sin_vaciar',
+                'odoo_field': 'bloque_embudo',
+                'reverse': False,
+            },
+            'ResponsableEmbudoEmail': {
+                'transformer': 'sin_vaciar',
+                'odoo_field': 'responsable_embudo_email',
+                'reverse': False,
+            },
+            'ResponsableEmbudoTipo': {
+                'transformer': 'sin_vaciar',
+                'odoo_field': 'responsable_embudo_tipo',
+                'reverse': False,
+            },
+
             # --- Campo PersonaContacto (cuando viene en la raíz del mensaje) ---
             # Nesto envía mensajes planos donde PersonaContacto está directamente en la raíz
             # Este campo determina junto con Cliente y Contacto el registro único
@@ -178,6 +205,13 @@ ENTITY_CONFIGS = {
             'Comentarios': {
                 'odoo_field': 'comment'
             },
+            # PersonasContactoCliente.EnviarBoletin de Nesto: false = baja expresa de esa
+            # persona. Selección si/no como acepta_comunicaciones: ausente o null no toca.
+            'EnviarBoletin': {
+                'transformer': 'acepta_comunicaciones',
+                'odoo_field': 'enviar_boletin',
+                'reverse': False,
+            },
 
             # Campos fijos para children
             '_type': {
@@ -222,6 +256,7 @@ ENTITY_CONFIGS = {
         'post_processors': [
             'assign_email_from_children',  # Asigna email del primer child al parent
             'merge_comments',  # Combina _append_comment en comment final
+            'codigos_de_nesto',  # Guarda los códigos de Vendedor y Estado tal cual
             # Personas de contacto sin nombre: correo, cargo, o se dejan fuera
             'nombre_de_persona_de_contacto',
         ],

@@ -68,6 +68,27 @@ class AssignEmailFromChildren:
         return parent_values, children_values_list
 
 
+@PostProcessorRegistry.register('codigos_de_nesto')
+class CodigosDeNesto:
+    """Guarda tal cual los códigos de Vendedor y Estado del mensaje de cliente
+
+    Esas dos claves ya tienen mapeo (Vendedor -> user_id por VendedorEmail, Estado ->
+    active) y un mapeo no admite dos destinos sin meterlos en el camino de vuelta hacia
+    Nesto. Aquí solo entran: clave ausente o null = no tocar. Las personas de contacto
+    no llevan estos datos.
+    """
+
+    def process(self, parent_values, children_values_list, context):
+        message = context.get('message') or {}
+        vendedor = message.get('Vendedor')
+        if isinstance(vendedor, str) and vendedor.strip():
+            parent_values['vendedor_nesto'] = vendedor.strip()
+        estado = message.get('Estado')
+        if estado is not None and not isinstance(estado, bool) and str(estado).strip():
+            parent_values['estado_nesto'] = str(estado).strip()
+        return parent_values, children_values_list
+
+
 @PostProcessorRegistry.register('merge_comments')
 class MergeComments:
     """Combina múltiples campos _append_comment en un único comment"""
