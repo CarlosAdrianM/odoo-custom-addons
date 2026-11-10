@@ -69,6 +69,9 @@ class CrmLead(models.Model):
             persona = self.partner_id.name
         if persona and persona.strip():
             nombre = persona.split()[0]
+            # Una persona de contacto sin nombre en Nesto llega con su correo como nombre
+            if '@' in nombre:
+                return ''
             return nombre.capitalize() if nombre.isupper() else nombre
         empresa = self.partner_name or (self.partner_id.name if self.partner_id else '')
         return (empresa or '').strip()
@@ -82,6 +85,9 @@ class CrmLead(models.Model):
         self.ensure_one()
         if not self.partner_id:
             return False
+        if self.nv_bloque_embudo:
+            # Reactivación: los pedidos de hace años no cuentan, solo uno posterior a la entrada
+            return self._nv_ha_comprado_tras_entrar()
         _presupuesto, pedido = self._nv_fechas_cliente(self.partner_id.sudo().commercial_partner_id)
         return bool(pedido)
 
@@ -125,13 +131,17 @@ class CrmLead(models.Model):
         """Copias del aviso: Dirección y, si es de su equipo, el jefe de equipo. Sin repetir a la vendedora."""
         self.ensure_one()
         direcciones = self._nv_param(PARAM_CC_DIRECCION).split(',')
-        if self._nv_es_equipo_jefe():
+        # En los bloques de reactivación el reparto ya lo ha hecho Nesto por código postal
+        # (si toca al equipo del jefe, el destinatario es él): la copia es solo a Dirección.
+        if not self.nv_bloque_embudo and self._nv_es_equipo_jefe():
             direcciones += self._nv_param(PARAM_CC_JEFE_EQUIPO).split(',')
-        propia = tools.email_normalize(self.user_id.email or '')
-        vistas, copias = set(), []
+        # Ni la vendedora ni el responsable del bloque: ya son los destinatarios
+        vistas = {tools.email_normalize(self.user_id.email or ''),
+                  tools.email_normalize(self.nv_responsable_embudo_email or '')}
+        copias = []
         for direccion in (d.strip() for d in direcciones):
             normalizada = tools.email_normalize(direccion)
-            if normalizada and normalizada != propia and normalizada not in vistas:
+            if normalizada and normalizada not in vistas:
                 vistas.add(normalizada)
                 copias.append(direccion)
         return ', '.join(copias)
@@ -150,13 +160,28 @@ class CrmLead(models.Model):
         Lo llama la acción de servidor del paso de la rama «ha contestado» de automation_oca
         (código: records.nv_avisar_respuesta()). La tarea la crea otro paso; esto es solo el aviso.
         Un lead sin vendedora con email no manda nada (queda en el log).
+
+        Los leads de un bloque de reactivación nacen sin vendedora: el aviso va al
+        responsable que mandó Nesto (por código postal) y, si tiene usuario en Odoo, se le
+        pone como vendedor en este momento.
         """
         plantilla = self.env.ref('nv_crm_embudo.embudo_aviso_respuesta')
         for lead in self:
-            if not lead.user_id.email:
-                _logger.warning('Lead %s ha contestado al embudo pero su vendedora no tiene email: sin aviso', lead.id)
+            valores = None
+            if lead.nv_bloque_embudo:
+                lead._nv_asignar_responsable()
+                destino = lead.nv_responsable_embudo_email or lead.user_id.email
+                copias = lead.nv_cc_aviso_respuesta()
+                if not destino:
+                    # Nesto no mandó responsable: que al menos se entere Dirección
+                    destino, copias = copias, ''
+                valores = {'email_to': destino, 'email_cc': copias or False}
+            else:
+                destino = lead.user_id.email
+            if not destino:
+                _logger.warning('Lead %s ha contestado al embudo pero no hay a quién avisar: sin aviso', lead.id)
                 continue
-            plantilla.sudo().send_mail(lead.id, force_send=False)
+            plantilla.sudo().send_mail(lead.id, force_send=False, email_values=valores)
         return True
 
     # ------------------------------------------- enlace con clientes de Nesto
@@ -176,7 +201,12 @@ class CrmLead(models.Model):
         """
         # Antes del enlace: los clientes de Meta (#43) tienen su propia oportunidad
         self._nv_crear_oportunidades_origen()
+        self._nv_enlazar_clientes_nuevos(limite)
+        # Después del enlace: los bloques de reactivación miran si la persona ya tiene lead
+        self._nv_poblar_embudo_bloques()
 
+    @api.model
+    def _nv_enlazar_clientes_nuevos(self, limite=100):
         ahora = fields.Datetime.now()
         clientes = self.env['res.partner'].sudo().with_context(active_test=False).search([
             ('cliente_externo', '!=', False),
@@ -337,6 +367,10 @@ class CrmLead(models.Model):
                 ('partner_id.commercial_partner_id', '=', cliente.id),
                 ('stage_id.is_won', '=', False),
             ])
+            # Los de un bloque de reactivación ya eran clientes: solo los mueve un pedido nuevo
+            de_bloque = leads.filtered('nv_bloque_embudo')
+            de_bloque._nv_avanzar_reactivacion(cliente)
+            leads -= de_bloque
             if not leads:
                 continue
             fecha_presupuesto, fecha_pedido = self._nv_fechas_cliente(cliente)

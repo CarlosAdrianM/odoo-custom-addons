@@ -12,6 +12,7 @@
                 <field name="email_from" optional="show"/>
                 <field name="phone" optional="show"/>
                 <field name="campaign_id" optional="show"/>
+                <field name="nv_bloque_embudo" optional="hide"/>
                 <field name="stage_id"/>
                 <field name="create_date" string="Alta" widget="date"/>
                 <field name="date_last_stage_update" string="Sin moverse desde" widget="remaining_days"/>

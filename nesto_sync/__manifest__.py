@@ -1,9 +1,18 @@
 {
     'name': 'Nesto Sync',
-    'version': '2.10.0',  # 2.10.0: Origen del cliente y consentimiento de comunicaciones (#43)
+    'version': '2.11.0',  # 2.11.0: Códigos de vendedor y estado, baja de boletín y bloques del embudo
     'summary': 'Sincronización bidireccional de tablas entre Nesto y Odoo via Google Pub/Sub',
     'description': '''
         Módulo de sincronización bidireccional entre Nesto y Odoo
+
+        Versión 2.11.0 (2026-11-10):
+        - Se guardan los códigos de Vendedor y Estado del cliente tal cual llegan
+          (vendedor_nesto, estado_nesto): hasta ahora se descartaban y «NV» no se
+          distinguía de un vendedor sin resolver. Campos nuevos del mensaje:
+          VendedorPeluqueria, PersonasContacto[].EnviarBoletin (si/no por
+          persona) y, solo en los mensajes de los bloques del embudo,
+          BloqueEmbudo, ResponsableEmbudoEmail y ResponsableEmbudoTipo. En todos,
+          clave ausente o null = no tocar. Solo entran: no se devuelven a Nesto
 
         Versión 2.10.0 (2026-11-09):
         - Origen del cliente y consentimiento de comunicaciones (issue #43,

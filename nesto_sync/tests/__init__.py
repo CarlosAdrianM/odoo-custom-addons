@@ -56,3 +56,6 @@ from . import test_pais
 
 # Tests del origen del cliente y el consentimiento (Issue #43)
 from . import test_origen_cliente
+
+# Códigos de vendedor y estado, baja de boletín y bloques del embudo
+from . import test_bloques_embudo

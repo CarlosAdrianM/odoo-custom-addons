@@ -1,8 +1,8 @@
 from odoo import fields, models
 
-# Fechas de nesto_sync (#8) que mueven el embudo. fecha_ultimo_pedido no mueve nada:
-# es para segmentar clientes que llevan tiempo sin comprar.
-CAMPOS_FECHAS_EMBUDO = ('fecha_primer_presupuesto', 'fecha_primer_pedido')
+# Fechas de nesto_sync (#8) que mueven el embudo. fecha_ultimo_pedido solo mueve a los
+# leads de un bloque de reactivación: se ganan con un pedido posterior a su entrada.
+CAMPOS_FECHAS_EMBUDO = ('fecha_primer_presupuesto', 'fecha_primer_pedido', 'fecha_ultimo_pedido')
 
 
 class ResPartner(models.Model):
