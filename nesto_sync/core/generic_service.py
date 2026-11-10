@@ -331,8 +331,11 @@ class GenericEntityService:
         # Campos de texto (char, text)
         if field_type in ('char', 'text'):
             # Normalizar None y strings vacíos
-            current = (current_value or '').strip()
-            new = (new_value or '').strip()
+            # str(): un identificador que llegue como número (p. ej. el Id de una persona
+            # de contacto) se compara como texto en vez de tirar el mensaje entero
+            # (con «is», no «in»: 0 == False y un Id 0 no es un campo vacío)
+            current = '' if current_value is None or current_value is False else str(current_value).strip()
+            new = '' if new_value is None or new_value is False else str(new_value).strip()
 
             # Para el campo 'name', comparar case-insensitive
             # (Nesto a veces cambia mayúsculas/minúsculas internamente)

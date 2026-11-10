@@ -9,6 +9,7 @@ from unittest.mock import MagicMock
 
 from odoo.addons.nesto_sync.config.entity_configs import ENTITY_CONFIGS
 from odoo.addons.nesto_sync.core.generic_processor import GenericEntityProcessor
+from odoo.addons.nesto_sync.core.generic_service import GenericEntityService
 from odoo.addons.nesto_sync.core.odoo_publisher import OdooPublisher
 
 MENSAJE_BLOQUE = {
@@ -96,3 +97,19 @@ class TestBloquesEmbudo(unittest.TestCase):
         inversos = set(publicador._infer_reverse_mappings()) | set(publicador._infer_reverse_child_mappings())
         for campo in CAMPOS_NUEVOS:
             self.assertNotIn(campo, inversos)
+
+
+class TestIdentificadorNumerico(unittest.TestCase):
+    """Un campo de texto que llega como número se compara como texto, sin romper."""
+
+    def _distinto(self, actual, nuevo):
+        servicio = GenericEntityService.__new__(GenericEntityService)
+        registro = MagicMock()
+        registro._fields = {'persona_contacto_externa': MagicMock(type='char')}
+        return servicio._values_are_different('persona_contacto_externa', actual, nuevo, registro)
+
+    def test_numero_contra_texto(self):
+        self.assertFalse(self._distinto('1', 1))
+        self.assertTrue(self._distinto('1', 2))
+        self.assertFalse(self._distinto(False, None))
+        self.assertTrue(self._distinto(False, 0))
