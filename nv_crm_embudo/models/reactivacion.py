@@ -28,7 +28,10 @@ _logger = logging.getLogger(__name__)
 
 # Oportunidades de reactivación que se crean al día como mucho (parámetro del sistema)
 PARAM_POR_DIA = 'nv_crm_embudo.reactivacion_por_dia'
-POR_DIA_POR_DEFECTO = 25
+POR_DIA_POR_DEFECTO = 50
+# Login del usuario de Odoo que se queda la oportunidad y la tarea cuando el responsable
+# que manda Nesto no tiene usuario (Tienda online es un buzón, no una persona)
+PARAM_USUARIO_SIN_RESPONSABLE = 'nv_crm_embudo.reactivacion_usuario_tienda_online'
 # Nesto publica un mensaje por contacto: se espera a que el cliente lleve este rato sin
 # recibir nada antes de mirarlo, para tener todas sus personas y sus correos.
 MINUTOS_REPOSO = 15
@@ -283,13 +286,20 @@ class CrmLead(models.Model):
     # ----------------------------------------------- avisos al responsable
 
     def _nv_usuario_responsable(self):
-        """El usuario de Odoo del responsable, si lo tiene (Tienda online no lo tiene)."""
+        """El usuario de Odoo del responsable; si no lo tiene (Tienda online es un buzón),
+        el que diga el parámetro, para que la tarea de «ha contestado» tenga dueño.
+        El correo de aviso sigue yendo al responsable que mandó Nesto."""
         self.ensure_one()
+        Usuarios = self.env['res.users'].sudo()
         correo = tools.email_normalize(self.nv_responsable_embudo_email or '')
-        if not correo:
-            return self.env['res.users']
-        return self.env['res.users'].sudo().search(
+        usuario = correo and Usuarios.search(
             ['|', ('login', '=ilike', correo), ('email', '=ilike', correo)], limit=1)
+        if usuario:
+            return usuario
+        suplente = self._nv_param(PARAM_USUARIO_SIN_RESPONSABLE)
+        if not suplente:
+            return Usuarios
+        return Usuarios.search([('login', '=ilike', suplente)], limit=1)
 
     def _nv_asignar_responsable(self):
         """Pone al responsable como vendedor cuando el cliente ya ha dado señales de vida.
@@ -306,7 +316,8 @@ class CrmLead(models.Model):
 
         Antes de que el embudo ejecute sus pasos de «ha contestado»: la tarea de ese paso
         se asigna al vendedor de la oportunidad, y las de un bloque nacen sin vendedor.
-        Si el responsable no tiene usuario en Odoo (Tienda online) solo recibe el correo.
+        Si el responsable no tiene usuario en Odoo (Tienda online) recibe el correo y la
+        oportunidad se la queda el usuario del parámetro.
         """
         self._nv_asignar_responsable()
         return super().message_update(msg_dict, update_vals=update_vals)

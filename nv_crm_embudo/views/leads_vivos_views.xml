@@ -48,4 +48,33 @@
 
     <menuitem id="menu_leads_vivos" name="Leads vivos por vendedora" parent="crm.crm_menu_sales"
               action="action_leads_vivos" sequence="50"/>
+
+    <!-- Todas las oportunidades (también ganadas y perdidas) por puerta de entrada: la
+         campaña dice por dónde entró (AMAZON, WEB, META-…, REACTIVACION-…) -->
+    <record id="view_oportunidades_puerta_pivot" model="ir.ui.view">
+        <field name="name">crm.lead.puerta.pivot</field>
+        <field name="model">crm.lead</field>
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <pivot string="Oportunidades por puerta de entrada" disable_linking="0">
+                <field name="campaign_id" type="row"/>
+                <field name="stage_id" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_oportunidades_puerta" model="ir.actions.act_window">
+        <field name="name">Oportunidades por puerta de entrada</field>
+        <field name="res_model">crm.lead</field>
+        <field name="view_mode">tree,pivot,kanban,form</field>
+        <field name="domain">['|', ('active', '=', True), ('active', '=', False)]</field>
+        <field name="context">{'group_by': ['campaign_id', 'nv_bloque_embudo'], 'default_type': 'opportunity'}</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'tree', 'view_id': ref('view_leads_vivos_tree')}),
+            (0, 0, {'view_mode': 'pivot', 'view_id': ref('view_oportunidades_puerta_pivot')})]"/>
+        <field name="help" type="html"><p class="o_view_nocontent_smiling_face">No hay oportunidades</p></field>
+    </record>
+
+    <menuitem id="menu_oportunidades_puerta" name="Oportunidades por puerta de entrada" parent="crm.crm_menu_sales"
+              action="action_oportunidades_puerta" sequence="51"/>
 </odoo>

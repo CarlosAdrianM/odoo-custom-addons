@@ -6,7 +6,7 @@ from odoo.tests.common import TransactionCase
 from odoo.tools.safe_eval import datetime as datetime_seguro, safe_eval
 
 from odoo.addons.nv_crm_embudo.models.reactivacion import (
-    EXCLUSION_BOLETIN, PARAM_POR_DIA, SIN_ESPERA_BLOQUES, _con_clausulas, _sin_espera_para_bloques)
+    EXCLUSION_BOLETIN, PARAM_POR_DIA, PARAM_USUARIO_SIN_RESPONSABLE, SIN_ESPERA_BLOQUES, _con_clausulas, _sin_espera_para_bloques)
 
 BLOQUE = 'NV-2026-11-01'
 DOMINIO_GENERAL = ("[('type', '=', 'opportunity'), ('active', '=', True), ('stage_id.is_won', '=', False), "
@@ -26,6 +26,7 @@ class TestReactivacion(TransactionCase):
             {'name': 'Jefe Equipo', 'login': 'jefe@ejemplo.test', 'email': 'jefe@ejemplo.test'})
         cls.env['ir.config_parameter'].sudo().set_param('nv_crm_embudo.cc_direccion', 'direccion@ejemplo.test')
         cls.env['ir.config_parameter'].sudo().set_param(PARAM_POR_DIA, '25')
+        cls.env['ir.config_parameter'].sudo().set_param(PARAM_USUARIO_SIN_RESPONSABLE, '')
 
     def _cliente(self, numero, emails=('uno',), bloque=BLOQUE, responsable='tienda@ejemplo.test',
                  tipo='TiendaOnline', boletin=None, **vals):
@@ -176,6 +177,25 @@ class TestReactivacion(TransactionCase):
         self.assertEqual(aviso.email_to, 'tienda@ejemplo.test')
         self.assertEqual(aviso.email_cc, 'direccion@ejemplo.test')
         self.assertFalse(lead.user_id)
+
+    def test_respuesta_de_tienda_online_deja_la_oportunidad_al_usuario_del_parametro(self):
+        suplente = self.env['res.users'].with_context(skip_sync=True, no_reset_password=True).create(
+            {'name': 'Suplente Tienda', 'login': 'suplente@ejemplo.test', 'email': 'suplente@ejemplo.test'})
+        self.env['ir.config_parameter'].sudo().set_param(PARAM_USUARIO_SIN_RESPONSABLE, 'suplente@ejemplo.test')
+        cliente = self._cliente('R0036')
+        self.Lead._nv_poblar_embudo_bloques()
+        lead = self._leads(cliente)
+        self.assertFalse(lead.user_id, 'la entrada sigue siendo silenciosa: sin vendedor')
+        lead.nv_avisar_respuesta()
+        self.assertEqual(lead.user_id, suplente)
+        aviso = self.env['mail.mail'].sudo().search([('model', '=', 'crm.lead'), ('res_id', '=', lead.id)],
+                                                    order='id desc', limit=1)
+        self.assertEqual(aviso.email_to, 'tienda@ejemplo.test')
+        self.assertEqual(aviso.email_cc, 'direccion@ejemplo.test')
+
+    def test_el_cupo_por_defecto_es_cincuenta(self):
+        self.env['ir.config_parameter'].sudo().set_param(PARAM_POR_DIA, '')
+        self.assertEqual(self.Lead._nv_reactivacion_por_dia(), 50)
 
     def test_respuesta_asigna_al_responsable_con_usuario(self):
         cliente = self._cliente('R0033', responsable='jefe@ejemplo.test', tipo='EquipoAlberto')
