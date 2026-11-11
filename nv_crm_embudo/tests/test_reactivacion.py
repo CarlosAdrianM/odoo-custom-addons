@@ -6,7 +6,7 @@ from odoo.tests.common import TransactionCase
 from odoo.tools.safe_eval import datetime as datetime_seguro, safe_eval
 
 from odoo.addons.nv_crm_embudo.models.reactivacion import (
-    EXCLUSION_BOLETIN, PARAM_POR_DIA, PARAM_USUARIO_SIN_RESPONSABLE, SIN_ESPERA_BLOQUES, _con_clausulas, _sin_espera_para_bloques)
+    EXCLUSION_BOLETIN, EXCLUSION_REBOTES, PARAM_POR_DIA, PARAM_USUARIO_SIN_RESPONSABLE, SIN_ESPERA_BLOQUES, _con_clausulas, _sin_espera_para_bloques)
 
 BLOQUE = 'NV-2026-11-01'
 DOMINIO_GENERAL = ("[('type', '=', 'opportunity'), ('active', '=', True), ('stage_id.is_won', '=', False), "
@@ -237,3 +237,30 @@ class TestReactivacion(TransactionCase):
         leads = self._leads(cliente) | self._leads(baja) | reciente
         entran = self.Lead.search(safe_eval(nuevo, {'datetime': datetime_seguro}) + [('id', 'in', leads.ids)])
         self.assertEqual(entran, self._leads(cliente))
+
+    def test_un_lead_con_rebote_no_recibe_los_correos_siguientes(self):
+        paso = "[('active', '=', True), ('is_blacklisted', '=', False)]"
+        nuevo = _con_clausulas(paso, EXCLUSION_REBOTES)
+        self.assertEqual(_con_clausulas(nuevo, EXCLUSION_REBOTES), nuevo, 'Repetirlo no añade nada')
+        bien = self.Lead.create({'name': 'Llega', 'type': 'opportunity', 'email_from': 'llega@ejemplo.test'})
+        rebota = self.Lead.create({'name': 'Rebota', 'type': 'opportunity', 'email_from': 'rebota@ejemplo.test'})
+        rebota.message_bounce = 1
+        leads = bien | rebota
+        self.assertEqual(self.Lead.search(safe_eval(nuevo) + [('id', 'in', leads.ids)]), bien)
+        # Si esa dirección vuelve a escribir, Odoo pone el contador a cero y vuelve a entrar
+        rebota.message_bounce = 0
+        self.assertEqual(self.Lead.search(safe_eval(nuevo) + [('id', 'in', leads.ids)]), leads)
+
+    def test_la_migracion_toca_solo_los_correos_con_dominio_propio(self):
+        if 'automation.configuration' not in self.env:
+            self.skipTest('automation_oca no está instalado')
+        Config = self.env['automation.configuration'].sudo().with_context(active_test=False)
+        config = Config.search([('name', '=', 'Embudo de conversión')], limit=1)
+        if not config:
+            self.skipTest('No hay embudo general en esta base')
+        self.Lead._nv_excluir_rebotados_del_embudo()
+        self.Lead._nv_excluir_rebotados_del_embudo()
+        for paso in config.automation_step_ids:
+            propio = not paso.apply_parent_domain and paso.step_type == 'mail'
+            self.assertEqual((paso.domain or '').count("('message_bounce', '=', 0)"), 1 if propio else 0, paso.name)
+
