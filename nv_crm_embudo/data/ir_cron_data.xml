@@ -10,4 +10,17 @@
         <field name="numbercall">-1</field>
         <field name="active" eval="True"/>
     </record>
+    <!-- Recomendación diaria de ritmo del embudo: 04:30 UTC (05:30 o 06:30 de Madrid),
+         antes de que NestoAPI la lea para el bloque de las 07:00 -->
+    <record id="cron_ritmo_embudo" model="ir.cron">
+        <field name="name">CRM: recomendación de ritmo del embudo</field>
+        <field name="model_id" ref="model_nv_embudo_recomendacion"/>
+        <field name="state">code</field>
+        <field name="code">model._nv_calcular()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="nextcall" eval="(DateTime.now() + timedelta(days=1)).strftime('%Y-%m-%d 04:30:00')"/>
+        <field name="active" eval="True"/>
+    </record>
 </odoo>

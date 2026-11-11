@@ -3,3 +3,4 @@ from . import res_partner
 from . import mail_template
 from . import origen_cliente
 from . import reactivacion
+from . import ritmo_embudo
