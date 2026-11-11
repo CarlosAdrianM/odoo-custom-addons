@@ -30,7 +30,7 @@
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; max-width:600px; background-color:#ffffff; border-collapse:collapse;">
           <tr>
             <td align="center" t-attf-background="{{ nv_img }}fondo-geometrico-nv.png" t-attf-style="padding:24px 30px 20px; background-color:#ffffff; background-image:url('{{ nv_img }}fondo-geometrico-nv.png'); background-position:center; background-size:cover;">
-              <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/" target="_blank" style="text-decoration:none;">
+              <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/?utm_source=embudo&amp;utm_medium=email&amp;utm_campaign=embudo_01&amp;utm_content=inicio" target="_blank" style="text-decoration:none;">
                 <img t-attf-src="{{ nv_img }}logo-nueva-vision.png" width="180" alt="Nueva Visión" style="display:block; width:180px; max-width:100%; height:auto; margin:0 auto; border:0;"/>
               </a>
             </td>
@@ -46,7 +46,7 @@
 
           <tr>
             <td>
-              <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/content/151-acne-en-cabina-diagnostico-protocolo-yolanda-perez" target="_blank" style="text-decoration:none;">
+              <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/content/151-acne-en-cabina-diagnostico-protocolo-yolanda-perez?utm_source=embudo&amp;utm_medium=email&amp;utm_campaign=embudo_01&amp;utm_content=articulo" target="_blank" style="text-decoration:none;">
                 <img src="https://productosdeesteticaypeluqueriaprofesional.com/img/cms/Blog/acne-evaluacion-profesional.jpg" width="600" alt="Profesional de estética valorando una piel con tendencia acneica" style="display:block; width:100%; max-width:600px; height:auto; border:0;"/>
               </a>
             </td>
@@ -83,7 +83,7 @@
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="border-collapse:separate;">
                 <tr>
                   <td align="center" bgcolor="#BD052B" style="border-radius:3px;">
-                    <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/content/151-acne-en-cabina-diagnostico-protocolo-yolanda-perez" target="_blank" style="display:inline-block; padding:15px 25px; font-size:15px; line-height:20px; font-weight:600; color:#ffffff; text-decoration:none; border:1px solid #BD052B; border-radius:3px;">Leer la guía sobre acné en cabina</a>
+                    <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/content/151-acne-en-cabina-diagnostico-protocolo-yolanda-perez?utm_source=embudo&amp;utm_medium=email&amp;utm_campaign=embudo_01&amp;utm_content=articulo" target="_blank" style="display:inline-block; padding:15px 25px; font-size:15px; line-height:20px; font-weight:600; color:#ffffff; text-decoration:none; border:1px solid #BD052B; border-radius:3px;">Leer la guía sobre acné en cabina</a>
                   </td>
                 </tr>
               </table>
@@ -123,7 +123,7 @@
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="border-collapse:separate; margin:0 0 24px;">
                 <tr>
                   <td align="center" bgcolor="#BD052B" style="border-radius:3px;">
-                    <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/content/136-contacta-con-nueva-vision-distribuidor-de-estetica-y-peluqueria-profesional-en-madrid" target="_blank" style="display:inline-block; padding:13px 24px; font-size:15px; line-height:20px; font-weight:600; color:#ffffff; text-decoration:none; border:1px solid #BD052B; border-radius:3px;">Contacta con nosotros</a>
+                    <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/content/136-contacta-con-nueva-vision-distribuidor-de-estetica-y-peluqueria-profesional-en-madrid?utm_source=embudo&amp;utm_medium=email&amp;utm_campaign=embudo_01&amp;utm_content=contacto" target="_blank" style="display:inline-block; padding:13px 24px; font-size:15px; line-height:20px; font-weight:600; color:#ffffff; text-decoration:none; border:1px solid #BD052B; border-radius:3px;">Contacta con nosotros</a>
                   </td>
                 </tr>
               </table>
@@ -169,7 +169,7 @@
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; max-width:600px; background-color:#ffffff; border-collapse:collapse;">
           <tr>
             <td align="center" t-attf-background="{{ nv_img }}fondo-geometrico-nv.png" t-attf-style="padding:24px 30px 20px; background-color:#ffffff; background-image:url('{{ nv_img }}fondo-geometrico-nv.png'); background-position:center; background-size:cover;">
-              <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/" target="_blank" style="text-decoration:none;">
+              <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/?utm_source=embudo&amp;utm_medium=email&amp;utm_campaign=embudo_02&amp;utm_content=inicio" target="_blank" style="text-decoration:none;">
                 <img t-attf-src="{{ nv_img }}logo-nueva-vision.png" width="180" alt="Nueva Visión" style="display:block; width:180px; max-width:100%; height:auto; margin:0 auto; border:0;"/>
               </a>
             </td>
@@ -185,7 +185,7 @@
 
           <tr>
             <td>
-              <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/content/150-nad-pdrn-exosomas-estetica-profesional" target="_blank" style="text-decoration:none;">
+              <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/content/150-nad-pdrn-exosomas-estetica-profesional?utm_source=embudo&amp;utm_medium=email&amp;utm_campaign=embudo_02&amp;utm_content=articulo" target="_blank" style="text-decoration:none;">
                 <img src="https://productosdeesteticaypeluqueriaprofesional.com/img/cms/Blog/regeneradoras%20nad%20poli.png" width="600" alt="NAD, PDRN y exosomas en estética profesional" style="display:block; width:100%; max-width:600px; height:auto; border:0;"/>
               </a>
             </td>
@@ -222,7 +222,7 @@
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="border-collapse:separate;">
                 <tr>
                   <td align="center" bgcolor="#BD052B" style="border-radius:3px;">
-                    <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/content/150-nad-pdrn-exosomas-estetica-profesional" target="_blank" style="display:inline-block; padding:15px 25px; font-size:15px; line-height:20px; font-weight:600; color:#ffffff; text-decoration:none; border:1px solid #BD052B; border-radius:3px;">Entender qué aporta cada activo</a>
+                    <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/content/150-nad-pdrn-exosomas-estetica-profesional?utm_source=embudo&amp;utm_medium=email&amp;utm_campaign=embudo_02&amp;utm_content=articulo" target="_blank" style="display:inline-block; padding:15px 25px; font-size:15px; line-height:20px; font-weight:600; color:#ffffff; text-decoration:none; border:1px solid #BD052B; border-radius:3px;">Entender qué aporta cada activo</a>
                   </td>
                 </tr>
               </table>
@@ -262,7 +262,7 @@
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="border-collapse:separate; margin:0 0 24px;">
                 <tr>
                   <td align="center" bgcolor="#BD052B" style="border-radius:3px;">
-                    <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/content/136-contacta-con-nueva-vision-distribuidor-de-estetica-y-peluqueria-profesional-en-madrid" target="_blank" style="display:inline-block; padding:13px 24px; font-size:15px; line-height:20px; font-weight:600; color:#ffffff; text-decoration:none; border:1px solid #BD052B; border-radius:3px;">Contacta con nosotros</a>
+                    <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/content/136-contacta-con-nueva-vision-distribuidor-de-estetica-y-peluqueria-profesional-en-madrid?utm_source=embudo&amp;utm_medium=email&amp;utm_campaign=embudo_02&amp;utm_content=contacto" target="_blank" style="display:inline-block; padding:13px 24px; font-size:15px; line-height:20px; font-weight:600; color:#ffffff; text-decoration:none; border:1px solid #BD052B; border-radius:3px;">Contacta con nosotros</a>
                   </td>
                 </tr>
               </table>
@@ -308,7 +308,7 @@
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; max-width:600px; background-color:#ffffff; border-collapse:collapse;">
           <tr>
             <td align="center" t-attf-background="{{ nv_img }}fondo-geometrico-nv.png" t-attf-style="padding:24px 30px 20px; background-color:#ffffff; background-image:url('{{ nv_img }}fondo-geometrico-nv.png'); background-position:center; background-size:cover;">
-              <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/" target="_blank" style="text-decoration:none;">
+              <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/?utm_source=embudo&amp;utm_medium=email&amp;utm_campaign=embudo_03&amp;utm_content=inicio" target="_blank" style="text-decoration:none;">
                 <img t-attf-src="{{ nv_img }}logo-nueva-vision.png" width="180" alt="Nueva Visión" style="display:block; width:180px; max-width:100%; height:auto; margin:0 auto; border:0;"/>
               </a>
             </td>
@@ -324,7 +324,7 @@
 
           <tr>
             <td>
-              <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/content/153-microdermoabrasion-punta-diamante-guia-profesional" target="_blank" style="text-decoration:none;">
+              <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/content/153-microdermoabrasion-punta-diamante-guia-profesional?utm_source=embudo&amp;utm_medium=email&amp;utm_campaign=embudo_03&amp;utm_content=articulo" target="_blank" style="text-decoration:none;">
                 <img src="https://productosdeesteticaypeluqueriaprofesional.com/img/cms/Blog/microdermoabrasion-cabina.webp" width="600" alt="Profesional realizando una microdermoabrasión con punta de diamante en cabina" style="display:block; width:100%; max-width:600px; height:auto; border:0;"/>
               </a>
             </td>
@@ -361,7 +361,7 @@
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="border-collapse:separate;">
                 <tr>
                   <td align="center" bgcolor="#BD052B" style="border-radius:3px;">
-                    <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/content/153-microdermoabrasion-punta-diamante-guia-profesional" target="_blank" style="display:inline-block; padding:15px 25px; font-size:15px; line-height:20px; font-weight:600; color:#ffffff; text-decoration:none; border:1px solid #BD052B; border-radius:3px;">Ver la guía de punta de diamante</a>
+                    <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/content/153-microdermoabrasion-punta-diamante-guia-profesional?utm_source=embudo&amp;utm_medium=email&amp;utm_campaign=embudo_03&amp;utm_content=articulo" target="_blank" style="display:inline-block; padding:15px 25px; font-size:15px; line-height:20px; font-weight:600; color:#ffffff; text-decoration:none; border:1px solid #BD052B; border-radius:3px;">Ver la guía de punta de diamante</a>
                   </td>
                 </tr>
               </table>
@@ -401,7 +401,7 @@
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="border-collapse:separate; margin:0 0 24px;">
                 <tr>
                   <td align="center" bgcolor="#BD052B" style="border-radius:3px;">
-                    <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/content/136-contacta-con-nueva-vision-distribuidor-de-estetica-y-peluqueria-profesional-en-madrid" target="_blank" style="display:inline-block; padding:13px 24px; font-size:15px; line-height:20px; font-weight:600; color:#ffffff; text-decoration:none; border:1px solid #BD052B; border-radius:3px;">Contacta con nosotros</a>
+                    <a href="https://www.productosdeesteticaypeluqueriaprofesional.com/content/136-contacta-con-nueva-vision-distribuidor-de-estetica-y-peluqueria-profesional-en-madrid?utm_source=embudo&amp;utm_medium=email&amp;utm_campaign=embudo_03&amp;utm_content=contacto" target="_blank" style="display:inline-block; padding:13px 24px; font-size:15px; line-height:20px; font-weight:600; color:#ffffff; text-decoration:none; border:1px solid #BD052B; border-radius:3px;">Contacta con nosotros</a>
                   </td>
                 </tr>
               </table>

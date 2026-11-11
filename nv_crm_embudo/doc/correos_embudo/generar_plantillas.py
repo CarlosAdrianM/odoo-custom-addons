@@ -14,7 +14,9 @@ Lo que hace con cada HTML:
 - las imágenes de assets/ a URL absoluta del servidor (/nv_crm_embudo/static/src/img/);
 - de los dos cierres (FINAL A / FINAL B) deja uno solo con t-if / t-else, a todo el ancho;
 - tras la firma, la posdata de la app (POSDATA_APP, igual en todos los correos);
-- el aviso del pie se sustituye por el pie legal con el enlace de baja.
+- el aviso del pie se sustituye por el pie legal con el enlace de baja;
+- los enlaces a la tienda llevan utm_source, utm_medium, utm_campaign (embudo_01, 02...) y
+  utm_content (inicio, articulo, contacto), para verlos como campaña en Google Analytics.
 
 Además deja la plantilla interna embudo_aviso_respuesta (aviso a la vendedora con copias
 cuando el lead contesta), que no sale de ningún HTML de Marketing.
@@ -36,6 +38,27 @@ CORREOS = [
     ('embudo_correo_03', '03-microdermoabrasion-punta-diamante.html', '03',
      'Embudo leads 03 · Microdermoabrasión con punta de diamante'),
 ]
+
+# Etiquetas de campaña de los enlaces a la tienda. utm_medium tiene que ser «email»: es lo que
+# Google Analytics 4 clasifica en el canal «Email»; con otra palabra cae en «Sin asignar».
+WEB_TIENDA = 'https://www.productosdeesteticaypeluqueriaprofesional.com/'
+UTM = 'utm_source=embudo&amp;utm_medium=email&amp;utm_campaign=embudo_%s&amp;utm_content=%s'
+
+
+def etiquetar_enlaces(cuerpo, numero, que):
+    """Añade las etiquetas utm_ a todos los enlaces a la tienda (y solo a esos)."""
+    def con_utm(m):
+        url = m.group(1)
+        if 'utm_' in url or '?' in url or '#' in url:
+            sys.exit('%s: el enlace %s ya trae parámetros; revisar a mano' % (que, url))
+        ruta = url[len(WEB_TIENDA):]
+        contenido = 'inicio' if not ruta else 'contacto' if url == URL_CONTACTO else 'articulo'
+        return 'href="%s?%s"' % (url, UTM % (numero, contenido))
+    cuerpo, veces = re.subn(r'href="(%s[^"]*)"' % re.escape(WEB_TIENDA), con_utm, cuerpo)
+    if veces < 3:
+        sys.exit('%s: se esperaban al menos 3 enlaces a la tienda y hay %s' % (que, veces))
+    return cuerpo
+
 
 RUTA_IMG = '/nv_crm_embudo/static/src/img/'
 
@@ -106,7 +129,7 @@ def una_vez(patron, sustituto, texto, que, flags=0):
     return nuevo
 
 
-def convertir(origen, preencabezado):
+def convertir(origen, preencabezado, numero):
     fuente = origen.read_text(encoding='utf-8')
     if preencabezado not in fuente:
         sys.exit('%s: el preencabezado del .md no coincide con el del HTML' % origen.name)
@@ -142,6 +165,8 @@ def convertir(origen, preencabezado):
     cuerpo = re.sub(r'\b(src|background)="assets/([^"]+)"', r't-attf-\1="{{ nv_img }}\2"', cuerpo)
     cuerpo = re.sub(r'\bstyle="([^"]*)url\(\'assets/([^\']+)\'\)([^"]*)"',
                     lambda m: 't-attf-style="%surl(\'{{ nv_img }}%s\')%s"' % m.groups(), cuerpo)
+
+    cuerpo = etiquetar_enlaces(cuerpo, numero, origen.name)
 
     # De HTML a XML
     cuerpo = cuerpo.replace('&nbsp;', '&#160;').replace('&zwnj;', '&#8204;')
@@ -209,7 +234,7 @@ def main():
     registros = []
     for xml_id, fichero, numero, nombre in CORREOS:
         asunto, preencabezado = datos[numero]
-        cuerpo = convertir(AQUI / fichero, preencabezado)
+        cuerpo = convertir(AQUI / fichero, preencabezado, numero)
         registros.append(registro(xml_id, nombre, asunto, cuerpo))
 
     contenido = '''<?xml version="1.0" encoding="utf-8"?>
