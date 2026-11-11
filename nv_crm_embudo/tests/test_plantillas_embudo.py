@@ -131,6 +131,38 @@ class TestPlantillasEmbudo(TransactionCase):
         self.env['ir.config_parameter'].sudo().set_param('nv_crm_embudo.url_app', 'https://app.ejemplo.test/descarga')
         self.assertIn('href="https://app.ejemplo.test/descarga"', self._cuerpo(PLANTILLAS[1][0], lead))
 
+    def test_los_enlaces_a_la_tienda_llevan_utm(self):
+        """Cada enlace a la tienda lleva la campaña de su correo, para verlo en Google Analytics."""
+        import re
+        lead = self._lead_sin_cliente()
+        tienda = 'https://www.productosdeesteticaypeluqueriaprofesional.com/'
+        for numero, (xml_id, _a, _b) in enumerate(PLANTILLAS, start=1):
+            cuerpo = self._cuerpo(xml_id, lead)
+            enlaces = re.findall(r'href="(%s[^"]*)"' % re.escape(tienda), cuerpo)
+            self.assertGreaterEqual(len(enlaces), 4, xml_id)
+            contenidos = set()
+            for enlace in enlaces:
+                enlace = enlace.replace('&amp;', '&')
+                self.assertIn('utm_source=embudo&utm_medium=email&utm_campaign=embudo_%02d&utm_content=' % numero,
+                              enlace)
+                contenidos.add(enlace.rsplit('utm_content=', 1)[1])
+            self.assertEqual(contenidos, {'inicio', 'articulo', 'contacto'}, xml_id)
+
+    def test_el_enlace_acortado_conserva_las_utm(self):
+        """automation_oca acorta los enlaces al enviar: el destino tiene que seguir llevando las utm_."""
+        if 'link.tracker' not in self.env:
+            self.skipTest('link_tracker no está instalado')
+        lead = self._lead_sin_cliente()
+        cuerpo = self._cuerpo(PLANTILLAS[0][0], lead)
+        antes = self.env['link.tracker'].search([])
+        self.env['mail.render.mixin']._shorten_links(cuerpo, {}, blacklist=[])
+        destinos = (self.env['link.tracker'].search([]) - antes).mapped('redirected_url')
+        articulo = [d for d in destinos if 'utm_content=articulo' in d]
+        self.assertEqual(len(articulo), 1, destinos)
+        for trozo in ('/content/151-', 'utm_source=embudo', 'utm_medium=email', 'utm_campaign=embudo_01'):
+            self.assertIn(trozo, articulo[0])
+        self.assertNotIn('amp;', articulo[0])
+
 
 @tagged('post_install', '-at_install', 'nv_crm_embudo')
 class TestAvisoRespuesta(TransactionCase):
