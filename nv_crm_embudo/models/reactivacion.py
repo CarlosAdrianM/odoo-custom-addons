@@ -17,6 +17,7 @@ un correo o hace un pedido posterior a su entrada.
 import logging
 from datetime import timedelta
 
+import pytz
 from markupsafe import Markup
 
 from odoo import api, fields, models, tools
@@ -29,6 +30,14 @@ _logger = logging.getLogger(__name__)
 # Oportunidades de reactivación que se crean al día como mucho (parámetro del sistema)
 PARAM_POR_DIA = 'nv_crm_embudo.reactivacion_por_dia'
 POR_DIA_POR_DEFECTO = 50
+# Hora de Madrid («HH:MM») a partir de la cual se crean cada día las oportunidades de los
+# bloques, y con ellas sale el correo 01. Nesto puede lanzar el bloque a primera hora y
+# Odoo lo retiene hasta entonces: así la franja de envío se decide aquí. Vacío = sin espera.
+PARAM_HORA_ENVIO = 'nv_crm_embudo.reactivacion_hora_envio'
+ZONA_ENVIO = pytz.timezone('Europe/Madrid')
+# Cada cuántos minutos corren las dos tareas de automation_oca (altas y pasos). De fábrica
+# son 6 horas y 1 hora: con eso el correo saldría hasta 7 horas después de la hora elegida.
+MINUTOS_TAREAS_EMBUDO = 10
 # Login del usuario de Odoo que se queda la oportunidad y la tarea cuando el responsable
 # que manda Nesto no tiene usuario (Tienda online es un buzón, no una persona)
 PARAM_USUARIO_SIN_RESPONSABLE = 'nv_crm_embudo.reactivacion_usuario_tienda_online'
@@ -125,12 +134,45 @@ class CrmLead(models.Model):
             return POR_DIA_POR_DEFECTO
 
     @api.model
+    def _nv_ya_es_hora_de_enviar(self, ahora=None):
+        """False mientras no llegue la hora de envío de hoy (parámetro, hora de Madrid)."""
+        valor = self._nv_param(PARAM_HORA_ENVIO)
+        if not valor:
+            return True
+        try:
+            hora, minuto = (int(x) for x in valor.split(':'))
+            if not (0 <= hora <= 23 and 0 <= minuto <= 59):
+                raise ValueError(valor)
+        except ValueError:
+            _logger.warning('Parámetro %s con un valor que no es una hora HH:MM (%r): no se espera',
+                            PARAM_HORA_ENVIO, valor)
+            return True
+        local = pytz.utc.localize(ahora or fields.Datetime.now()).astimezone(ZONA_ENVIO)
+        return (local.hour, local.minute) >= (hora, minuto)
+
+    @api.model
+    def _nv_acelerar_tareas_del_embudo(self):
+        """Las tareas de automation_oca pasan a correr cada pocos minutos (idempotente).
+
+        Lo llama la migración 16.0.1.7.0. Sin automation_oca (el CI) no hace nada.
+        """
+        for xmlid in ('automation_oca.cron_configuration_run', 'automation_oca.cron_step_execute'):
+            tarea = self.env.ref(xmlid, raise_if_not_found=False)
+            if not tarea:
+                _logger.info('No existe la tarea %s: no se toca', xmlid)
+                continue
+            tarea.sudo().write({'interval_number': MINUTOS_TAREAS_EMBUDO, 'interval_type': 'minutes'})
+            _logger.info('Tarea %s: cada %s minutos', tarea.name, MINUTOS_TAREAS_EMBUDO)
+
+    @api.model
     def _nv_poblar_embudo_bloques(self):
         """Mete en el embudo a los clientes de los bloques de Nesto, sin pasar del cupo diario.
 
         Va en la tarea programada, después del enlace de leads con clientes nuevos: así un
         lead antiguo de la misma persona ya está enlazado cuando se mira si está repetida.
         """
+        if not self._nv_ya_es_hora_de_enviar():
+            return
         Partner = self.env['res.partner'].sudo()
         ahora = fields.Datetime.now()
         hoy = ahora.replace(hour=0, minute=0, second=0, microsecond=0)

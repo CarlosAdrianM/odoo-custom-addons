@@ -1,12 +1,13 @@
 """Bloques de reactivación: clientes de Nesto que entran en el embudo una sola vez."""
-from datetime import date
+from datetime import date, datetime
+from unittest.mock import patch
 
 from odoo.tests import tagged
 from odoo.tests.common import TransactionCase
 from odoo.tools.safe_eval import datetime as datetime_seguro, safe_eval
 
 from odoo.addons.nv_crm_embudo.models.reactivacion import (
-    EXCLUSION_BOLETIN, EXCLUSION_REBOTES, PARAM_POR_DIA, PARAM_USUARIO_SIN_RESPONSABLE, SIN_ESPERA_BLOQUES, _con_clausulas, _sin_espera_para_bloques)
+    EXCLUSION_BOLETIN, EXCLUSION_REBOTES, PARAM_HORA_ENVIO, PARAM_POR_DIA, PARAM_USUARIO_SIN_RESPONSABLE, SIN_ESPERA_BLOQUES, _con_clausulas, _sin_espera_para_bloques)
 
 BLOQUE = 'NV-2026-11-01'
 DOMINIO_GENERAL = ("[('type', '=', 'opportunity'), ('active', '=', True), ('stage_id.is_won', '=', False), "
@@ -263,4 +264,43 @@ class TestReactivacion(TransactionCase):
         for paso in config.automation_step_ids:
             propio = not paso.apply_parent_domain and paso.step_type == 'mail'
             self.assertEqual((paso.domain or '').count("('message_bounce', '=', 0)"), 1 if propio else 0, paso.name)
+
+    # ------------------------------------------------------ hora de envío
+
+    def test_hora_de_envio(self):
+        ya = self.Lead._nv_ya_es_hora_de_enviar
+        fijar = self.env['ir.config_parameter'].sudo().set_param
+        invierno = datetime(2026, 11, 12, 8, 59)   # 09:59 en Madrid
+        verano = datetime(2026, 7, 1, 8, 59)       # 10:59 en Madrid
+        fijar(PARAM_HORA_ENVIO, '')
+        self.assertTrue(ya(invierno), 'Sin parámetro no se espera')
+        fijar(PARAM_HORA_ENVIO, '10:00')
+        self.assertFalse(ya(invierno))
+        self.assertTrue(ya(datetime(2026, 11, 12, 9, 0)))
+        self.assertTrue(ya(verano), 'La hora es la de Madrid, con su cambio de hora')
+        fijar(PARAM_HORA_ENVIO, 'por la mañana')
+        self.assertTrue(ya(invierno), 'Un valor que no es una hora no retiene nada')
+
+    def test_el_bloque_espera_a_la_hora_de_envio(self):
+        cliente = self._cliente('R0060')
+        ruta = 'odoo.addons.nv_crm_embudo.models.reactivacion.CrmLead._nv_ya_es_hora_de_enviar'
+        with patch(ruta, return_value=False):
+            self.Lead._nv_poblar_embudo_bloques()
+        self.assertFalse(self._leads(cliente))
+        self.assertFalse(cliente.nv_embudo_bloque, 'No queda marcado: entra cuando llegue la hora')
+        with patch(ruta, return_value=True):
+            self.Lead._nv_poblar_embudo_bloques()
+        self.assertEqual(len(self._leads(cliente)), 1)
+
+    def test_el_correo_enviado_no_cuenta_como_respuesta(self):
+        cliente = self._cliente('R0061')
+        self.Lead._nv_poblar_embudo_bloques()
+        lead = self._leads(cliente)
+        Mensaje = self.env['mail.message'].sudo()
+        Mensaje.create({'model': 'crm.lead', 'res_id': lead.id, 'message_type': 'email',
+                        'email_from': '"Nueva Visión" <marketing@nuevavision.es>', 'body': 'Correo 01'})
+        self.assertFalse(lead.nv_ultima_respuesta())
+        respuesta = Mensaje.create({'model': 'crm.lead', 'res_id': lead.id, 'message_type': 'email',
+                                    'email_from': 'uno.r0061@ejemplo.test', 'body': 'Me interesa'})
+        self.assertEqual(lead.nv_ultima_respuesta(), respuesta)
 
