@@ -317,9 +317,16 @@ class OdooPublisher:
 
         elif transformer_name == 'estado_to_active':
             # Convertir active (bool) a Estado (int)
-            # active=True → Estado=9, active=False → Estado=-1
+            # active=False → Estado=-1. Activo: el Estado que mandó Nesto (estado_nesto)
+            # si lo conocemos, para no devolverle un 9 a un cliente que allí es 93, 11...;
+            # sin ese dato, 9 como hasta ahora.
             active = getattr(record, 'active', True)
-            return 9 if active else -1
+            if not active:
+                return -1
+            estado = (getattr(record, 'estado_nesto', None) or '').strip()
+            if estado.isdigit():
+                return int(estado)
+            return 9
 
         elif transformer_name == 'cliente_principal':
             # Convertir type a ClientePrincipal (bool)

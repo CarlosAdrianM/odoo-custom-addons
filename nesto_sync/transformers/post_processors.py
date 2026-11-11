@@ -80,6 +80,10 @@ class CodigosDeNesto:
 
     def process(self, parent_values, children_values_list, context):
         message = context.get('message') or {}
+        # Un mensaje publicado por Odoo vuelve por la misma suscripción. Su Estado no es el
+        # de Nesto (sale de `active`) y no trae Vendedor: no dice nada nuevo sobre el cliente.
+        if message.get('Source') == 'Odoo':
+            return parent_values, children_values_list
         vendedor = message.get('Vendedor')
         if isinstance(vendedor, str) and vendedor.strip():
             parent_values['vendedor_nesto'] = vendedor.strip()

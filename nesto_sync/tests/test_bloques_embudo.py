@@ -113,3 +113,33 @@ class TestIdentificadorNumerico(unittest.TestCase):
         self.assertTrue(self._distinto('1', 2))
         self.assertFalse(self._distinto(False, None))
         self.assertTrue(self._distinto(False, 0))
+
+
+class TestEcoDeOdoo(unittest.TestCase):
+    """El mensaje que publica Odoo vuelve por la suscripción: no debe pisar los códigos de Nesto."""
+
+    def test_el_eco_de_odoo_no_cambia_estado_ni_vendedor(self):
+        eco = dict(copy.deepcopy(MENSAJE_BLOQUE), Source='Odoo', Estado=9, Vendedor='XX')
+        padre = _procesar(eco)['parent']
+        self.assertNotIn('estado_nesto', padre)
+        self.assertNotIn('vendedor_nesto', padre)
+
+    def test_el_mensaje_de_nesto_si_los_guarda(self):
+        padre = _procesar(dict(copy.deepcopy(MENSAJE_BLOQUE), Estado=93))['parent']
+        self.assertEqual(padre['estado_nesto'], '93')
+        self.assertEqual(padre['vendedor_nesto'], 'NV')
+
+    def test_al_publicar_se_devuelve_el_estado_de_nesto(self):
+        publicador = OdooPublisher.__new__(OdooPublisher)
+
+        def estado(**campos):
+            ficha = MagicMock()
+            ficha.active = campos.get('active', True)
+            ficha.estado_nesto = campos.get('estado_nesto', False)
+            return publicador._apply_reverse_transformer('estado_to_active', ficha.active, ficha, {})
+
+        self.assertEqual(estado(estado_nesto='93'), 93)
+        self.assertEqual(estado(estado_nesto='0'), 0)
+        self.assertEqual(estado(estado_nesto=False), 9)
+        self.assertEqual(estado(estado_nesto='-1'), 9)   # activo en Odoo: no se manda un anulado
+        self.assertEqual(estado(active=False, estado_nesto='93'), -1)
