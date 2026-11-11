@@ -1,6 +1,6 @@
 {
     'name': 'Nesto Sync',
-    'version': '2.11.0',  # 2.11.0: Códigos de vendedor y estado, baja de boletín y bloques del embudo
+    'version': '2.11.1',  # 2.11.1: un rebote o un token no publican el cliente; el eco de Odoo no pisa el Estado
     'summary': 'Sincronización bidireccional de tablas entre Nesto y Odoo via Google Pub/Sub',
     'description': '''
         Módulo de sincronización bidireccional entre Nesto y Odoo

@@ -83,6 +83,29 @@ class TestBidirectionalSync(TransactionCase):
         # NO debería haber intentado crear publisher
         mock_create.assert_not_called()
 
+    def test_campos_que_no_viajan_no_publican(self):
+        """Un rebote (message_bounce) o un token de acceso no publican el cliente hacia Nesto"""
+        ruta = 'odoo.addons.nesto_sync.models.bidirectional_sync_mixin.OdooPublisher'
+        with patch(ruta) as clase:
+            self.partner.write({'message_bounce': 1})
+            self.partner.write({'signup_token': 'abc', 'signup_type': 'reset'})
+            self.partner.write({'estado_nesto': '93', 'vendedor_nesto': 'NV'})
+            self.partner.write({'fecha_ultimo_pedido': '2024-01-01', 'bloque_embudo': 'NV-X'})
+            clase.return_value.publish_record.assert_not_called()
+            # Un cambio de verdad sí publica, aunque vaya junto a uno que no viaja
+            self.partner.write({'message_bounce': 2, 'mobile': '666444444'})
+            clase.return_value.publish_record.assert_called_once()
+
+    def test_rebote_en_persona_de_contacto_no_publica_al_padre(self):
+        ruta = 'odoo.addons.nesto_sync.models.bidirectional_sync_mixin.OdooPublisher'
+        persona = self.env['res.partner'].with_context(skip_sync=True).create({
+            'name': 'Persona', 'parent_id': self.partner.id, 'type': 'contact',
+            'persona_contacto_externa': '1', 'email': 'persona@example.com'})
+        persona = persona.with_context(skip_sync=False)
+        with patch(ruta) as clase:
+            persona.write({'message_bounce': 1})
+            clase.return_value.publish_record.assert_not_called()
+
     def test_no_from_nesto_flag_exists(self):
         """Test: Verificar que NO usamos flag from_nesto"""
         # Act

@@ -317,9 +317,16 @@ class OdooPublisher:
 
         elif transformer_name == 'estado_to_active':
             # Convertir active (bool) a Estado (int)
-            # active=True → Estado=9, active=False → Estado=-1
+            # active=False → Estado=-1. Activo: el Estado que mandó Nesto (estado_nesto)
+            # si lo conocemos, para no devolverle un 9 a un cliente que allí es 93, 11...;
+            # sin ese dato, 9 como hasta ahora.
             active = getattr(record, 'active', True)
-            return 9 if active else -1
+            if not active:
+                return -1
+            estado = (getattr(record, 'estado_nesto', None) or '').strip()
+            if estado.isdigit():
+                return int(estado)
+            return 9
 
         elif transformer_name == 'cliente_principal':
             # Convertir type a ClientePrincipal (bool)
@@ -553,9 +560,24 @@ class OdooPublisher:
 
                 child_data[nesto_field] = value
 
+            # Una persona que llegó de Nesto sin nombre se guardó con su correo (o su
+            # cargo) como nombre, porque Odoo no admite contactos sin nombre. Ese relleno
+            # no es un dato: si se devuelve, Nesto lo escribe como nombre de la persona.
+            if self._nombre_es_de_relleno(child):
+                child_data.pop('Nombre', None)
+
             children_list.append(child_data)
 
         message[child_field_name] = children_list
+
+    @staticmethod
+    def _nombre_es_de_relleno(child):
+        """True si el nombre de la persona es el relleno que pone Odoo (su correo o su cargo)."""
+        nombre = (getattr(child, 'name', None) or '').strip().lower()
+        if not nombre:
+            return False
+        rellenos = [(getattr(child, campo, None) or '').strip().lower() for campo in ('email', 'function')]
+        return nombre in [r for r in rellenos if r]
 
     def _add_productos_kit_to_message(self, record, message):
         """

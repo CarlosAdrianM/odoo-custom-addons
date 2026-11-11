@@ -168,6 +168,26 @@ class BidirectionalSyncMixin(models.AbstractModel):
 
         return None
 
+    # Campos que Odoo cambia por su cuenta (correo, portal, actividades, embudo) y que no
+    # forman parte de ningún mensaje hacia Nesto. Sin esto, anotar un rebote
+    # (message_bounce) o generar un token de acceso (signup_token) publicaba el cliente
+    # entero, con el Estado calculado desde `active`.
+    _PREFIJOS_QUE_NO_VIAJAN = ('message_', 'activity_', 'signup_', 'website_message_', 'rating_', 'nv_')
+
+    def _campo_que_no_viaja_a_nesto(self, field):
+        """True si un cambio en `field` no debe disparar la publicación hacia Nesto."""
+        if field.startswith(self._PREFIJOS_QUE_NO_VIAJAN):
+            return True
+        entity_type = self._get_entity_type_for_sync()
+        config = ENTITY_CONFIGS.get(entity_type, {}) if entity_type else {}
+        # Campos de solo entrada ('reverse': False): los manda Nesto y Odoo no los devuelve
+        for clave in ('field_mappings', 'child_field_mappings'):
+            for mapping in (config.get(clave) or {}).values():
+                if mapping.get('reverse') is False and (
+                        mapping.get('odoo_field') == field or field in (mapping.get('odoo_fields') or ())):
+                    return True
+        return field in ('vendedor_nesto', 'estado_nesto')
+
     def _should_skip_sync(self):
         """
         Determina si debemos saltarnos la sincronización
@@ -422,8 +442,12 @@ class BidirectionalSyncMixin(models.AbstractModel):
         if vals:
             has_real_changes = False
             for field, new_value in vals.items():
-                # Saltar campos de sistema
+                # Saltar campos de sistema y los que nunca viajan a Nesto (contador de
+                # rebotes, tokens de acceso, marcas del embudo...): un cambio solo en
+                # ellos no es motivo para publicar el registro entero
                 if field in ('write_date', 'write_uid', '__last_update'):
+                    continue
+                if self._campo_que_no_viaja_a_nesto(field):
                     continue
 
                 # Obtener valor ORIGINAL (antes del write)
