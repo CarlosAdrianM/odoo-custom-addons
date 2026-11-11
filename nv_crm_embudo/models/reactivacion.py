@@ -50,6 +50,10 @@ RESULTADOS = [
 EXCLUSION_BOLETIN = [
     '|', ('partner_id', '=', False), ('partner_id.enviar_boletin', '!=', 'no'),
 ]
+# Un lead cuyo correo ha rebotado no recibe los correos siguientes: la dirección no existe
+# y seguir escribiéndole daña la reputación del remitente. Odoo pone el contador a cero si
+# llega un correo de esa dirección, así que una respuesta lo vuelve a meter.
+EXCLUSION_REBOTES = [('message_bounce', '=', 0)]
 # El embudo general espera 15 días desde el alta del lead. Los de un bloque no esperan:
 # no son un alta nueva, entran el día que se decide escribirles.
 CLAUSULA_ESPERA = "('create_date', '<='"
@@ -378,6 +382,26 @@ class CrmLead(models.Model):
         return filas
 
     # ------------------------------------------- embudo de automation_oca
+
+    @api.model
+    def _nv_excluir_rebotados_del_embudo(self):
+        """Los correos 02 en adelante del embudo general no salen para un lead con rebote.
+
+        automation_oca solo anota el rebote en el paso (mail_status = bounce); no para la
+        cadena. Lo llama la migración 16.0.1.6.2 y se puede repetir sin daño.
+        """
+        if 'automation.configuration' not in self.env:
+            _logger.info('automation_oca no está instalado: no hay embudos que preparar')
+            return
+        Config = self.env['automation.configuration'].sudo().with_context(active_test=False)
+        modelo = self.env['ir.model']._get('crm.lead')
+        for config in Config.search([('name', 'in', NOMBRES_EMBUDO_GENERAL), ('model_id', '=', modelo.id)]):
+            pasos = config.automation_step_ids.filtered(
+                lambda s: not s.apply_parent_domain and s.step_type == 'mail')
+            for paso in pasos:
+                paso.domain = _con_clausulas(paso.domain, EXCLUSION_REBOTES)
+            _logger.info('Embudo %s (%s): %s paso(s) de correo ya no salen para leads con rebote',
+                         config.id, config.name, len(pasos))
 
     @api.model
     def _nv_preparar_embudo_bloques(self):
