@@ -1,1 +1,1 @@
-from . import main, mailchimp
+from . import main, mailchimp, ritmo

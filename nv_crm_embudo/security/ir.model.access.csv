@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_nv_embudo_recomendacion_admin,nv.embudo.recomendacion admin,model_nv_embudo_recomendacion,base.group_system,1,0,0,0
+access_nv_embudo_recomendacion_ventas,nv.embudo.recomendacion ventas,model_nv_embudo_recomendacion,sales_team.group_sale_manager,1,0,0,0
