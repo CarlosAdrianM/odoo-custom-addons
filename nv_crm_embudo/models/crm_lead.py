@@ -149,9 +149,13 @@ class CrmLead(models.Model):
     def nv_ultima_respuesta(self):
         """Último correo que ha entrado en el lead (la respuesta del cliente), o vacío."""
         self.ensure_one()
+        # Los correos del embudo que salen del lead también son de tipo 'email': se descartan
+        # por el remitente (antes cada correo enviado contaba como una respuesta)
+        remitente = tools.email_normalize(self.nv_email_from_embudo()) or EMAIL_FROM_EMBUDO_POR_DEFECTO
         return self.env['mail.message'].sudo().search([
             ('model', '=', self._name), ('res_id', '=', self.id), ('message_type', '=', 'email'),
             ('author_id', '!=', self.user_id.partner_id.id or False),
+            ('email_from', 'not ilike', remitente),
         ], order='id desc', limit=1)
 
     def nv_avisar_respuesta(self):
