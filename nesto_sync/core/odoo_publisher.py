@@ -560,9 +560,24 @@ class OdooPublisher:
 
                 child_data[nesto_field] = value
 
+            # Una persona que llegó de Nesto sin nombre se guardó con su correo (o su
+            # cargo) como nombre, porque Odoo no admite contactos sin nombre. Ese relleno
+            # no es un dato: si se devuelve, Nesto lo escribe como nombre de la persona.
+            if self._nombre_es_de_relleno(child):
+                child_data.pop('Nombre', None)
+
             children_list.append(child_data)
 
         message[child_field_name] = children_list
+
+    @staticmethod
+    def _nombre_es_de_relleno(child):
+        """True si el nombre de la persona es el relleno que pone Odoo (su correo o su cargo)."""
+        nombre = (getattr(child, 'name', None) or '').strip().lower()
+        if not nombre:
+            return False
+        rellenos = [(getattr(child, campo, None) or '').strip().lower() for campo in ('email', 'function')]
+        return nombre in [r for r in rellenos if r]
 
     def _add_productos_kit_to_message(self, record, message):
         """

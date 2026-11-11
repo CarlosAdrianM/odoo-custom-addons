@@ -143,3 +143,17 @@ class TestEcoDeOdoo(unittest.TestCase):
         self.assertEqual(estado(estado_nesto=False), 9)
         self.assertEqual(estado(estado_nesto='-1'), 9)   # activo en Odoo: no se manda un anulado
         self.assertEqual(estado(active=False, estado_nesto='93'), -1)
+
+    def test_el_nombre_de_relleno_no_vuelve_a_nesto(self):
+        def persona(name, email=False, function=False):
+            ficha = MagicMock()
+            ficha.name, ficha.email, ficha.function = name, email, function
+            return ficha
+
+        relleno = OdooPublisher._nombre_es_de_relleno
+        self.assertTrue(relleno(persona('ana@example.com', email='Ana@Example.com ')))
+        self.assertTrue(relleno(persona('Gerente', function='Gerente')))
+        self.assertFalse(relleno(persona('Ana Ejemplo', email='ana@example.com', function='Gerente')))
+        self.assertFalse(relleno(persona('Ana Ejemplo')))
+        self.assertFalse(relleno(persona(False, email='ana@example.com')))
+
