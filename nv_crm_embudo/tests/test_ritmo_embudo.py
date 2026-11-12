@@ -86,6 +86,18 @@ class TestRecomendacion(TransactionCase):
         self.assertEqual((lead.nv_rebote_motivo, lead.nv_rebote_codigo), ('inexistente', '5.1.1'))
         self.assertTrue(lead.message_bounce)
 
+    def test_el_rebote_sin_correo_original_tambien_guarda_su_motivo(self):
+        # Aviso que no trae el identificador del correo original («no document found»)
+        lead = self.env['crm.lead'].create({'name': 'Rebota', 'type': 'opportunity', 'email_from': 'nadie@example.com'})
+        otro = self.env['crm.lead'].create({'name': 'No rebota', 'type': 'opportunity', 'email_from': 'alguien@example.com'})
+        import email
+        self.env['mail.thread']._routing_handle_bounce(email.message_from_string(GMAIL), {
+            'bounced_email': 'nadie@example.com', 'bounced_partner': self.env['res.partner'],
+            'bounced_msg_id': False, 'bounced_message': self.env['mail.message'],
+            'email_from': 'mailer-daemon@example.com', 'to': 'marketing@nuevavision.es', 'message_id': '<aviso2@example.com>'})
+        self.assertEqual((lead.nv_rebote_motivo, lead.nv_rebote_codigo, lead.message_bounce), ('inexistente', '5.1.1', 1))
+        self.assertFalse(otro.nv_rebote_motivo or otro.message_bounce)
+
 
 @tagged('post_install', '-at_install', 'nv_crm_embudo')
 class TestRecomendacionHttp(HttpCase):
