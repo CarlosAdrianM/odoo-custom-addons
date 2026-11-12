@@ -122,13 +122,20 @@ class MailThread(models.AbstractModel):
     def _routing_handle_bounce(self, email_message, message_dict):
         resultado = super()._routing_handle_bounce(email_message, message_dict)
         try:
+            Lead = self.env['crm.lead'].sudo().with_context(active_test=False)
             mensaje = message_dict.get('bounced_message')
+            leads = Lead
             if mensaje and mensaje.model == 'crm.lead' and mensaje.res_id:
-                lead = self.env['crm.lead'].sudo().with_context(active_test=False).browse(mensaje.res_id).exists()
-                if lead:
-                    motivo, codigo = clasificar_rebote(email_message.as_string())
-                    lead.write({'nv_rebote_motivo': motivo, 'nv_rebote_codigo': codigo or False,
-                                'nv_rebote_fecha': fields.Datetime.now()})
+                leads = Lead.browse(mensaje.res_id).exists()
+            if not leads and message_dict.get('bounced_email'):
+                # Hay avisos (los de Google, por ejemplo) que no traen el identificador del correo
+                # original: Odoo anota el rebote en las oportunidades con esa dirección, pero no
+                # sabe cuál lo provocó. El motivo se guarda en esas mismas oportunidades.
+                leads = Lead.search([('email_normalized', '=', message_dict['bounced_email'])])
+            if leads:
+                motivo, codigo = clasificar_rebote(email_message.as_string())
+                leads.write({'nv_rebote_motivo': motivo, 'nv_rebote_codigo': codigo or False,
+                             'nv_rebote_fecha': fields.Datetime.now()})
         except Exception:
             _logger.exception('No se ha podido clasificar un rebote; el rebote sí queda anotado')
         return resultado
