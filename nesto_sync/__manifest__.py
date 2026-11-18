@@ -1,6 +1,6 @@
 {
     'name': 'Nesto Sync',
-    'version': '2.12.0',  # 2.12.0: Direccion2 (street2) y TipoLugar de los clientes de Nesto (NestoAPI#874)
+    'version': '2.12.0',  # 2.12.0: Direccion2 y TipoLugar (NestoAPI#874); kits con componentes de baja; URL sin foto
     'summary': 'Sincronización bidireccional de tablas entre Nesto y Odoo via Google Pub/Sub',
     'description': '''
         Módulo de sincronización bidireccional entre Nesto y Odoo
@@ -9,6 +9,10 @@
         - Campos nuevos del mensaje de clientes (NestoAPI#874): Direccion2 -> street2 y
           TipoLugar -> tipo_lugar (Piso, Local, Casa, Nave, Otro). null = no modificar,
           "" = vaciar. Solo entran: Odoo no los publica hacia Nesto.
+        - Kits: los componentes se buscan también archivados (dados de baja en Nesto) y
+          los que Odoo no tiene se dejan fuera con un aviso; el kit ya no va a la DLQ.
+        - Imágenes: las URL «sin foto» de la tienda (…/-home_default/… y
+          …-home_default/.jpg) no se descargan ni tocan la imagen guardada.
 
         Versión 2.11.0 (2026-11-10):
         - Se guardan los códigos de Vendedor y Estado del cliente tal cual llegan
