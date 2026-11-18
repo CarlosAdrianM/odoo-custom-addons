@@ -517,6 +517,13 @@ class UrlToImageTransformer:
             _logger.warning(f"URL de imagen inválida (no HTTP/HTTPS): {url}")
             return {'image_1920': None, 'url_imagen_actual': None}
 
+        # «Sin foto» de la tienda (issue #55): producto sin imagen de portada
+        # (…/-home_default/nombre.jpg) o referencia que la tienda no conoce
+        # (…/REF-home_default/.jpg). No es una imagen: ni se descarga ni se toca la que haya.
+        if '/-home_default/' in url or url.endswith('-home_default/.jpg'):
+            _logger.info(f"URL de imagen sin foto en la tienda ({url}): no se toca la imagen")
+            return {}
+
         # OPTIMIZACIÓN: Verificar si la URL cambió
         existing_record = context.get('existing_record')
         if existing_record and hasattr(existing_record, 'url_imagen_actual'):

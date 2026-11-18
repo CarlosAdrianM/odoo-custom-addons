@@ -303,6 +303,12 @@ class SyncProductBom:
             # Kit vacío: solo hay cambio si había BOM que borrar
             return bool(existing_bom)
 
+        # Los componentes que Odoo no tiene no cuentan (issue #55): si no, un kit con
+        # un componente que falta parecería cambiado en cada mensaje.
+        _components, kit_items, _missing = processor._find_components(env, kit_items)
+        if not kit_items:
+            return False
+
         if not existing_bom:
             return True
 
@@ -351,10 +357,17 @@ class SyncProductBom:
 
         # CASO 2: ProductosKit tiene componentes → Validar y crear/actualizar BOM
 
-        # Paso 1: Validar que TODOS los componentes existen
-        component_products = self._validate_and_get_components(
+        # Paso 1: Localizar los componentes. Los que Odoo no tiene se dejan fuera
+        # con un aviso (issue #55): antes el kit entero iba a la DLQ.
+        component_products, kit_items = self._validate_and_get_components(
             env, kit_items, product_record
         )
+        if not kit_items:
+            _logger.warning(
+                f"Kit {product_record.producto_externo}: Odoo no tiene ninguno de sus "
+                f"componentes. La BOM se deja como está."
+            )
+            return
 
         # Paso 2: Validar que no hay ciclos infinitos
         self._validate_no_bom_cycles(
@@ -458,48 +471,71 @@ class SyncProductBom:
 
         return kit_items
 
-    def _validate_and_get_components(self, env, kit_items, parent_product):
+    def _find_components(self, env, kit_items):
         """
-        Valida que todos los componentes existen y los devuelve
+        Busca en Odoo los componentes de un kit, estén activos o archivados
+
+        Un componente dado de baja en Nesto (Estado negativo) está archivado en
+        Odoo, y el kit puede seguir vivo: sigue siendo su componente. Antes solo
+        se buscaban los activos y el kit acababa en la DLQ (issue #55).
 
         Args:
             env: Odoo environment
             kit_items: Lista de tuplas (producto_id, cantidad) ya normalizada
-            parent_product: Producto principal (para error messages)
 
         Returns:
-            Dict {producto_externo: product.product record}
-
-        Raises:
-            ValueError: Si algún componente no existe
+            (components, found_items, missing):
+            - components: Dict {producto_externo: product.product}
+            - found_items: las tuplas de kit_items cuyo componente existe
+            - missing: lista de producto_id que Odoo no tiene
         """
-        product_product_model = env['product.product']
+        # sudo(): el usuario del webhook puede no tener acceso.
+        # Se busca en product.product porque la BOM apunta a variantes.
+        product_product_model = env['product.product'].sudo().with_context(active_test=False)
         components = {}
-        missing_components = []
+        found_items = []
+        missing = []
 
-        for producto_id, _cantidad in kit_items:
-            # Buscar producto por producto_externo
-            # IMPORTANTE: Buscamos en product.product, no product.template
-            # porque la BOM apunta a variantes específicas
-            # Usar sudo() para bypassear permisos (el usuario del webhook puede no tener acceso)
-            component = product_product_model.sudo().search([
-                ('product_tmpl_id.producto_externo', '=', producto_id)
-            ], limit=1)
-
-            if not component:
-                missing_components.append(producto_id)
-            else:
+        for producto_id, cantidad in kit_items:
+            component = product_product_model.search(
+                [('product_tmpl_id.producto_externo', '=', producto_id)],
+                order='active desc, id', limit=1)
+            if component:
                 components[producto_id] = component
+                found_items.append((producto_id, cantidad))
+            else:
+                missing.append(producto_id)
 
-        # Si falta algún componente, lanzar excepción → DLQ
-        if missing_components:
-            raise ValueError(
+        return components, found_items, missing
+
+    def _validate_and_get_components(self, env, kit_items, parent_product):
+        """
+        Devuelve los componentes que existen en Odoo y avisa de los que faltan
+
+        Un componente que Odoo no tiene (Nesto no lo ha publicado nunca) ya no
+        manda el kit a la DLQ (issue #55): la BOM se monta con los que sí existen
+        y queda un aviso en el registro. Cuando el componente llegue, el siguiente
+        mensaje del kit completa la BOM.
+
+        Args:
+            env: Odoo environment
+            kit_items: Lista de tuplas (producto_id, cantidad) ya normalizada
+            parent_product: Producto principal (para el aviso)
+
+        Returns:
+            (components, found_items): Dict {producto_externo: product.product} y
+            las tuplas de kit_items cuyo componente existe
+        """
+        components, found_items, missing = self._find_components(env, kit_items)
+
+        if missing:
+            _logger.warning(
                 f"Componentes de BOM no encontrados para producto "
-                f"{parent_product.producto_externo}: {', '.join(missing_components)}. "
-                f"Asegúrate de que estos productos existen en Odoo antes de sincronizar el kit."
+                f"{parent_product.producto_externo}: {', '.join(missing)}. "
+                f"La BOM se monta sin ellos ({len(found_items)} de {len(kit_items)} componentes)."
             )
 
-        return components
+        return components, found_items
 
     def _validate_no_bom_cycles(self, env, parent_product, component_products):
         """
