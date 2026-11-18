@@ -61,6 +61,16 @@ class ResPartner(models.Model):
              "8 particular web, 93/11/22 sin compra...). Es texto para distinguir el estado 0 "
              "de «Nesto no lo ha mandado» (vacío). Los negativos son fichas anuladas.")
 
+    # Dirección 2 (NestoAPI#874) va a street2. El tipo de lugar es el «¿qué es?» del alta
+    # de Nesto, que decide qué datos lleva la Dirección 2. Solo entra: no vuelve a Nesto.
+    tipo_lugar = fields.Selection(
+        [('Piso', 'Piso'), ('Local', 'Local'), ('Casa', 'Casa o chalet'),
+         ('Nave', 'Nave o polígono'), ('Otro', 'Otro')],
+        string="Tipo de lugar", readonly=True, copy=False,
+        help="Clientes.TipoLugar de Nesto: qué es la dirección de entrega. La «Dirección 2» "
+             "(calle 2) trae lo que necesita el repartidor: piso y puerta, local y rótulo, "
+             "nave... Vacío = alta anterior al 17/11/2026 o Nesto no lo ha mandado.")
+
     # Bloques del embudo de reactivación. Solo los traen los mensajes que salen del
     # endpoint de republicación por bloques de NestoAPI; un mensaje normal no los borra.
     bloque_embudo = fields.Char(

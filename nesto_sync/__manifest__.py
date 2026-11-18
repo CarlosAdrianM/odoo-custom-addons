@@ -1,9 +1,14 @@
 {
     'name': 'Nesto Sync',
-    'version': '2.11.1',  # 2.11.1: un rebote o un token no publican el cliente; el eco de Odoo no pisa el Estado
+    'version': '2.12.0',  # 2.12.0: Direccion2 (street2) y TipoLugar de los clientes de Nesto (NestoAPI#874)
     'summary': 'Sincronización bidireccional de tablas entre Nesto y Odoo via Google Pub/Sub',
     'description': '''
         Módulo de sincronización bidireccional entre Nesto y Odoo
+
+        Versión 2.12.0 (2026-11-18):
+        - Campos nuevos del mensaje de clientes (NestoAPI#874): Direccion2 -> street2 y
+          TipoLugar -> tipo_lugar (Piso, Local, Casa, Nave, Otro). null = no modificar,
+          "" = vaciar. Solo entran: Odoo no los publica hacia Nesto.
 
         Versión 2.11.0 (2026-11-10):
         - Se guardan los códigos de Vendedor y Estado del cliente tal cual llegan

@@ -5,6 +5,7 @@ Los transformers convierten valores del formato de Nesto al formato de Odoo.
 Cada transformer es una clase con un método transform().
 """
 
+import logging
 from datetime import date, datetime, timezone
 from zoneinfo import ZoneInfo
 
@@ -810,6 +811,47 @@ class SinVaciarTransformer:
         if value is None or (isinstance(value, str) and not value.strip()):
             return {}
         return {odoo_field: value.strip() if isinstance(value, str) else value}
+
+
+@FieldTransformerRegistry.register('texto_opcional')
+class TextoOpcionalTransformer:
+    """Texto con la convención de NestoAPI: null = no modificar, "" = vaciar (NestoAPI#874)
+
+    System.Text.Json serializa los nulos, así que una clave a null no significa «bórralo»
+    (lo que provocó #25): solo una cadena vacía expresa vacía el campo.
+    """
+
+    def transform(self, value, context):
+        odoo_field = _destino(context, 'texto_opcional')
+        if value is None:
+            return {}
+        return {odoo_field: str(value).strip() or False}
+
+
+TIPOS_LUGAR = ('Piso', 'Local', 'Casa', 'Nave', 'Otro')
+
+
+@FieldTransformerRegistry.register('tipo_lugar')
+class TipoLugarTransformer:
+    """Clientes.TipoLugar de Nesto: Piso, Local, Casa, Nave u Otro (NestoAPI#874)
+
+    null = no modificar, "" = vaciar. Nesto tiene una CHECK con esos cinco valores; si
+    llegara otro, se avisa y no se toca el campo: no merece mandar el cliente a la DLQ.
+    """
+
+    def transform(self, value, context):
+        odoo_field = _destino(context, 'tipo_lugar')
+        if value is None:
+            return {}
+        texto = str(value).strip()
+        if not texto:
+            return {odoo_field: False}
+        tipo = next((t for t in TIPOS_LUGAR if t.lower() == texto.lower()), None)
+        if not tipo:
+            logging.getLogger(__name__).warning(
+                "TipoLugar '%s' no reconocido: no se toca el campo", texto)
+            return {}
+        return {odoo_field: tipo}
 
 
 @FieldTransformerRegistry.register('fecha_hora_madrid')

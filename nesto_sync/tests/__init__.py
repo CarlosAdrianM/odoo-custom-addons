@@ -59,3 +59,4 @@ from . import test_origen_cliente
 
 # Códigos de vendedor y estado, baja de boletín y bloques del embudo
 from . import test_bloques_embudo
+from . import test_direccion2
