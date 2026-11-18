@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Reintenta los correos del embudo que el servidor rechazó por un fallo pasajero -->
+    <record id="cron_reintentar_correos_embudo" model="ir.cron">
+        <field name="name">CRM: reintentar correos fallidos del embudo</field>
+        <field name="model_id" ref="mail.model_mail_mail"/>
+        <field name="state">code</field>
+        <field name="code">model._nv_reintentar_correos_embudo()</field>
+        <field name="interval_number">10</field>
+        <field name="interval_type">minutes</field>
+        <field name="numbercall">-1</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>
