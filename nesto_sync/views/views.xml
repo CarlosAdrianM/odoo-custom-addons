@@ -18,6 +18,7 @@
                             <field name="fecha_primer_presupuesto"/>
                             <field name="fecha_primer_pedido"/>
                             <field name="fecha_ultimo_pedido"/>
+                            <field name="tipo_lugar"/>
                         </group>
                     </page>
                 </notebook>

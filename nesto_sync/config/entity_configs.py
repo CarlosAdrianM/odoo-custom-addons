@@ -43,6 +43,20 @@ ENTITY_CONFIGS = {
             'Nif': {
                 'odoo_field': 'vat'
             },
+            # --- Dirección 2 y tipo de lugar (NestoAPI#874) ---
+            # Lo que necesita el repartidor, ya compuesto y validado en Nesto («1º D»,
+            # «LOCAL 6 · RÓTULO: EL EDÉN»). Ausente o null = no se toca; "" = se vacía.
+            # Solo entran: Odoo no los publica hasta que Nesto acepte cambios de dirección.
+            'Direccion2': {
+                'transformer': 'texto_opcional',
+                'odoo_field': 'street2',
+                'reverse': False,
+            },
+            'TipoLugar': {
+                'transformer': 'tipo_lugar',
+                'odoo_field': 'tipo_lugar',
+                'reverse': False,
+            },
             'CodigoPostal': {
                 'odoo_field': 'zip'
             },

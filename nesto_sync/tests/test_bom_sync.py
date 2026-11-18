@@ -138,18 +138,50 @@ class TestBomSync(TransactionCase):
         self.assertEqual(len(bom), 0, "BOM debe haberse eliminado")
 
     def test_sync_bom_missing_component(self):
-        """Test: Error cuando falta un componente"""
+        """Test: un componente que Odoo no tiene no tumba el kit (issue #55)"""
         productos_kit = [
             {'ProductoId': 'COMP001', 'Cantidad': 2},
             {'ProductoId': 'COMP999', 'Cantidad': 1},  # No existe
         ]
 
-        # Debe lanzar ValueError
-        with self.assertRaises(ValueError) as cm:
+        with self.assertLogs('odoo.addons.nesto_sync.transformers.post_processors', 'WARNING') as avisos:
             self.bom_processor._sync_bom(self.env, self.product_kit, productos_kit)
+        self.assertIn('COMP999', '\n'.join(avisos.output))
 
-        self.assertIn('COMP999', str(cm.exception), "Error debe mencionar COMP999")
-        self.assertIn('no encontrados', str(cm.exception).lower())
+        bom = self.env['mrp.bom'].search([('product_tmpl_id', '=', self.product_kit.id)])
+        self.assertEqual(len(bom), 1)
+        self.assertEqual(bom.bom_line_ids.product_id.product_tmpl_id, self.component_1)
+        self.assertEqual(bom.bom_line_ids.product_qty, 2)
+
+        # El mismo mensaje otra vez no se ve como un cambio
+        self.assertFalse(self.bom_processor.bom_needs_sync(self.env, self.product_kit, productos_kit))
+
+    def test_sync_bom_componente_archivado(self):
+        """Test: un componente de baja (archivado) sigue siendo componente (issue #55)"""
+        self.component_2.active = False
+        productos_kit = [
+            {'ProductoId': 'COMP001', 'Cantidad': 2},
+            {'ProductoId': 'COMP002', 'Cantidad': 1},
+        ]
+
+        self.bom_processor._sync_bom(self.env, self.product_kit, productos_kit)
+
+        bom = self.env['mrp.bom'].search([('product_tmpl_id', '=', self.product_kit.id)])
+        lineas = bom.with_context(active_test=False).bom_line_ids
+        self.assertEqual(len(lineas), 2)
+        self.assertIn(self.component_2, lineas.product_id.product_tmpl_id)
+        self.assertFalse(self.bom_processor.bom_needs_sync(self.env, self.product_kit, productos_kit))
+
+    def test_sync_bom_sin_ningun_componente_deja_la_bom(self):
+        """Test: si Odoo no tiene ningún componente, la BOM que hubiera no se toca"""
+        self.bom_processor._sync_bom(self.env, self.product_kit, [{'ProductoId': 'COMP001', 'Cantidad': 2}])
+        solo_desconocidos = [{'ProductoId': 'COMP998', 'Cantidad': 1}, {'ProductoId': 'COMP999', 'Cantidad': 1}]
+
+        self.assertFalse(self.bom_processor.bom_needs_sync(self.env, self.product_kit, solo_desconocidos))
+        self.bom_processor._sync_bom(self.env, self.product_kit, solo_desconocidos)
+
+        bom = self.env['mrp.bom'].search([('product_tmpl_id', '=', self.product_kit.id)])
+        self.assertEqual(bom.bom_line_ids.product_id.product_tmpl_id, self.component_1)
 
     def test_sync_bom_direct_cycle(self):
         """Test: Detectar ciclo directo (producto se contiene a sí mismo)"""
@@ -325,16 +357,17 @@ class TestBomValidations(TransactionCase):
 
         # No debe lanzar excepción
         kit_items = self.bom_processor._normalize_kit_items(productos_kit, self.product)
-        components = self.bom_processor._validate_and_get_components(
+        components, encontrados = self.bom_processor._validate_and_get_components(
             self.env, kit_items, self.product
         )
 
+        self.assertEqual(encontrados, kit_items)
         self.assertEqual(len(components), 2, "Debe encontrar 2 componentes")
         self.assertIn('C1', components)
         self.assertIn('C2', components)
 
     def test_validate_components_missing(self):
-        """Test: Error cuando faltan componentes"""
+        """Test: los componentes que faltan se avisan y se dejan fuera, sin error (issue #55)"""
         productos_kit = [
             {'ProductoId': 'MISSING1', 'Cantidad': 1},
             {'ProductoId': 'MISSING2', 'Cantidad': 1},
@@ -342,12 +375,14 @@ class TestBomValidations(TransactionCase):
 
         kit_items = self.bom_processor._normalize_kit_items(productos_kit, self.product)
 
-        with self.assertRaises(ValueError) as cm:
-            self.bom_processor._validate_and_get_components(
+        with self.assertLogs('odoo.addons.nesto_sync.transformers.post_processors', 'WARNING') as avisos:
+            components, encontrados = self.bom_processor._validate_and_get_components(
                 self.env, kit_items, self.product
             )
 
-        error_msg = str(cm.exception)
+        self.assertEqual(components, {})
+        self.assertEqual(encontrados, [])
+        error_msg = '\n'.join(avisos.output)
         self.assertIn('MISSING1', error_msg)
         self.assertIn('MISSING2', error_msg)
 
