@@ -1,4 +1,6 @@
-from odoo import models, fields, api
+from odoo import api, fields, models
+from odoo.exceptions import ValidationError
+
 
 class HelpDeskMachine(models.Model):
     _name = 'helpdesk.machine'
@@ -8,6 +10,22 @@ class HelpDeskMachine(models.Model):
     serial_number = fields.Char(string="Serial Number", required=False)
     description = fields.Text(string="Description")
     purchase_date = fields.Date(string="Purchase Date")
+    brand_id = fields.Many2one(
+        "helpdesk.machine.brand",
+        string="Marca",
+        compute="_compute_brand_id",
+        store=True,
+        readonly=False,
+        ondelete="set null",
+        help="Se propone sola por el nombre del modelo; se puede cambiar a mano. "
+        "Sin marca, el informe de reparación sale con el logo de la empresa.",
+    )
+
+    @api.depends("name")
+    def _compute_brand_id(self):
+        Marca = self.env["helpdesk.machine.brand"]
+        for machine in self:
+            machine.brand_id = Marca._marca_para(machine.name)
 
     def name_get(self):
         result = []
