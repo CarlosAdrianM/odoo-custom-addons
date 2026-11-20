@@ -1,2 +1,4 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_helpdesk_machine,access_helpdesk_machine,model_helpdesk_machine,,1,1,1,1
+access_helpdesk_machine_brand_user,access_helpdesk_machine_brand_user,model_helpdesk_machine_brand,base.group_user,1,0,0,0
+access_helpdesk_machine_brand_manager,access_helpdesk_machine_brand_manager,model_helpdesk_machine_brand,helpdesk_mgmt.group_helpdesk_manager,1,1,1,1

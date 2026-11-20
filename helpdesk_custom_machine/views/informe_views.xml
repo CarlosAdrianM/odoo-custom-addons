@@ -1,0 +1,211 @@
+<odoo>
+    <!-- Marcas -->
+    <record id="view_machine_brand_tree" model="ir.ui.view">
+        <field name="name">helpdesk.machine.brand.tree</field>
+        <field name="model">helpdesk.machine.brand</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="keywords"/>
+                <field name="machine_count"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_machine_brand_form" model="ir.ui.view">
+        <field name="name">helpdesk.machine.brand.form</field>
+        <field name="model">helpdesk.machine.brand</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_reasignar_maquinas" type="object"
+                            string="Reasignar la marca de todas las máquinas"
+                            confirm="Se volverá a calcular la marca de todas las máquinas según las palabras clave, incluidas las cambiadas a mano. ¿Continuar?"/>
+                </header>
+                <sheet>
+                    <field name="logo" widget="image" class="oe_avatar"/>
+                    <group>
+                        <field name="name"/>
+                        <field name="keywords" placeholder="HIDRA, HYDRA, INDRA"/>
+                        <field name="machine_count"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_machine_brand" model="ir.actions.act_window">
+        <field name="name">Marcas de máquinas</field>
+        <field name="res_model">helpdesk.machine.brand</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="menu_machine_brand" name="Marcas de máquinas"
+              parent="helpdesk_mgmt.helpdesk_ticket_config_main_menu"
+              action="action_machine_brand" sequence="60"/>
+
+    <record id="view_machine_form_brand" model="ir.ui.view">
+        <field name="name">helpdesk.machine.form.brand</field>
+        <field name="model">helpdesk.machine</field>
+        <field name="inherit_id" ref="view_machine_form"/>
+        <field name="arch" type="xml">
+            <field name="purchase_date" position="after">
+                <field name="brand_id"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_machine_tree_brand" model="ir.ui.view">
+        <field name="name">helpdesk.machine.tree.brand</field>
+        <field name="model">helpdesk.machine</field>
+        <field name="inherit_id" ref="view_machine_tree"/>
+        <field name="arch" type="xml">
+            <field name="purchase_date" position="after">
+                <field name="brand_id" optional="show"/>
+            </field>
+        </field>
+    </record>
+
+    <!-- Configuración: etapa y equipo -->
+    <record id="view_stage_form_informe" model="ir.ui.view">
+        <field name="name">helpdesk.ticket.stage.form.informe</field>
+        <field name="model">helpdesk.ticket.stage</field>
+        <field name="inherit_id" ref="helpdesk_mgmt.view_helpdesk_ticket_stage_form"/>
+        <field name="arch" type="xml">
+            <field name="name" position="after">
+                <field name="genera_informe"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_team_form_informe" model="ir.ui.view">
+        <field name="name">helpdesk.ticket.team.form.informe</field>
+        <field name="model">helpdesk.ticket.team</field>
+        <field name="inherit_id" ref="helpdesk_mgmt.view_helpdesk_team_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/group" position="after">
+                <group string="Informes de reparación">
+                    <field name="informe_tecnico_id"/>
+                    <field name="informe_revisor_id"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Ticket: pestaña Informe -->
+    <record id="view_ticket_form_informe" model="ir.ui.view">
+        <field name="name">helpdesk.ticket.form.informe</field>
+        <field name="model">helpdesk.ticket</field>
+        <field name="inherit_id" ref="helpdesk_mgmt.ticket_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='other_info']" position="after">
+                <page string="Informe de reparación" name="informe">
+                    <div class="alert alert-info" role="alert"
+                         attrs="{'invisible': [('informe_state', '!=', 'en_cola')]}">
+                        El borrador se está redactando. Estará listo en un par de minutos.
+                    </div>
+                    <div class="alert alert-danger" role="alert"
+                         attrs="{'invisible': [('informe_state', '!=', 'falta_info')]}">
+                        <strong>Faltan notas del técnico.</strong>
+                        <field name="informe_motivo_falta" readonly="1" class="d-block"/>
+                        En cuanto se añada una nota al ticket, el borrador se redactará solo.
+                    </div>
+                    <div class="alert alert-danger" role="alert"
+                         attrs="{'invisible': [('informe_state', '!=', 'error')]}">
+                        <strong>No se ha podido redactar el borrador.</strong>
+                        <field name="informe_error" readonly="1" class="d-block"/>
+                    </div>
+                    <div class="alert alert-warning" role="alert"
+                         attrs="{'invisible': ['|', ('informe_avisos', '=', False), ('informe_state', 'in', ('papel', 'enviado'))]}">
+                        <strong>Avisos para quien revisa (no se imprimen):</strong>
+                        <field name="informe_avisos" readonly="1" class="d-block"/>
+                    </div>
+                    <div class="mb-3">
+                        <button name="action_informe_aprobar" type="object" class="btn-primary me-1"
+                                string="Aprobar y enviar al cliente"
+                                attrs="{'invisible': ['|', ('informe_state', 'in', ('papel', 'enviado')), ('informe_correo', '=', False)]}"
+                                confirm="Se generará el PDF y se enviará por correo al cliente. ¿Continuar?"/>
+                        <button name="action_informe_aprobar" type="object" class="btn-primary me-1"
+                                string="Aprobar (entrega impresa)"
+                                attrs="{'invisible': ['|', ('informe_state', 'in', ('papel', 'enviado')), ('informe_correo', '!=', False)]}"
+                                confirm="El cliente no tiene correo: el informe quedará aprobado para imprimirlo y entregarlo con la máquina. ¿Continuar?"/>
+                        <button name="action_informe_entregado" type="object" class="btn-primary me-1"
+                                string="Marcar como entregado"
+                                attrs="{'invisible': [('informe_state', '!=', 'papel')]}"/>
+                        <button name="action_informe_vista_previa" type="object" class="btn-secondary me-1"
+                                string="Ver PDF"/>
+                        <button name="action_informe_generar" type="object" class="btn-secondary me-1"
+                                string="Redactar borrador con IA"
+                                attrs="{'invisible': [('informe_state', 'in', ('papel', 'enviado'))]}"
+                                confirm="Se redactará el borrador a partir de las notas del ticket y se sustituirá el texto actual. ¿Continuar?"/>
+                        <button name="action_informe_reabrir" type="object" class="btn-secondary"
+                                string="Corregir informe aprobado"
+                                attrs="{'invisible': [('informe_state', 'not in', ('papel', 'enviado'))]}"
+                                groups="helpdesk_mgmt.group_helpdesk_manager"/>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="informe_state" readonly="1"/>
+                            <field name="informe_correo"/>
+                            <field name="informe_brand_id"
+                                   placeholder="Logo de la empresa"
+                                   attrs="{'readonly': [('informe_state', 'in', ('papel', 'enviado'))]}"/>
+                        </group>
+                        <group attrs="{'invisible': [('informe_fecha', '=', False)]}">
+                            <field name="informe_fecha" readonly="1"/>
+                            <field name="informe_aprobado_por" readonly="1"/>
+                            <field name="informe_via" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="informe_averia" attrs="{'readonly': [('informe_state', 'in', ('papel', 'enviado'))]}"/>
+                        <field name="informe_diagnostico" attrs="{'readonly': [('informe_state', 'in', ('papel', 'enviado'))]}"/>
+                        <field name="informe_trabajo" attrs="{'readonly': [('informe_state', 'in', ('papel', 'enviado'))]}"/>
+                        <field name="informe_piezas" attrs="{'readonly': [('informe_state', 'in', ('papel', 'enviado'))]}"/>
+                        <field name="informe_recomendaciones" attrs="{'readonly': [('informe_state', 'in', ('papel', 'enviado'))]}"/>
+                        <field name="informe_pendiente" attrs="{'readonly': [('informe_state', 'in', ('papel', 'enviado'))]}"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Kanban: estado del informe en la tarjeta -->
+    <record id="view_ticket_kanban_informe" model="ir.ui.view">
+        <field name="name">helpdesk.ticket.kanban.informe</field>
+        <field name="model">helpdesk.ticket</field>
+        <field name="inherit_id" ref="helpdesk_mgmt.view_helpdesk_ticket_kanban"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[hasclass('o_kanban_record_body')]" position="inside">
+                <t t-if="record.informe_state.raw_value != 'no'">
+                    <field name="informe_state" widget="badge"
+                           decoration-info="informe_state == 'en_cola'"
+                           decoration-danger="informe_state in ('falta_info', 'error')"
+                           decoration-warning="informe_state in ('borrador', 'papel')"
+                           decoration-success="informe_state == 'enviado'"/>
+                </t>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Filtros -->
+    <record id="view_ticket_search_informe" model="ir.ui.view">
+        <field name="name">helpdesk.ticket.search.informe</field>
+        <field name="model">helpdesk.ticket</field>
+        <field name="inherit_id" ref="helpdesk_mgmt.helpdesk_ticket_view_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter name="informe_falta" string="Informe: faltan notas del técnico"
+                        domain="[('informe_state', 'in', ('falta_info', 'error'))]"/>
+                <filter name="informe_borrador" string="Informe: pendiente de aprobar"
+                        domain="[('informe_state', '=', 'borrador')]"/>
+                <filter name="informe_papel" string="Informe: pendiente de entregar impreso"
+                        domain="[('informe_state', '=', 'papel')]"/>
+                <filter name="informe_sin" string="Terminado sin informe"
+                        domain="[('informe_state', '=', 'no'), ('stage_id.genera_informe', '=', True)]"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
