@@ -14,6 +14,7 @@ La entrada es silenciosa: la oportunidad nace sin vendedor y sin equipo, y nadie
 nada. Solo se avisa al responsable (con copia a Dirección) cuando el cliente contesta a
 un correo o hace un pedido posterior a su entrada.
 """
+import hashlib
 import logging
 from datetime import timedelta
 
@@ -33,6 +34,9 @@ POR_DIA_POR_DEFECTO = 50
 # Hora de Madrid («HH:MM») a partir de la cual se crean cada día las oportunidades de los
 # bloques, y con ellas sale el correo 01. Nesto puede lanzar el bloque a primera hora y
 # Odoo lo retiene hasta entonces: así la franja de envío se decide aquí. Vacío = sin espera.
+# Con varias horas separadas por comas («10:00,17:00») el bloque de cada día se reparte al
+# azar entre ellas, a partes iguales: es la prueba de horarios. La hora que le toca a cada
+# oportunidad queda en `nv_franja_envio`; para probar otra hora basta cambiar el parámetro.
 PARAM_HORA_ENVIO = 'nv_crm_embudo.reactivacion_hora_envio'
 ZONA_ENVIO = pytz.timezone('Europe/Madrid')
 # Cada cuántos minutos corren las dos tareas de automation_oca (altas y pasos). De fábrica
@@ -120,6 +124,11 @@ class CrmLead(models.Model):
         string='Último pedido al entrar', readonly=True, copy=False,
         help='Fecha del último pedido del cliente cuando entró en el embudo (vacío = no había '
              'comprado nunca). Se gana cuando Nesto manda una fecha posterior.')
+    nv_franja_envio = fields.Char(
+        string='Franja de envío', readonly=True, copy=False, index=True,
+        help='Hora de Madrid (HH:MM) que le tocó a esta oportunidad para el correo 01, de las '
+             'configuradas ese día. Sirve para comparar franjas; los correos siguientes salen '
+             'a la misma hora porque se cuentan desde el anterior.')
 
     # ------------------------------------------------------------ poblador
 
@@ -134,21 +143,48 @@ class CrmLead(models.Model):
             return POR_DIA_POR_DEFECTO
 
     @api.model
-    def _nv_ya_es_hora_de_enviar(self, ahora=None):
-        """False mientras no llegue la hora de envío de hoy (parámetro, hora de Madrid)."""
-        valor = self._nv_param(PARAM_HORA_ENVIO)
+    def _nv_horas_de_envio(self):
+        """Las franjas de envío del parámetro, como [(hora, minuto), ...] ordenadas. [] = sin espera."""
+        valor = (self._nv_param(PARAM_HORA_ENVIO) or '').strip()
         if not valor:
-            return True
+            return []
+        horas = set()
         try:
-            hora, minuto = (int(x) for x in valor.split(':'))
-            if not (0 <= hora <= 23 and 0 <= minuto <= 59):
-                raise ValueError(valor)
+            for trozo in valor.split(','):
+                hora, minuto = (int(x) for x in trozo.strip().split(':'))
+                if not (0 <= hora <= 23 and 0 <= minuto <= 59):
+                    raise ValueError(trozo)
+                horas.add((hora, minuto))
         except ValueError:
-            _logger.warning('Parámetro %s con un valor que no es una hora HH:MM (%r): no se espera',
-                            PARAM_HORA_ENVIO, valor)
-            return True
+            _logger.warning('Parámetro %s con un valor que no son horas HH:MM separadas por comas '
+                            '(%r): no se espera', PARAM_HORA_ENVIO, valor)
+            return []
+        return sorted(horas)
+
+    @api.model
+    def _nv_hora_local(self, ahora=None):
         local = pytz.utc.localize(ahora or fields.Datetime.now()).astimezone(ZONA_ENVIO)
-        return (local.hour, local.minute) >= (hora, minuto)
+        return (local.hour, local.minute)
+
+    @api.model
+    def _nv_ya_es_hora_de_enviar(self, ahora=None):
+        """False mientras no llegue la primera hora de envío de hoy (parámetro, hora de Madrid)."""
+        horas = self._nv_horas_de_envio()
+        return not horas or self._nv_hora_local(ahora) >= horas[0]
+
+    @api.model
+    def _nv_franja_de_envio(self, cliente, horas):
+        """La franja que le toca a un cliente: reparto al azar, a partes iguales y estable.
+
+        Sale de un resumen criptográfico del número de cliente y de las franjas en juego: no
+        depende del orden en que Nesto manda el bloque (por fecha de último pedido) y da lo
+        mismo en cada pasada de la tarea, que corre cada pocos minutos.
+        """
+        if not horas:
+            return False
+        semilla = '%s|%s' % (cliente.cliente_externo or cliente.id, horas)
+        indice = int(hashlib.sha256(semilla.encode()).hexdigest(), 16) % len(horas)
+        return horas[indice]
 
     @api.model
     def _nv_acelerar_tareas_del_embudo(self):
@@ -175,6 +211,7 @@ class CrmLead(models.Model):
             return
         Partner = self.env['res.partner'].sudo()
         ahora = fields.Datetime.now()
+        horas, hora_local = self._nv_horas_de_envio(), self._nv_hora_local()
         hoy = ahora.replace(hour=0, minute=0, second=0, microsecond=0)
         cupo = self._nv_reactivacion_por_dia() - self.sudo().with_context(active_test=False).search_count(
             [('nv_bloque_embudo', '!=', False), ('create_date', '>=', hoy)])
@@ -189,9 +226,13 @@ class CrmLead(models.Model):
             if any(p.write_date and p.write_date > ahora - timedelta(minutes=MINUTOS_REPOSO)
                    for p in familia):
                 continue
+            franja = self._nv_franja_de_envio(cliente, horas)
+            if franja and hora_local < franja:
+                continue  # su franja es más tarde: entra en una pasada posterior
             try:
                 with self.env.cr.savepoint():
-                    resultado = self._nv_entrada_de_bloque(cliente, familia, crear=cupo > 0)
+                    resultado = self._nv_entrada_de_bloque(
+                        cliente, familia, crear=cupo > 0, franja=franja and '%02d:%02d' % franja)
             except Exception:
                 _logger.exception('No se ha podido procesar el cliente %s de Nesto para el embudo',
                                   cliente.cliente_externo)
@@ -200,7 +241,7 @@ class CrmLead(models.Model):
                 cupo -= 1
 
     @api.model
-    def _nv_entrada_de_bloque(self, cliente, familia, crear=True):
+    def _nv_entrada_de_bloque(self, cliente, familia, crear=True, franja=False):
         """Procesa un cliente de un bloque y devuelve el resultado (False = se deja para mañana)."""
         activos = familia.filtered('active')
         bloque = next((p.bloque_embudo for p in (cliente | familia) if p.bloque_embudo), False)
@@ -222,7 +263,7 @@ class CrmLead(models.Model):
         if resultado == 'oportunidad':
             if not crear:
                 return False
-            self._nv_oportunidad_de_bloque(cliente, familia, persona, bloque)
+            self._nv_oportunidad_de_bloque(cliente, familia, persona, bloque, franja=franja)
         cliente.with_context(skip_sync=True).write({
             'nv_embudo_bloque': bloque, 'nv_embudo_fecha': fields.Datetime.now(),
             'nv_embudo_resultado': resultado,
@@ -263,7 +304,7 @@ class CrmLead(models.Model):
         return max((p.fecha_ultimo_pedido for p in familia if p.fecha_ultimo_pedido), default=False)
 
     @api.model
-    def _nv_oportunidad_de_bloque(self, cliente, familia, persona, bloque):
+    def _nv_oportunidad_de_bloque(self, cliente, familia, persona, bloque, franja=False):
         contacto = persona
         while contacto and not contacto.responsable_embudo_email:
             contacto = contacto.parent_id
@@ -284,6 +325,7 @@ class CrmLead(models.Model):
                 'nv_responsable_embudo_email': contacto.responsable_embudo_email,
                 'nv_responsable_embudo_tipo': contacto.responsable_embudo_tipo,
                 'nv_ultimo_pedido_al_entrar': ultimo,
+                'nv_franja_envio': franja,
             })
         lead.message_post(
             body=Markup('<p>Entra en el embudo por el bloque <b>%s</b> de Nesto (cliente <b>%s</b>, '

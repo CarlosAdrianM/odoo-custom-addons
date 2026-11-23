@@ -11,7 +11,7 @@ from odoo import fields
 
 MADRID = pytz.timezone('Europe/Madrid')
 DIAS = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
-COLUMNAS = ['cliente_nesto', 'bloque', 'puerta', 'oportunidad_id', 'correo', 'envio_fecha', 'envio_hora', 'dia_semana',
+COLUMNAS = ['cliente_nesto', 'bloque', 'puerta', 'oportunidad_id', 'correo', 'franja', 'envio_fecha', 'envio_hora', 'dia_semana',
             'estado', 'rebote', 'apertura', 'apertura_fecha_hora', 'minutos_hasta_apertura', 'clic', 'clic_fecha_hora',
             'respuesta', 'respuesta_fecha_hora', 'baja', 'rebotes_oportunidad', 'ganada']
 
@@ -41,6 +41,7 @@ def filas_de_envios(env):
         filas.append({
             'cliente_nesto': lead.partner_id.commercial_partner_id.cliente_externo or '',
             'bloque': lead.nv_bloque_embudo or '',
+            'franja': (lead.nv_franja_envio or '') if 'nv_franja_envio' in lead._fields else '',
             'puerta': lead.campaign_id.name or '',
             'oportunidad_id': lead.id,
             'correo': numero.group(1) if numero else (paso.configuration_step_id.name or ''),
@@ -79,3 +80,12 @@ if __name__ == '__main__' or 'env' in globals():
         r[0] += 1; r[1] += f['rebote']; r[2] += f['apertura']; r[3] += f['clic']
     for (bloque, correo, dia), (n, reb, abre, clic) in sorted(resumen.items(), key=lambda kv: kv[0][2]):
         print('  %s · correo %s · %s: %d enviados, %d rebotes, %d aperturas, %d clics' % (bloque, correo, dia, n, reb, abre, clic))
+    # Prueba de horarios: solo las oportunidades con franja asignada (reparto al azar)
+    franjas = {}
+    for f in filas:
+        if f['franja']:
+            r = franjas.setdefault((f['franja'], f['correo']), [0, 0, 0, 0, 0])
+            r[0] += 1; r[1] += f['rebote']; r[2] += f['apertura']; r[3] += f['clic']; r[4] += f['respuesta']
+    for (franja, correo), (n, reb, abre, clic, resp) in sorted(franjas.items()):
+        print('  franja %s · correo %s: %d enviados, %d rebotes, %d aperturas (%d %% de entregados), %d clics, %d respuestas'
+              % (franja, correo, n, reb, abre, round(100 * abre / max(n - reb, 1)), clic, resp))
