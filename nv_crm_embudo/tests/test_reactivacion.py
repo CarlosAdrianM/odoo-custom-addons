@@ -292,6 +292,46 @@ class TestReactivacion(TransactionCase):
             self.Lead._nv_poblar_embudo_bloques()
         self.assertEqual(len(self._leads(cliente)), 1)
 
+    def test_varias_horas_de_envio(self):
+        fijar = self.env['ir.config_parameter'].sudo().set_param
+        fijar(PARAM_HORA_ENVIO, ' 17:00, 10:00 ')
+        self.assertEqual(self.Lead._nv_horas_de_envio(), [(10, 0), (17, 0)])
+        self.assertFalse(self.Lead._nv_ya_es_hora_de_enviar(datetime(2026, 11, 12, 8, 59)))
+        self.assertTrue(self.Lead._nv_ya_es_hora_de_enviar(datetime(2026, 11, 12, 9, 0)),
+                        'Manda la primera hora: a partir de ahí se mira cliente a cliente')
+        fijar(PARAM_HORA_ENVIO, '10:00,25:00')
+        self.assertEqual(self.Lead._nv_horas_de_envio(), [], 'Una hora mal escrita anula la espera entera')
+
+    def test_el_bloque_se_reparte_entre_las_franjas(self):
+        self.env['ir.config_parameter'].sudo().set_param(PARAM_HORA_ENVIO, '10:00,17:00')
+        self.env['ir.config_parameter'].sudo().set_param(PARAM_POR_DIA, '100')
+        clientes = [self._cliente('R07%02d' % i) for i in range(40)]
+        franjas = {c.id: self.Lead._nv_franja_de_envio(c, [(10, 0), (17, 0)]) for c in clientes}
+        de_manana = [c for c in clientes if franjas[c.id] == (10, 0)]
+        de_tarde = [c for c in clientes if franjas[c.id] == (17, 0)]
+        self.assertTrue(10 <= len(de_manana) <= 30, 'Reparto razonable: %s de 40' % len(de_manana))
+        ruta = 'odoo.addons.nv_crm_embudo.models.reactivacion.CrmLead._nv_hora_local'
+        with patch(ruta, return_value=(9, 59)):
+            self.Lead._nv_poblar_embudo_bloques()
+        self.assertFalse(any(self._leads(c) for c in clientes))
+        with patch(ruta, return_value=(10, 5)):
+            self.Lead._nv_poblar_embudo_bloques()
+            self.Lead._nv_poblar_embudo_bloques()
+        self.assertEqual({self._leads(c).nv_franja_envio for c in de_manana}, {'10:00'})
+        self.assertFalse(any(self._leads(c) for c in de_tarde), 'Los de la tarde esperan a su hora')
+        self.assertFalse(any(c.nv_embudo_bloque for c in de_tarde))
+        with patch(ruta, return_value=(17, 0)):
+            self.Lead._nv_poblar_embudo_bloques()
+        self.assertEqual({self._leads(c).nv_franja_envio for c in de_tarde}, {'17:00'})
+        self.assertEqual(sum(len(self._leads(c)) for c in clientes), 40)
+
+    def test_con_una_sola_hora_se_anota_la_franja(self):
+        self.env['ir.config_parameter'].sudo().set_param(PARAM_HORA_ENVIO, '10:00')
+        cliente = self._cliente('R0080')
+        with patch('odoo.addons.nv_crm_embudo.models.reactivacion.CrmLead._nv_hora_local', return_value=(11, 0)):
+            self.Lead._nv_poblar_embudo_bloques()
+        self.assertEqual(self._leads(cliente).nv_franja_envio, '10:00')
+
     def test_el_correo_enviado_no_cuenta_como_respuesta(self):
         cliente = self._cliente('R0061')
         self.Lead._nv_poblar_embudo_bloques()
